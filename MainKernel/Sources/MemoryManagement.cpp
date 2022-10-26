@@ -7,9 +7,9 @@
 
 #include <MemoryManagement.hpp>
 
-//#define DEBUG
+#define DEBUG
 
-unsigned long SystemStructureLocation;
+unsigned long SystemStructureLocation; // Location of the NodeManager
 
 void Kernel::MemoryManagement::Initialize(void) {
 	int i = 0;
@@ -17,40 +17,87 @@ void Kernel::MemoryManagement::Initialize(void) {
 	unsigned int ID;
 	unsigned long TotalUsableMemory = 0;
 	Kernel::MemoryManagement::NodeManager *NodeManager;
+	// Location of the E820, if you are curious, check line 36 of the Kernel16.asm
 	QuerySystemAddressMap *E820 = (QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS;
 	NodeManager = (Kernel::MemoryManagement::NodeManager*)(SystemStructureLocation
-	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID)));
+	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID))); // Allocate system structure
 	Kernel::printf("Node Manager Location : 0x%X\n" , SystemStructureLocation);
-	while(1) {
-		if((E820[i].Type <= 0)||(E820[i].Type > 5)) {
-			break;
-		}
-		if((E820[i].Type != 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) {
+	while((E820[i].Type > 0) && (E820[i].Type <= 5)) {	// Check until the table is invalid
+		if((E820[i].Type != 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) { // If it's unusable memory
 			Kernel::printf("Unusable Memory : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
+			/* To-do : 
+			 * Create a node for masking unavailable memory areas.
+			*/
 		}
 		else {
-			TotalUsableMemory += E820[i].Length;
+			TotalUsableMemory += E820[i].Length;				// Calculate total usable memory
 		}
 		i++;
 	}
-	TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
-	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS , TotalUsableMemory);
+	TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;  // Calculate the memory
+	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS , TotalUsableMemory);		// Initialize the node manager
 	Kernel::printf("Total usable memory : %dMB\n" , TotalUsableMemory/1024/1024);
 	Kernel::printf("Memory pool address : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
-
+	
+	// Testing the memory allocation & deallocation
 	unsigned long Address[20] = {0 , };
-	Kernel::printf("Testing allocation/disallocation sequence... ");
-	for(j = 0; j < 10; j++) { // 2GB memory test
-		for(i = 0; i < 8; i++) {
-			Kernel::MemoryManagement::Free((void*)Address[i]);
+	Kernel::printf("Testing allocation/Deallocation sequence... ");
+	for(j = 0; j < 2; j++) { // 2GB memory test (Do the test 2 times)
+		for(i = 0; i < 8; i++) {															// 256MBx8 = 2GB
+			Address[i] = (unsigned long)Kernel::MemoryManagement::Allocate(256*1024*1024);	// Allocate 256MB
 		}
 		for(i = 0; i < 8; i++) {
-			Address[i] = (unsigned long)Kernel::MemoryManagement::Allocate(256*1024*1024);
+			Kernel::MemoryManagement::Free((void*)Address[i]);	// Free
+			NodeManager->MapNode();								// Print the map
 		}
 	}
 	NodeManager->MapNode();
 	Kernel::printf("Done\n");
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// Description : Find the suitable node for required size, and if it requires, seperate the node.	 //
+// The function allocates segment by this sequence : 												 //
+// 1. Search the suitable node, if there is no suitable node, create one.							 //
+// 2. If the size of suitable node, seperate the node												 //
+// Creating Node : Create new node after the last node												 //
+// If there is no node : Create new one																 //
+// Seperating Sequence : 																			 //
+// 1. Create new node in the existing node(Existing node should be set to required size, 			 //
+//	  more specifics on the actual code.)															 //
+// 2. Set the NextNode value of the newly created node to existing node's NextNode value.			 //
+// 3. Set the PreviousNode value of the newly created node to address of existing node.			     //
+// 4. Set the NextNode value of the existing node to address of newly created node					 //
+// -> the PreviousNode value of the existing node should not be changed.							 //
+// 																								     //
+// Examples of the situation : 																		 //
+// 1. There is no suitable segment                 2. There is suitable segment					     //
+// +-----------------+							   +-----------------+								 //
+// |  Require : 3MB  |                             |  Require : 3MB  |								 //
+// +-----------------+							   +-----------------+								 //
+// Memory Pool : 								   Memory Pool : 									 //
+// +-----+-----+-----+---------------------+	   +-----------------+-----------------------+		 //
+// | 1MB | 1MB | 1MB | ...			       |       |       3MB       | ...                   |		 //
+// +-----+-----+-----+---------------------+       +-----------------+-----------------------+		 //
+// -> Solve : Create new node after the last node  -> Solve : Allot the suitable memory				 //
+// +-----+-----+-----+---------------+-----+	   +-----------------+-----------------------+		 //
+// | 1MB | 1MB | 1MB | Soothed : 3MB | ... |       |  Soothed : 3MB  | ...                   |		 //
+// +-----+-----+-----+---------------+-----+       +-----------------+-----------------------+		 //
+// 																									 //
+// 3. There is bigger segment 					   4. The worst case : External Fragmentation		 //
+// +-----------------+							   +-----------------+								 //
+// |  Require : 3MB  |							   |  Require : 3MB  |								 //
+// +-----------------+							   +-----------------+								 //
+// Memory Pool : 								   Memory Pool : 									 //
+// +-----------------------------+---------+	   +-----+-----+-----+-----------+-----+-----+		 //
+// |              5MB            | ...     |	   |1MB U|1MB F|1MB U|   2MB F   |1MB U|1MB U| 		 //
+// +-----------------------------+---------+	   +-----+-----+-----+-----------+-----+-----+		 //
+// -> Solve : Seperate the segment				   -> There is no space to allocate, even there is	 //
+// +-----------------+-----------+---------+	   actually available space.						 //
+// |  Soothed : 3MB  |    2MB    | ...     |	   -> Solve : To optimize the allocation			 //
+// +-----------------+-----------+---------+	   											 		 //
+//                    ^~~~~~~~~~~ Usable                     										 //
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 	unsigned long TotalNodeSize = 0;	// TotalNodeSize : Size of the total node that is going to be used for allocation
@@ -73,25 +120,27 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 		/*************
 		 * PROBLEM : Creating new node overwrites already existing node, we need to create
 		 * search system like SearchReasonableNode.
-		*/
-		TotalNodeSize = 0;		// Set the value to 0 so that the <Node Seperation Sequence> can't be executed.
-		
-		Node->Using = 1;            // Set the using flag to 1
+		 * <SOLVED>
+		*************/
+		TotalNodeSize = 0;								// Set the value to 0 so that the <Node Seperation Sequence> can't be executed.
+		Node->Using = 1;            					// Set the using flag to 1
 		Node->Signature = MEMORYMANAGEMENT_SIGNATURE;   // Write a signature to mark it's the valid node
 		// Next node : Offset + Size of the node + Size of the node structure
-		Node->NextNode = (((unsigned long)Node)+Size+sizeof(struct Node));
-		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node;
-		if((unsigned long)Node == NodeManager->StartAddress) {
-			Node->PreviousNode = 0;
+		Node->NextNode = (((unsigned long)Node)+Size+sizeof(struct Node));		// Modify the address of the next node(because the node is a fresh-made node.)
+		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node; 	// Set PreviousNode to zero, so that the searcher
+																				// (I mean - the searching sequence) can know that it's the first node.
+		if((unsigned long)Node == NodeManager->StartAddress) {					// For the first node, the previous node shouldn't be exist.
+			Node->PreviousNode = 0;												// Set PreviousNode to zero
 		}
 	}
 	else {
-		Node->Using = 1;            			      // Set the using flag to 1
-		Node->Signature = MEMORYMANAGEMENT_SIGNATURE;				      // Write a signature to mark it's the valid node
-		Node->NextNode = (((unsigned long)Node)+Size+sizeof(struct Node));
-		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node;
-		if((unsigned long)Node == NodeManager->StartAddress) {
-			Node->PreviousNode = 0;
+		Node->Using = 1;            			      							// Set the using flag to 1
+		Node->Signature = MEMORYMANAGEMENT_SIGNATURE;				     	    // Write a signature to mark it's the valid node
+		Node->NextNode = (((unsigned long)Node)+Size+sizeof(struct Node));		// Modify the address of next node(because the node is currently seperated.)
+		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node;	// Link the node properly
+		// Same as before
+		if((unsigned long)Node == NodeManager->StartAddress) {					// For the first node, the previous node shouldn't be exist.
+			Node->PreviousNode = 0;												// Set PreviousNode to zero
 		}
 		NodeManager->CurrentAddress = Node->NextNode; // Update CurrentAddress
 #ifdef DEBUG
@@ -100,23 +149,55 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 	}
 	// <Node Seperation Sequence>
 	if(TotalNodeSize > Size) {	// If the size of the given segment is bigger than needed,
-		// Seperate the bigger segment to needed size, and leave the left segment available
+								// Seperate the bigger segment to needed size, and leave the left segment available
 #ifdef DEBUG
 		Kernel::printf("Creating usable area\n");
 #endif
-		UsableNode = (struct Node *)Node->NextNode;	// UsableNode : Not being used, used for another allocation
-		UsableNode->Using = 0;						// Not using(Available)
+		UsableNode = (struct Node *)Node->NextNode;						// UsableNode : Not being used, used for another allocation
+		UsableNode->Using = 0;											// Not using(Available)
 		UsableNode->Signature = MEMORYMANAGEMENT_SIGNATURE;				// Mark a signature to make it valid
 		// NextNode : Address of the current node(UsableNode) + Size of the unused area(TotalNodeSize-Size) + Size of the node structure
-		UsableNode->NextNode = (((unsigned long)UsableNode)+(TotalNodeSize-Size)+sizeof(struct Node));
-		((struct Node *)UsableNode->NextNode)->PreviousNode = (unsigned long)UsableNode;
+		UsableNode->NextNode = (((unsigned long)UsableNode)+(TotalNodeSize-Size)+sizeof(struct Node));	// Modify the address of next node
+		((struct Node *)UsableNode->NextNode)->PreviousNode = (unsigned long)UsableNode;				// Link the node properly
 	}
 #ifdef DEBUG
 	Kernel::printf("Updated CurrentAddress : 0x%X\n" , NodeManager->CurrentAddress);
 #endif
 	// Return the actual available address : Node address + size of the node structure
-	return ((void *)((unsigned long)Node+sizeof(struct Node)));
+	return ((void *)((unsigned long)Node+sizeof(struct Node)));			// Actual address that is going to be used : 
+																		// Address after area of node
 }
+
+/* To-do : Create a allocation optimizing system */
+
+// Description : Find the node, deallocate it, and if it's needed, merge the segments that is linearly usable.
+////////////////////////////////////////////////////////////////////////////////////////////////
+// For example, the function merges segments in those situations : 							  //
+// Situation #1 : 							 Situation #2 : 								  //
+// 																							  //
+// Node to deallocate 						                        Node to deallocate	      //
+//  VVVVVVVVVVVVVVV                                                  VVVVVVVVVVVVVVV          //
+// +---------------+----------------------+  +----------------------+---------------+		  //
+// |  Using(1MB)   |      Usable(2MB)     |  |      Usable(2MB)     |  Using(1MB)   |	      //
+// +---------------+----------------------+  +----------------------+---------------+         //
+// <Deallocation Sequence>                   <Deallocation Sequence>						  //
+// 1. Go to the next node and check if       1. Go to the previous node and check if		  //
+//    it's usable(mergable) until we hit     it's usable until we hit not usable node		  //
+//    not usable node						  												  //
+// 2. Change the target node(= Node to  	 2. Change the NextNode of the last node 		  //
+//    deallocate)'s NextNode to the node     that we lastly found from searching to 		  //
+// 	  that we lastly found from searching	 target node's next node.						  //
+// 3. Change the node's PreviousNode to      3. Set the last node's flag to usable			  //
+//    target node																			  //
+// 4. Set the target node's flag to usable											          //
+// +---------------+----------------------+  +---------------+----------------------+         //
+// |  Usable(1MB)  |      Usable(2MB)     |  |      Usable(2MB)     |  Usable(1MB)  |         //
+// +---------------+----------------------+  +---------------+----------------------+         //
+// This can be merged to : 					 This can be also merged to :                     //
+// +--------------------------------------+  +--------------------------------------+         //
+// |             Usable(3MB)              |  |             Usable(3MB)              |         //
+// +--------------------------------------+  +--------------------------------------+         //
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Kernel::MemoryManagement::Free(void *Address) {
 	unsigned long CurrentNode;
@@ -125,41 +206,44 @@ void Kernel::MemoryManagement::Free(void *Address) {
 	// Load the NodeManager from the local address
 	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)SystemStructureLocation;
 	if((unsigned long)Address < NodeManager->StartAddress) {
-		Kernel::printf("Disallocation Error #0 : Low Memory Address\n");
+		Kernel::printf("Deallocation Error #0 : Low Memory Address\n");
 		return;
 	}
 	struct Node *Node = (struct Node *)(((unsigned long)Address)-sizeof(struct Node));  // Address of Node : Address - Size of the node structure
 	if((Node->Using == 0)||(Node->Signature != MEMORYMANAGEMENT_SIGNATURE)) {			// If Node is not using, or not present, print error and leave.
-		Kernel::printf("Disallocation Error #1 : Not Allocated Memory\n");
+		Kernel::printf("Deallocation Error #1 : Not Allocated Memory\n");
 		return;
 	}
 	// Allocated Size : Location of the next node - Location of current node
 #ifdef DEBUG
 	Kernel::printf("Allocated Size : %d\n" , Node->NextNode-((unsigned long)Address));
 #endif
-
+	// If the previous node is usable, and present, the node can be merged.
+	// (Why are we merging and seperating the segment? Because, it can reduce the problem of external fragmentation)
 	if((Node->PreviousNode != 0x00) && (((struct Node *)Node->PreviousNode)->Using == 0) && (((struct Node *)Node->PreviousNode)->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
 #ifdef DEBUG
 		Kernel::printf("Previous area is mergable\n");
 #endif
-		CurrentNode = (unsigned long)Node;
+		CurrentNode = (unsigned long)Node;				// CurrentNode : Saves the current node for later
 		while((!(((struct Node *)Node->PreviousNode)->Using)) && (Node->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
+			// Search the nodes that is available for merging, and erase all usable node to make a free space 
+			// -> until we find already using node, or not present node.
 #ifdef DEBUG
 			Kernel::printf("0x%X\n" , Node->PreviousNode);
 #endif
-			Node = (struct Node *)Node->PreviousNode;
-			if(Node == 0) {
+			Node = (struct Node *)Node->PreviousNode; 	// Head to previous node 
+			if(Node == 0) {							  	// If current node is zero, that means we reached the beginning of the memory.
 				break;
 			}
 		}
-		Node->Using = 0;
-		Node->NextNode = ((struct Node *)CurrentNode)->NextNode;
-		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node;
-		Node->Signature = MEMORYMANAGEMENT_SIGNATURE;
-		memset((struct Node *)CurrentNode , 0 , sizeof(struct Node));
+		Node->Using = 0;							  							// Free the node
+		Node->NextNode = ((struct Node *)CurrentNode)->NextNode;				// Modify the location of the next node
+		((struct Node *)Node->NextNode)->PreviousNode = (unsigned long)Node;	// Modify PreviousNode value of the next node
+																				// (Linking the nodes properly by the newly merged node)
+		Node->Signature = MEMORYMANAGEMENT_SIGNATURE;							// Write a signature
+		memset((struct Node *)CurrentNode , 0 , sizeof(struct Node));			// Erase the last current node
 	}
 	// If next node is usable, and present, the node can be merged.
-	// (Why are we merging and seperating the segment? Because, it can reduce the problem of external fragmentation)
 	if((((struct Node *)Node->NextNode)->Using == 0) && (((struct Node *)Node->NextNode)->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
 #ifdef DEBUG
 		Kernel::printf("Allocated area is mergable\n");
@@ -167,11 +251,12 @@ void Kernel::MemoryManagement::Free(void *Address) {
 		CurrentNode = (unsigned long)Node;					// CurrentNode : Saves the current node for later
 		Node = (struct Node *)Node->NextNode; 				// Save the current node, and move to next node
 		while((!(((struct Node *)Node->NextNode)->Using)) && (Node->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
-			// Search the nodes that is available for merging, and erase all usable node to merge them
-			// until we found already using node, or not present node.
+			// Search the nodes that is available for merging, and erase all usable node to make a free space
+			// -> until we find already using node, or not present node.
 			NextNode = Node->NextNode;						// Save the location of next node, because the node is going to be erased, 
 															// and we need the location of it for merging.
-			memset(((struct Node *)NextNode) , 0 , sizeof(struct Node));	// Erase the node to allocate something.
+			// memset(((struct Node *)NextNode) , 0 , sizeof(struct Node));	// Erase the node to allocate something
+			// Actually, removing the node is useless, because it is going to be overwrited by user of the memory area.
 			// Size of the node which is going to be merged : Location of the next node of the current node - Location of the current node*
 			// Current node : node that is going to be merged
 #ifdef DEBUG
@@ -194,7 +279,6 @@ void Kernel::MemoryManagement::Free(void *Address) {
 	if((Node->Using == 0) && (((struct Node *)Node->NextNode)->Signature != 0x3141)) { // If it sooths the condition,
 #ifdef DEBUG
 		Kernel::printf("The Last Survived Node is killable\n");
-		asiduhasd
 #endif
 		memset(Node , 0 , sizeof(struct Node));		  // Erase the node(Set everything to 0)
 		NodeManager->CurrentAddress = NodeManager->StartAddress;	// Reset the address so that
@@ -202,16 +286,18 @@ void Kernel::MemoryManagement::Free(void *Address) {
 	}
 }
 
+// Description : Print informations of every node
 void Kernel::MemoryManagement::NodeManager::MapNode(void) {
 	int i = 0;
-	struct Node *Node = (struct Node *)this->StartAddress;
+	struct Node *Node = (struct Node *)this->StartAddress;	// Start from StartAddress, 
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		Kernel::printf("%02d:%d|%d " , i++ , Node->Using , Node->NextNode-(unsigned long)Node-sizeof(struct Node));
-		Node = (struct Node *)Node->NextNode;
+		Node = (struct Node *)Node->NextNode;				// Print the information of the node, until the node runs out.
 	}
 	Kernel::printf("\n");
 }
 
+// 
 void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory) {
 	this->StartAddress = StartAddress; 				// StartAddress 	 : The location of the memory pool
 	this->CurrentAddress = StartAddress;			// CurrentAddress    : The location of current position
@@ -219,6 +305,7 @@ void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddres
 	this->TotalUsableMemory = TotalUsableMemory;	// TotalUsableMemory : Total available memory to use(Size of the memory pool)
 }
 
+// Description : Search the node that is bigger than the given size from the argument
 unsigned long Kernel::MemoryManagement::NodeManager::SearchReasonableNode(unsigned long Size) {
 	struct Node *Node;
 	if(this->CurrentAddress == this->StartAddress) {
@@ -241,6 +328,7 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchReasonableNode(unsign
 	return 0; // No node available, need to create new node
 }
 
+// Description : Search the location for new node
 unsigned long Kernel::MemoryManagement::NodeManager::SearchNewNodeLocation(void) {
 	struct Node *Node;
 	if(this->CurrentAddress == this->StartAddress) {
@@ -250,9 +338,11 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchNewNodeLocation(void)
 		// If current address is start of the memory,
 		return this->StartAddress;  // return the start address.
 	}
+	// If there is no freed address -> Use CurrentAddress
+	// If there is freed address 	-> Use LastFreedAddress
 	Node = (struct Node *)((this->LastFreedAddress == 0) ? this->CurrentAddress : this->LastFreedAddress);
-	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
+	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {	// Go to the last node
 		Node = (struct Node *)Node->NextNode;
 	}
-	return (unsigned long)Node;
+	return (unsigned long)Node;		// Return the location of the last node.
 }
