@@ -7,7 +7,7 @@
 
 #include <MemoryManagement.hpp>
 
-#define DEBUG
+// #define DEBUG
 
 unsigned long SystemStructureLocation; // Location of the NodeManager
 
@@ -48,55 +48,59 @@ void Kernel::MemoryManagement::Initialize(void) {
 		}
 		for(i = 0; i < 8; i++) {
 			Kernel::MemoryManagement::Free((void*)Address[i]);	// Free
+#ifdef DEBUG
 			NodeManager->MapNode();								// Print the map
+#endif
 		}
 	}
+#ifdef DEBUG
 	NodeManager->MapNode();
+#endif
 	Kernel::printf("Done\n");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Description : Find the suitable node for required size, and if it requires, seperate the node.	 //
-// The function allocates segment by this sequence : 												 //
-// 1. Search the suitable node, if there is no suitable node, create one.							 //
-// 2. If the size of suitable node, seperate the node												 //
-// Creating Node : Create new node after the last node												 //
-// If there is no node : Create new one																 //
-// Seperating Sequence : 																			 //
-// 1. Create new node in the existing node(Existing node should be set to required size, 			 //
-//	  more specifics on the actual code.)															 //
-// 2. Set the NextNode value of the newly created node to existing node's NextNode value.			 //
-// 3. Set the PreviousNode value of the newly created node to address of existing node.			     //
-// 4. Set the NextNode value of the existing node to address of newly created node					 //
-// -> the PreviousNode value of the existing node should not be changed.							 //
-// 																								     //
-// Examples of the situation : 																		 //
-// 1. There is no suitable segment                 2. There is suitable segment					     //
-// +-----------------+							   +-----------------+								 //
-// |  Require : 3MB  |                             |  Require : 3MB  |								 //
-// +-----------------+							   +-----------------+								 //
-// Memory Pool : 								   Memory Pool : 									 //
-// +-----+-----+-----+---------------------+	   +-----------------+-----------------------+		 //
-// | 1MB | 1MB | 1MB | ...			       |       |       3MB       | ...                   |		 //
-// +-----+-----+-----+---------------------+       +-----------------+-----------------------+		 //
-// -> Solve : Create new node after the last node  -> Solve : Allot the suitable memory				 //
-// +-----+-----+-----+---------------+-----+	   +-----------------+-----------------------+		 //
-// | 1MB | 1MB | 1MB | Soothed : 3MB | ... |       |  Soothed : 3MB  | ...                   |		 //
-// +-----+-----+-----+---------------+-----+       +-----------------+-----------------------+		 //
-// 																									 //
-// 3. There is bigger segment 					   4. The worst case : External Fragmentation		 //
-// +-----------------+							   +-----------------+								 //
-// |  Require : 3MB  |							   |  Require : 3MB  |								 //
-// +-----------------+							   +-----------------+								 //
-// Memory Pool : 								   Memory Pool : 									 //
-// +-----------------------------+---------+	   +-----+-----+-----+-----------+-----+-----+		 //
-// |              5MB            | ...     |	   |1MB U|1MB F|1MB U|   2MB F   |1MB U|1MB U| 		 //
-// +-----------------------------+---------+	   +-----+-----+-----+-----------+-----+-----+		 //
-// -> Solve : Seperate the segment				   -> There is no space to allocate, even there is	 //
-// +-----------------+-----------+---------+	   actually available space.						 //
-// |  Soothed : 3MB  |    2MB    | ...     |	   -> Solve : To optimize the allocation			 //
-// +-----------------+-----------+---------+	   											 		 //
-//                    ^~~~~~~~~~~ Usable                     										 //
+// Description : Find the suitable node for required size, and if it requires, seperate the node.    //
+// The function allocates segment by this sequence :                                                 //
+// 1. Search the suitable node, if there is no suitable node, create one.                            //
+// 2. If the size of suitable node, seperate the node                                                //
+// Creating Node : Create new node after the last node                                               //
+// If there is no node : Create new one                                                              //
+// Seperating Sequence :                                                                             //
+// 1. Create new node in the existing node(Existing node should be set to required size,             //
+//      more specifics on the actual code.)                                                          //
+// 2. Set the NextNode value of the newly created node to existing node's NextNode value.            //
+// 3. Set the PreviousNode value of the newly created node to address of existing node.              //
+// 4. Set the NextNode value of the existing node to address of newly created node                   //
+// -> the PreviousNode value of the existing node should not be changed.                             //
+//                                                                                                   //
+// Examples of the situation :                                                                       //
+// 1. There is no suitable segment                 2. There is suitable segment                      //
+// +-----------------+                               +-----------------+                             //
+// |  Require : 3MB  |                             |  Require : 3MB  |                               //
+// +-----------------+                               +-----------------+                             //
+// Memory Pool :                                    Memory Pool :                                    //
+// +-----+-----+-----+---------------------+       +-----------------+-----------------------+       //
+// | 1MB | 1MB | 1MB | ...                   |       |       3MB       | ...                   |     //
+// +-----+-----+-----+---------------------+       +-----------------+-----------------------+       //
+// -> Solve : Create new node after the last node  -> Solve : Allot the suitable memory              //
+// +-----+-----+-----+---------------+-----+       +-----------------+-----------------------+       //
+// | 1MB | 1MB | 1MB | Soothed : 3MB | ... |       |  Soothed : 3MB  | ...                   |       //
+// +-----+-----+-----+---------------+-----+       +-----------------+-----------------------+       //
+//                                                                                                   //
+// 3. There is bigger segment                        4. The worst case : External Fragmentation      //
+// +-----------------+                               +-----------------+                             //
+// |  Require : 3MB  |                               |  Require : 3MB  |                             //
+// +-----------------+                               +-----------------+                             //
+// Memory Pool :                                    Memory Pool :                                    //
+// +-----------------------------+---------+       +-----+-----+-----+-----------+-----+-----+       //
+// |              5MB            | ...     |       |1MB U|1MB F|1MB U|   2MB F   |1MB U|1MB U|       //
+// +-----------------------------+---------+       +-----+-----+-----+-----------+-----+-----+       //
+// -> Solve : Seperate the segment                   -> There is no space to allocate, even there is //
+// +-----------------+-----------+---------+       actually available space.                         //
+// |  Soothed : 3MB  |    2MB    | ...     |       -> Solve : To optimize the allocation             //
+// +-----------------+-----------+---------+                                                         //
+//                    ^~~~~~~~~~~ Usable                                                             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
@@ -172,28 +176,28 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 
 // Description : Find the node, deallocate it, and if it's needed, merge the segments that is linearly usable.
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// For example, the function merges segments in those situations : 							  //
-// Situation #1 : 							 Situation #2 : 								  //
-// 																							  //
-// Node to deallocate 						                        Node to deallocate	      //
+// For example, the function merges segments in those situations :                            //
+// Situation #1 :                              Situation #2 :                                 //
+//                                                                                            //
+// Node to deallocate                                                 Node to deallocate      //
 //  VVVVVVVVVVVVVVV                                                  VVVVVVVVVVVVVVV          //
-// +---------------+----------------------+  +----------------------+---------------+		  //
-// |  Using(1MB)   |      Usable(2MB)     |  |      Usable(2MB)     |  Using(1MB)   |	      //
 // +---------------+----------------------+  +----------------------+---------------+         //
-// <Deallocation Sequence>                   <Deallocation Sequence>						  //
-// 1. Go to the next node and check if       1. Go to the previous node and check if		  //
-//    it's usable(mergable) until we hit     it's usable until we hit not usable node		  //
-//    not usable node						  												  //
-// 2. Change the target node(= Node to  	 2. Change the NextNode of the last node 		  //
-//    deallocate)'s NextNode to the node     that we lastly found from searching to 		  //
-// 	  that we lastly found from searching	 target node's next node.						  //
-// 3. Change the node's PreviousNode to      3. Set the last node's flag to usable			  //
-//    target node																			  //
-// 4. Set the target node's flag to usable											          //
+// |  Using(1MB)   |      Usable(2MB)     |  |      Usable(2MB)     |  Using(1MB)   |         //
+// +---------------+----------------------+  +----------------------+---------------+         //
+// <Deallocation Sequence>                   <Deallocation Sequence>                          //
+// 1. Go to the next node and check if       1. Go to the previous node and check if          //
+//    it's usable(mergable) until we hit     it's usable until we hit not usable node         //
+//    not usable node                                                                         //
+// 2. Change the target node(= Node to       2. Change the NextNode of the last node          //
+//    deallocate)'s NextNode to the node     that we lastly found from searching to           //
+//       that we lastly found from searching     target node's next node.                     //
+// 3. Change the node's PreviousNode to      3. Set the last node's flag to usable            //
+//    target node                                                                             //
+// 4. Set the target node's flag to usable                                                    //
 // +---------------+----------------------+  +---------------+----------------------+         //
 // |  Usable(1MB)  |      Usable(2MB)     |  |      Usable(2MB)     |  Usable(1MB)  |         //
 // +---------------+----------------------+  +---------------+----------------------+         //
-// This can be merged to : 					 This can be also merged to :                     //
+// This can be merged to :                      This can be also merged to :                  //
 // +--------------------------------------+  +--------------------------------------+         //
 // |             Usable(3MB)              |  |             Usable(3MB)              |         //
 // +--------------------------------------+  +--------------------------------------+         //
