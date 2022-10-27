@@ -9,7 +9,7 @@ CC = g++
 LD = ld
 OBJCOPY = objcopy
 
-CCOPTIONS = -mcmodel=large -m64 -ffreestanding -fpack-struct=1 -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib
+CCOPTIONS = -mcmodel=large -m64 -ffreestanding -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -mno-red-zone
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
 ELF = $(TEMPRORYFOLDER)/MainKernel.elf
