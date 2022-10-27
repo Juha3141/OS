@@ -1,12 +1,12 @@
 #include <APIC.hpp>
 #include <PIT.hpp>
 
-unsigned int Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
+void Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
     CPUProcessorsInformation *CoreInformation = Kernel::ACPI::GetCoresInformation();
     *((unsigned int *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
 
-unsigned long Kernel::LocalAPIC::WriteRegister_L(unsigned int RegisterAddress , unsigned long Data) {
+void Kernel::LocalAPIC::WriteRegister_L(unsigned int RegisterAddress , unsigned long Data) {
     CPUProcessorsInformation *CoreInformation = Kernel::ACPI::GetCoresInformation();
     *((unsigned long *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
