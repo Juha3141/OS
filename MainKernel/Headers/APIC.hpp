@@ -57,8 +57,8 @@ namespace Kernel {
             unsigned char SetToMask;
             unsigned short Reserved2;
         };
-        unsigned int WriteRegister(unsigned int RegisterAddress , unsigned int Data);
-        unsigned long WriteRegister_L(unsigned int RegisterAddress , unsigned long Data);
+        void WriteRegister(unsigned int RegisterAddress , unsigned int Data);
+        void WriteRegister_L(unsigned int RegisterAddress , unsigned long Data);
         
         unsigned int ReadRegister(unsigned int RegisterAddress);
         unsigned int ReadRegister_L(unsigned int RegisterAddress);
