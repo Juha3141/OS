@@ -36,7 +36,7 @@ clean:
 run: virtualbox
 
 qemurun:
-	$(QEMU) -cdrom $(TARGET) -m 8192 -rtc base=localtime -M pc -boot d -s -S
+	$(QEMU) -cdrom $(TARGET) -m 8192 -rtc base=localtime -M pc -boot d 
 
 virtualbox:
 	vboxmanage startvm "OS" -E VBOX_GUI_DBG_AUTO_SHOW=true -E VBOX_GUI_DBG_ENABLED=truesw
