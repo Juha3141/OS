@@ -6,6 +6,7 @@
 namespace Kernel {
     namespace Keyboard {
         void InterruptHandler(void);
+        void MainInterruptHandler(void);
     }
 }
 
