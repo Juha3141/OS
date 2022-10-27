@@ -9,7 +9,7 @@ CC = g++
 LD = ld
 OBJCOPY = objcopy
 
-CCOPTIONS = -g -mcmodel=large -m64 -ffreestanding -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -mno-red-zone
+CCOPTIONS = -mcmodel=large -m64 -ffreestanding -fpack-struct=1 -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
 ELF = $(TEMPRORYFOLDER)/MainKernel.elf
@@ -17,6 +17,7 @@ MAINSOURCES = Main.obj DescriptorTables.obj KernelSystemStructure.obj TextScreen
 ExceptionHandlers.obj PIT.obj Keyboard.obj IO.obj APIC.obj ACPI.obj MemoryManagement.obj
 
 ASMSOURCE = Entry.asm
+ASMSOURCE2 = AssemblyInterruptHandler.asm
 TARGET = $(ISOFOLDER)/Kernel.krn
 
 prepare:
@@ -24,11 +25,13 @@ prepare:
 	make -C $(ESSENTIALLIBRARYFOLDER) clean all
 
 all: prepare asm $(MAINSOURCES)
-	cd $(MAINKERNELTEMPRORYFOLDER); bash -c "ld $(LDOPTIONS) -T ../../MainKernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj $(MAINSOURCES) -L ../ -lEssentialLibrary"
+	cd $(MAINKERNELTEMPRORYFOLDER); bash -c "ld $(LDOPTIONS) -T ../../MainKernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj $(MAINSOURCES) AssemblyInterruptHandler.obj -L ../ -lEssentialLibrary"
 	$(OBJCOPY) -O binary $(ELF) $(TARGET)
 
 asm:
 	nasm $(SOURCESFOLDER)/$(ASMSOURCE) -f elf64 -o $(MAINKERNELTEMPRORYFOLDER)/Entry.obj
+	nasm $(SOURCESFOLDER)/$(ASMSOURCE2) -f elf64 -o $(MAINKERNELTEMPRORYFOLDER)/AssemblyInterruptHandler.obj
+
 
 clean:
 	rm -rf $(MAINKERNELTEMPRORYFOLDER)
