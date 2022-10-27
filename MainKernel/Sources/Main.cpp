@@ -1,7 +1,10 @@
 #include <EssentialLibrary.hpp>
 #include <Kernel.hpp>
 
-extern "C" void Main(void) {/*
+#include <Queue.hpp>
+
+extern "C" void Main(void) {
+    /*
     int i;
     long double X = -7;
     long double Y = -7;
@@ -32,17 +35,17 @@ extern "C" void Main(void) {/*
     Kernel::DescriptorTables::Initialize();
     Kernel::MemoryManagement::Initialize();
     Kernel::PIT::Initialize();
+
     /*
     if(Kernel::ACPI::SaveCoresInformation() == 0) {
         Kernel::printf("Using MP Configurating Table\n");
     }
     
     Kernel::LocalAPIC::EnableLocalAPIC();
-    Kernel::LocalAPIC::ActiveAPCores();
+    Kernel::LocalAPIC::ActiveAPCores();   
     */
-    IO::Write(0x21 , 0b11111100);
+   
     __asm__ ("sti");
-
     while(1) {
         ;
     }
