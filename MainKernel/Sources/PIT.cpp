@@ -1,37 +1,39 @@
 #include <PIT.hpp>
 
-static volatile unsigned short PITFrequency;
-static unsigned long TickCount = 0;
+volatile unsigned short PITFrequency;
+unsigned long TickCount = 0;
 
+void Kernel::PIT::MainInterruptHandler(void) {
+    const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
+    unsigned char *VideoMemory = (unsigned char *)0xB8000;
+    VideoMemory[79*2] = Spinner[TickCount%4];
+    TickCount += 1;
+    
+    IO::Write(0x20 , 0x20);
+}
+/*
 __attribute__ ((naked)) void Kernel::PIT::InterruptHandler(void) {
     __asm__ ("push rbp");
     __asm__ ("mov rbp , rsp");
 
-    SAVE_REGISTERS_TO_STACK();
-
-    __asm__ ("mov al , 0x20");
-    __asm__ ("out 0x20 , al");
-
-    TickCount += 1;
-    
-    LOAD_REGISTERS_FROM_STACK();
-
-    __asm__ ("leave");
+    __asm__ ("pop rbp");
     __asm__ ("iretq");
-}
+}*/
 
 unsigned long Kernel::PIT::GetTickCount(void) {
     return TickCount;
 }
 
 void Kernel::PIT::Initialize(void) {
-    IO::Write(0x21 , 0b11111110);
-    PITFrequency = PIT_CONVERT_US_TO_HZ(100);
+    PITFrequency = PIT_CONVERT_US_TO_HZ(200);          // Do NOT set this value to 100, it might crash
+                                                       // the timer system!
     
     IO::Write(PIT_MODE_COMMAND_REGISTER , 0b00110000);
     IO::Write(PIT_MODE_COMMAND_REGISTER , 0b00110100); // 16bit binary mode , Rate generator , Channel 0
     IO::Write(PIT_CHANNEL0_DATA , PITFrequency & 0xFF);
     IO::Write(PIT_CHANNEL0_DATA , (PITFrequency >> 8) & 0xFF);
+    
+    IO::Write(0x21 , 0b11111110);
 }
 
 unsigned short Kernel::PIT::GetCurrentPITFrequency(void) {

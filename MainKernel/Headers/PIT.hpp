@@ -52,7 +52,9 @@ namespace Kernel {
         void DelayByPITCount(unsigned int PITCount);
         void DelayMilliseconds(unsigned int Milliseconds);
         void DelayMicroseconds(unsigned int Microseconds);
+        
         void InterruptHandler(void);
+        void MainInterruptHandler(void);
         
         unsigned long GetTickCount(void);
     }
