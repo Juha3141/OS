@@ -5,37 +5,6 @@
 #include <EssentialLibrary.hpp>
 #include <TextScreen.hpp>
 
-#define SAVE_REGISTERS_TO_STACK() \
-    __asm__ ("push rax");\
-    __asm__ ("push rbx");\
-    __asm__ ("push rcx");\
-    __asm__ ("push rdx");\
-    __asm__ ("push rdi");\
-    __asm__ ("push rsi");\
-    __asm__ ("push r8");\
-    __asm__ ("push r9");\
-    __asm__ ("push r10");\
-    __asm__ ("push r11");\
-    __asm__ ("push r12");\
-    __asm__ ("push r13");\
-    __asm__ ("push r14");\
-    __asm__ ("push r15")
-#define LOAD_REGISTERS_FROM_STACK() \
-    __asm__ ("pop r15");\
-    __asm__ ("pop r14");\
-    __asm__ ("pop r13");\
-    __asm__ ("pop r12");\
-    __asm__ ("pop r11");\
-    __asm__ ("pop r10");\
-    __asm__ ("pop r9");\
-    __asm__ ("pop r8");\
-    __asm__ ("pop rsi");\
-    __asm__ ("pop rdi");\
-    __asm__ ("pop rdx");\
-    __asm__ ("pop rcx");\
-    __asm__ ("pop rbx");\
-    __asm__ ("pop rax")
-
 namespace Kernel {
     namespace Exceptions {
         __attribute__ ((naked)) void DividedByZero(void);
