@@ -1,4 +1,38 @@
 #include <ExceptionHandlers.hpp>
+#include <Kernel.hpp>
+
+// Function usage : Mask the specified interrupt
+// Master : controlls
+void Kernel::PIC::Mask(int InterruptNumber) {
+    unsigned short Data = IO::Read(0x21)|(IO::Read(0xA1) << 8);
+    if(InterruptNumber < 32) {
+        return;
+    }
+    Data |= (0x01 << (InterruptNumber-32));
+    IO::Write(0x21 , Data & 0xFF);
+    IO::Write(0xA1 , (Data >> 8) & 0xFF);
+}
+
+// Function usage : Unmask the specified interrupt
+void Kernel::PIC::Unmask(int InterruptNumber) {
+    unsigned short Data = IO::Read(0x21)|(IO::Read(0xA1) << 8);
+    if(InterruptNumber < 32) {
+        return;
+    }
+    if((Data & (0x01 << (InterruptNumber-32))) == (0x01 << (InterruptNumber-32))) {
+        Data ^= (0x01 << (InterruptNumber-32));
+    }
+    IO::Write(0x21 , Data & 0xFF);
+    IO::Write(0xA1 , (Data >> 8) & 0xFF);
+}
+
+// Function usage : Send EOI(End of interrupt) signal to master PIC
+void Kernel::PIC::SendEOI(int InterruptNumber) {
+    IO::Write(0x20 , 0x20);     // 0x20 : EOI signal, send EOI to the master
+    if(InterruptNumber >= 32+8) {
+        IO::Write(0xA0 , 0x20); // send EOI to the slave
+    }
+}
 
 __attribute__ ((naked)) void Kernel::Exceptions::DividedByZero(void) {
     ProcessExceptions(0 , 0x00);

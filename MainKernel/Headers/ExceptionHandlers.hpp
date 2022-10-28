@@ -41,6 +41,13 @@ namespace Kernel {
 
         void ProcessExceptions(int ExceptionNumber , unsigned long ErrorCode);
     };
+
+    namespace PIC {
+        void Mask(int InterruptNumber);
+        void Unmask(int InterruptNumber);
+
+        void SendEOI(int InterruptNumber);
+    }
 };
 
 #endif
