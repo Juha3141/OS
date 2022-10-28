@@ -9,7 +9,7 @@ void Kernel::PIT::MainInterruptHandler(void) {
     VideoMemory[79*2] = Spinner[TickCount%4];
     TickCount += 1;
     
-    IO::Write(0x20 , 0x20);
+    PIC::SendEOI(32);
 }
 /*
 __attribute__ ((naked)) void Kernel::PIT::InterruptHandler(void) {
@@ -33,7 +33,7 @@ void Kernel::PIT::Initialize(void) {
     IO::Write(PIT_CHANNEL0_DATA , PITFrequency & 0xFF);
     IO::Write(PIT_CHANNEL0_DATA , (PITFrequency >> 8) & 0xFF);
     
-    IO::Write(0x21 , 0b11111110);
+    PIC::Unmask(32);                                   // Unmask timer interrupt(32)
 }
 
 unsigned short Kernel::PIT::GetCurrentPITFrequency(void) {
