@@ -12,9 +12,9 @@ BASH = bash
 QEMU = qemu-system-x86_64
 TARGET = OS.iso 
 
-all: prepare BuildLoaders BuildMainKernel $(TARGET)
-
 windows: prepare BuildLoaders BuildMainKernel
+
+all: prepare BuildLoaders BuildMainKernel $(TARGET)
 
 prepare:
 	mkdir $(TEMPRORYFOLDER)
