@@ -14,6 +14,8 @@ TARGET = OS.iso
 
 all: prepare BuildLoaders BuildMainKernel $(TARGET)
 
+windows: prepare BuildLoaders BuildMainKernel
+
 prepare:
 	mkdir $(TEMPRORYFOLDER)
 
