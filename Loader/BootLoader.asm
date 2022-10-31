@@ -8,12 +8,13 @@
 [BITS 16]
 
     jmp Start       ; Skip the local variable parts
+
                                                 ; Description                                      Offset
 PrimaryVolumeDescriptorAddress: dw 0x500        ;                                                  0x02
 PathTableAddress: dw 0x500+2048                 ; One sector after PVD area                        0x04
 DirectorySectorAddress: dw 0x500+2048+2048      ; One sector after Directory Sector area           0x06
 DirectoryRecordSize: db 0x00                    ; Temprory Variables                               0x08
-KernelLoaderFileName: db "KERNEL~1.LDR" , 0x00  ; Name of the Kernel Loader                        0x09
+KernelLoaderFileName: db "KERN~DDP.LDR" , 0x00  ; Name of the Kernel Loader                        0x09
                                                 ; Note : If you're in windows, change KernelLoaderFileName to "KERNEL~1.LDR", 
                                                 ; or if you're in linux, change it to "KERN~DDP.LDR".
 KernelLoaderLocation: dd 0x00                   ; Location of the Kernel Loader                    0x12
@@ -169,13 +170,6 @@ CompareFileName:
         pop bp
         mov ax , 0x01               ; Return 1 (AX = 0x01)
         ret
-
-APMode:
-    mov ax , 0xB800
-    mov es , ax
-
-    mov byte[es:0x00] , 'a'
-    jmp $
 
 times (2046-($-$$)) db 0x00         ; The size of the bootloader in ISO9660 is 2048 byte (Align to 2048)
 dw 0xAA55                           ; Signature of boot loader
