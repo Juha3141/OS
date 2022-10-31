@@ -12,6 +12,8 @@ BASH = bash
 QEMU = qemu-system-x86_64
 TARGET = OS.iso 
 
+windows: prepare BuildLoaders BuildMainKernel
+
 all: prepare BuildLoaders BuildMainKernel $(TARGET)
 
 prepare:
