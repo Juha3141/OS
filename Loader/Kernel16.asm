@@ -9,17 +9,16 @@
 
     jmp Kernel16        ; Skip the local variable parts
 
-Checksum:
+Checksum:               ; Size : 16 bytes
     dd 0xCAFEBABE
     dd 0x4B45524E
     dd 0x454C3438
     dd 0x00000000
 
 DAP:                ; DAP Area(Disk Address Packet)
-    db 0x10         ; Size of the DAP
+    db 0x10         ; Size of the DAP : 16 bytes
     db 0x00
     dw 0x00
-    dd 0x00
     dd 0x00
     dd 0x00
     dd 0x00
@@ -27,6 +26,8 @@ DAP:                ; DAP Area(Disk Address Packet)
 Kernel16:
     mov ax , 0x00               ; Initialize segments as we did in boot loader
     mov ds , ax
+
+    call SwitchToGraphicMode     ; Switch to graphic mode
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;     Initialization for E820 Memory Map     ;
@@ -61,6 +62,21 @@ Kernel16:
     mov cr0 , eax
     
     jmp 0x08:0x8C00     ; Far jump to 32bit kernel
+
+SwitchToGraphicMode:
+    mov ax , 0x00
+    mov es , ax
+    mov di , 0x8C09
+    mov ax , 0x4F01
+    mov cx , word[0x8C07]
+    int 0x10
+
+    mov ax , 0x4F02
+    mov bx , word[0x8C07]
+    or bx , 0x4000
+    int 0x10
+
+    ret
 
 GDTR:
     dw GDTEND-GDT
@@ -103,6 +119,5 @@ GDT:
         db 0x00             ; Base [24:31] = 0x00
 
 GDTEND:                     ; End of GDT Table
-
 
 times (2048-($-$$)) db 0x00

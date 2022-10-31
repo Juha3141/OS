@@ -5,10 +5,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 [BITS 32]
-
+    
 global Kernel32
 
 Kernel32:
+    jmp 0x08:Start                              ; Instruction size : 7 bytes
+
+                                                ; Fields that is going to be used for 16bit kernel
+GraphicMode: dw 0x118                           ; Location : 0x8C00+7 = 0x8C07
+                                                ; Reserved 512 bytes for VBE information structure
+VBEInfoStructure: resb 512                      ; Location : 0x8C00+7+2 = 0x8C09
+
+Start:                                          ; Location : 0x8C00+7+2+512 = 0x8E09
     mov ax , 0x10           ; Set data segment and other segments to 0x10
     mov ds , ax             ; 0x10 is data segment which we previously set in GDT
     mov es , ax
