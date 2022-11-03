@@ -209,7 +209,6 @@ __attribute__ ((naked)) void Kernel::Exceptions::SecurityException(void) {
 }
 
 void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber, unsigned long ErrorCode) {
-    struct STACK_STRUCTURE *IST = (struct STACK_STRUCTURE *)((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE));
     char ExceptionNames[29][32] = {
         "Divided by Zero" , "Debug" , "Non-Maskable Interrupt" , 
         "Breakpoint" , "Overflow" , "Bound Range Exceeded" , 
@@ -224,26 +223,9 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber, unsigned long Er
     };
     __asm__ ("cli");/*
     Kernel::ClearScreen(0x00 , 0x04);*/
-    Kernel::printf("Exception occurred in %s%s" , (IST->CS == USER_CS) ? "User Level" : "Kernel Level" , 
-                                                  (IST->CS == USER_CS) ? " [Program Terminated]\n" : " [Kernel System Aborted]\n");
-    Kernel::printf("Location   : 0x%02X\n" , IST->RIP);
-    Kernel::printf("Name       : \"%s\"\n" , ExceptionNames[ExceptionNumber]);
-    if((ExceptionNumber == 8)||(ExceptionNumber == 10)||(ExceptionNumber == 11)
-     ||(ExceptionNumber == 12)||(ExceptionNumber == 13)||(ExceptionNumber == 14)
-     ||(ExceptionNumber == 17)||(ExceptionNumber == 21)||(ExceptionNumber == 29)
-     ||(ExceptionNumber == 30)) {
-        Kernel::printf("Error Code : 0x%X\n" , ErrorCode);
-    }/*
-    Kernel::printf("Registers  : \n");
-    Kernel::printf("RAX=%016x   RBX   =%016x   RCX=%016x\n" , IST->RAX , IST->RBX , IST->RCX);
-    Kernel::printf("RDX=%016x   RDI   =%016x   RSI=%016x\n" , IST->RDX , IST->RDI , IST->RSI);
-    Kernel::printf("R8 =%016x   R9    =%016x   R10=%016x\n" , IST->R8  , IST->R9  , IST->R10);
-    Kernel::printf("R11=%016x   R12   =%016x   R13=%016x\n" , IST->R11 , IST->R12 , IST->R13);
-    Kernel::printf("R14=%016x   R15   =%016x   RBP=%016x\n" , IST->R14 , IST->R15 , IST->RBP);
-    Kernel::printf("RSP=%016x   RFlags=%016x   CS =%016x\n" , IST->RSP , IST->RFlags , IST->CS);
-    Kernel::printf("DS =%016x   ES    =%016x   FS =%016x\n" , IST->DS , IST->ES , IST->FS);
-    Kernel::printf("GS =%016x   SS    =%016x   \n" , IST->GS , IST->SS);
-    Kernel::printf("Press power button to restart the machine.\n");*/
+    Kernel::PrintString("[Exception occurred]\n");
+    Kernel::printf("Name         : \"%s\"\n" , ExceptionNames[ExceptionNumber]);
+    Kernel::printf("IST Location : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
     while(1) {
         ;
     }
