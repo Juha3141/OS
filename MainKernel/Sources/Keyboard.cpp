@@ -1,5 +1,18 @@
+/////////////////////////////////////////////////////////////////////////////
+// File "Keyboard.cpp"                                                     //
+// Written by : Juha Cho                                                   // 
+// Started date : 2022.11.03                                               //
+// Description : Manages keyboard data from interrupt, from PS/2 Keyboard. //
+// Also controls status of various special key(Like Shift, Ctrl ...)       //
+/////////////////////////////////////////////////////////////////////////////
+
 #include <Keyboard.hpp>
 
+static Kernel::Keyboard::DataManager *KeyboardDataManager; // Management structure of the keyboard data
+
+// The map of the PS/2 qwerty keyboard
+// The first map is default keyboard map, and the second one is shifted keyboard map, 
+// and the third one is capslocked keyboard map, and finally the last one is shifted and capslocked map.
 unsigned char ScanCodeInterpreter[4][0x80] = { // normal , shift , capslock , capslock+shift
     {0x00 , KEYBOARD_KEY_ESC , '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , '-' , '=' , '\b' , 
     '\t' , 'q' , 'w' , 'e' , 'r' , 't' , 'y' , 'u' , 'i' , 'o' , 'p' , '[' , ']' , '\n' , KEYBOARD_KEY_LEFT_CONTROL , 
@@ -35,52 +48,62 @@ unsigned char ScanCodeInterpreter[4][0x80] = { // normal , shift , capslock , ca
     0x00 , 0x00 , 0x00 , KEYBOARD_KEY_F11 , KEYBOARD_KEY_F12 , 0x00 , 0x00 , 0x00 , 0x00 , } , 
 };
 
-static Kernel::Keyboard::DataManager *KeyboardDataManager;
-
+// Description : Initialize the data manager, and ps/2 keyboard hardware, and unmask the keyboard interrupt.
 void Kernel::Keyboard::Initialize(void) {
-    KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::MemoryManagement::Allocate(sizeof(Kernel::Keyboard::DataManager));
+    unsigned int ID;
+    KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager) , &(ID));    // Allocate the system structure
     KeyboardDataManager->Initialize();
-    Kernel::printf("sizeof(Kernel::Keyboard::DataManager) = %d\n" , sizeof(Kernel::Keyboard::DataManager));
-    IO::Write(0x64 , 0xAE);
-    IO::Write(0x60 , 0xF4);
-
-    if(IO::Read(0x60) == 0xFA) {
-        Kernel::printf("0xFA received\n");
-    }
-    Kernel::printf("SpecialKeys Location : 0x%X\n" , (unsigned long)KeyboardDataManager->SpecialKeys);
-    PIC::Unmask(33);
-}
-
-void Kernel::Keyboard::MainInterruptHandler(void) {
-    unsigned char Data;
-    unsigned char *VideoMemory = (unsigned char *)0xB8000;
-    Data = IO::Read(0x60);
-    if(KeyboardDataManager->ProcessSpecialKeys(Data) == 0) {
-        if(Data < 0x80) {
-            KeyboardDataManager->InsertDataToQueue(Data);
+    IO::Write(0x64 , 0xAE); // Send the enable command to status register port
+    while(1) {              // If Input buffer state bit in the status register port is 1,
+                            // the keyboard yet did not take the data from the buffer.
+        if(!(IO::Read(0x64) & 0b10)) {
+            break;          // If the bit is not set, that means that the keyboard took the data from the buffer. 
         }
     }
-    VideoMemory[78*2] = Data;
+    IO::Write(0x60 , 0xF4); // Send the enable command to input buffer port
+    PIC::Unmask(33);        // Unmask the keyboard interrupt
+}
 
-    PIC::SendEOI(33);
+// Description : Handler of the keyboard interrupt
+void Kernel::Keyboard::MainInterruptHandler(void) {
+    static int i = 0;
+    unsigned char ScanCode;
+    const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};  // Spinner(for debugging purpose)
+    unsigned char *VideoMemory = (unsigned char *)0xB8000;
+    ScanCode = IO::Read(0x60);                                      // Stores the keyboard scancode data
+    if(KeyboardDataManager->ProcessSpecialKeys(ScanCode) == 0) {    // If it's not special key
+        if(ScanCode < 0x80) {
+            // If the scancode is above 0x80, that means the key has been released, not pressed.
+            // Likewise, if the scancode is below 0x80, that means the key has been pressed.
+            KeyboardDataManager->InsertDataToQueue(ScanCode);       // the data goes into the keyboard queue.
+        }
+    }
+    VideoMemory[78*2] = Spinner[i];     // Just a basic spinner in the screen
+    i++;                                // If the interrupt is called, the spinner spins
+    if(i >= 4) {
+        i = 0;
+    }
+
+    PIC::SendEOI(33);                   // Send EOI signal
 }
 
 void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
     unsigned char Mode = 0;
-    if((SpecialKeys[KEYBOARD_KEYLIST_RIGHTSHIFT] ==  1)||(SpecialKeys[KEYBOARD_KEYLIST_LEFTSHIFT] ==  1)) {
-        Mode += 1;
+    if((SpecialKeys[KEYBOARD_KEYLIST_RIGHTSHIFT] ==  1)||(SpecialKeys[KEYBOARD_KEYLIST_LEFTSHIFT] ==  1)) { // If shift keyboard is being pressed, 
+        Mode += 1;  // Increase the mode to 1
     }
     if(SpecialKeys[KEYBOARD_KEYLIST_CAPSLOCK] ==  1) {
-        Mode += 2;
+        Mode += 2;  // Increase the mode to 2, if shift key is also pressed, then the mode is going to be 3(capslock+shift), 
+                    // or, if shift key is not pressed, then the mode is going to be 2(only capslock)
     }
-    this->ScanCodeQueue.Enqueue(ScanCodeInterpreter[Mode][ScanCode]);
+    this->ScanCodeQueue.Enqueue(ScanCodeInterpreter[Mode][ScanCode]);   // Put the data interpreted by the keyboard map
 }
 
 
 int Kernel::Keyboard::DataManager::IsScanCodeQueueEmpty(void) {
     int Value;
     // To-do : Create MutEx
-    Value = ScanCodeQueue.IsEmpty();
+    Value = ScanCodeQueue.IsEmpty();    // Is main queue is empty?
     return Value;
 }
 
@@ -88,7 +111,7 @@ int Kernel::Keyboard::DataManager::IsScanCodeQueueEmpty(void) {
 unsigned char Kernel::Keyboard::DataManager::GetScanCodeQueueData(void) { 
     // To-do : Create MutEx
     unsigned char Data;
-    Data = ScanCodeQueue.Dequeue();
+    Data = ScanCodeQueue.Dequeue();    // Return the data from main queue
     return Data;
 }
 
@@ -103,74 +126,75 @@ unsigned char Kernel::Keyboard::GetASCIIData(void) {
     return Data;
 }
 
+// Description : To-do
 static int GetKeyListIndex(unsigned char ScanCode , char IsRight) {
     int i;
-    unsigned char SpecialKeyScancodeList[2][11] = { 
-        {KEYBOARD_SCANCODE_CAPSLOCK , 
-        0 , 
-        KEYBOARD_SCANCODE_CONTROL , 
-        0 , 
-        KEYBOARD_SCANCODE_NUMLOCK , 
-        KEYBOARD_SCANCODE_LEFT_SHIFT , 
-        KEYBOARD_SCANCODE_RIGHT_SHIFT , 
-        KEYBOARD_SCANCODE_ALT , 
-        0 , 
-        0 , 
-        KEYBOARD_SCANCODE_SUPER} , 
-        {KEYBOARD_SCANCODE_CAPSLOCK , 
-        0 , 
-        0 , 
-        KEYBOARD_SCANCODE_CONTROL , 
-        KEYBOARD_SCANCODE_NUMLOCK , 
-        KEYBOARD_SCANCODE_LEFT_SHIFT , 
-        KEYBOARD_SCANCODE_RIGHT_SHIFT , 
-        0 , 
-        KEYBOARD_SCANCODE_ALT , 
-        0 , 
-        KEYBOARD_SCANCODE_SUPER}
+    // IsRight : if it's 0 : Use left side table
+    //                   1 : Use right side table
+    // I actually made a table to set the flag more easily.
+    unsigned char SpecialKeyScancodeList[2][11] = {
+        // Table for left side special keys
+        {KEYBOARD_SCANCODE_CAPSLOCK ,           // Index 0  : Capslock
+        0 ,                                     // Index 1  : Insert(unused)
+        KEYBOARD_SCANCODE_CONTROL ,             // Index 2  : Left Control
+        0 ,                                     // Index 3  : Right Control(unused)
+        KEYBOARD_SCANCODE_NUMLOCK ,             // Index 4  : Numlock
+        KEYBOARD_SCANCODE_LEFT_SHIFT ,          // Index 5  : Left shift
+        KEYBOARD_SCANCODE_RIGHT_SHIFT ,         // Index 6  : Right shift
+        KEYBOARD_SCANCODE_ALT ,                 // Index 7  : Left Alt
+        0 ,                                     // Index 8  : Right Alt(unused)
+        0 ,                                     // Index 9  : E(unused)
+        KEYBOARD_SCANCODE_SUPER} ,              // Index 10 : Super(Window key)
+        // Table for right side special keys
+        {KEYBOARD_SCANCODE_CAPSLOCK ,           // Index 0  : Capslock
+        0 ,                                     // Index 1  : Insert(unused)
+        0 ,                                     // Index 2  : Left Control(unused)
+        KEYBOARD_SCANCODE_CONTROL ,             // Index 3  : Right Control
+        KEYBOARD_SCANCODE_NUMLOCK ,             // Index 4  : Numlock
+        KEYBOARD_SCANCODE_LEFT_SHIFT ,          // Index 5  : Left shift
+        KEYBOARD_SCANCODE_RIGHT_SHIFT ,         // Index 6  : Right shift
+        0 ,                                     // Index 7  : Left Alt(unused)
+        KEYBOARD_SCANCODE_ALT ,                 // Index 8  : Right Alt
+        0 ,                                     // Index 9  : E(unused)
+        KEYBOARD_SCANCODE_SUPER}                // Index 10 : Super(Window key)
     };
-    if(ScanCode == 0) {
-        return 0;
+    if(ScanCode == 0) {         // If it's invalid scancode,
+        return -1;              // just return -1
     }
-    for(i = 0; i < 11; i++) {
+    for(i = 0; i < 11; i++) {   // Compare with the entire table
+        // If the "pressed" scancode is identical to the following, as well as the "released" scancode,
+        // return the index. The index is going to be used to set the flags, which in the SpecialKeys.
         if((ScanCode == SpecialKeyScancodeList[IsRight][i])||(ScanCode == SpecialKeyScancodeList[IsRight][i]+0x80)) {
-            return i;
+            return i;           // Return the index
         }
     }
-    return -1;
+    return -1;                  // The scancode was not the special key.
 }
 
+// Description : Check if the scancode is a special key, and if it is, then change the flag of the special keys.
+// Return 1 if the scancode is a special key, and return 0 if it isn't.
 char Kernel::Keyboard::DataManager::ProcessSpecialKeys(unsigned char ScanCode) {
     int i;
-    int IsRight = 0;
-    if(ScanCode == 0xE0) {
-        SpecialKeys[KEYBOARD_KEYLIST_E] = 1;
+    int IsRight = 0;        // Is the key is right sided?
+    if(ScanCode == 0xE0) {  // If a scancode is transmitted with 0xE0, then the key is on the right side of the keyboard.
+        SpecialKeys[KEYBOARD_KEYLIST_E] = 1;    // Set the E flag to 1
         return 1;
     }
-    if(SpecialKeys[KEYBOARD_KEYLIST_E] == 1) {
-        SpecialKeys[KEYBOARD_KEYLIST_E] = 0;
-        IsRight = 1;
+    if(SpecialKeys[KEYBOARD_KEYLIST_E] == 1) {  // If the scancode is on the right side, 
+        SpecialKeys[KEYBOARD_KEYLIST_E] = 0;    // Toggle the E value, 
+        IsRight = 1;                            // and change the IsRight to 1
     }
-    /*
-    if(ScanCode > 0x80) {
-        if((i = GetKeyListIndex(ScanCode-0x80 , IsRight)) == 0) {
-            return 0;
+    if((i = GetKeyListIndex(ScanCode , IsRight)) == -1) {
+        return 0;           // If we failed to search the index of the scancode, return 0
+    }
+    if(i == KEYBOARD_KEYLIST_CAPSLOCK) {    // Capslock is exclusive, because it needs to be toggled, unlike the other special keys.
+        if(ScanCode < 0x80) {
+            SpecialKeys[i] = (SpecialKeys[i] == 1) ? 0 : 1; // Toggle the flag.
         }
-        SpecialKeys[i] = 0;
         return 1;
     }
-    else {*/
-        if((i = GetKeyListIndex(ScanCode , IsRight)) == -1) {
-            return 0;
-        }
-        if(i == KEYBOARD_KEYLIST_CAPSLOCK) {
-            if(ScanCode < 0x80) {
-                SpecialKeys[i] = (SpecialKeys[i] == 1) ? 0 : 1;
-            }
-            return 1;
-        }
-        SpecialKeys[i] = ((ScanCode < 0x80) ? 1 : 0);
-        return 1;
+    SpecialKeys[i] = ((ScanCode < 0x80) ? 1 : 0);           // Set the flag, depending on the status of the key(pressed(<0x80)/released(>0x80))
+    return 1;                                               // Job well done.
 }
 
 char Kernel::Keyboard::IsQueueEmpty(void) {
