@@ -8,6 +8,7 @@
 #include <ACPI.hpp>
 #include <APIC.hpp>
 #include <PIT.hpp>
+#include <Keyboard.hpp>
 
 namespace IO {
     unsigned char Read(unsigned short Port);

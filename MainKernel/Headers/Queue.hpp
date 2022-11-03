@@ -9,7 +9,7 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
-#include <Kernel.hpp>
+#include <MemoryManagement.hpp>
 
 // Circular Queue (FIFO)
 template <typename T> class Queue {

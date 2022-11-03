@@ -13,8 +13,6 @@
 #define MEMORYMANAGEMENT_E820_ADDRESS        0xA000
 #define MEMORYMANAGEMENT_SIGNATURE           0x3141
 
-#include <Kernel.hpp>
-
 namespace Kernel {
     namespace MemoryManagement {
         struct Node {
