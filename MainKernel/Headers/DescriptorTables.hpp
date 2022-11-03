@@ -49,8 +49,11 @@
 #define IDT_FLAGS_DPL2                0b0100
 #define IDT_FLAGS_DPL3                0b0110
 #define IDT_FLAGS_P                   0b1000
-#define IDT_TYPE_64BIT_TRAP_GATE      0b1110
-#define IDT_TYPE_64BIT_INTERRUPT_GATE 0b1111
+
+#define IDT_TYPE_TASK_GATE            0x05
+#define IDT_TYPE_16BIT_INTERRUPT_GATE 0x06
+#define IDT_TYPE_32BIT_INTERRUPT_GATE 0x0E
+#define IDT_TYPE_32BIT_TRAP_GATE      0x0F
 
 #define TSS_ENTRYCOUNT   1
 #define IST_STARTADDRESS 0x620000
