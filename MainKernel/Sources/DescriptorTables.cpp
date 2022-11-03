@@ -130,40 +130,40 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::Initialize(unsigned lon
     }
     // Note : If the IDT entry that uses IST keep occurs error, consider check if you set 
     // task register to TSS Segment. Check out line 66.
-    SetIDTEntry(0 , (unsigned long)Exceptions::DividedByZero , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(1 , (unsigned long)Exceptions::Debug , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(2 , (unsigned long)Exceptions::NonMaskableInterrupt , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(3 , (unsigned long)Exceptions::Breakpoint , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(4 , (unsigned long)Exceptions::Overflow , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(5 , (unsigned long)Exceptions::BoundRangeExceeded , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(6 , (unsigned long)Exceptions::InvalidOpcode , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(7 , (unsigned long)Exceptions::DeviceNotAvailable , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(8 , (unsigned long)Exceptions::DoubleFault , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(9 , (unsigned long)Exceptions::CorprocessorSegmentOverrun , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(10 , (unsigned long)Exceptions::InvalidTSS , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(11 , (unsigned long)Exceptions::SegmentNotPresent , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(12 , (unsigned long)Exceptions::StackSegmentFault , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(13 , (unsigned long)Exceptions::GeneralProtectionFault , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(14 , (unsigned long)Exceptions::PageFault , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(15 , (unsigned long)Exceptions::Reserved15 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(16 , (unsigned long)Exceptions::x87FloatPointException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(17 , (unsigned long)Exceptions::AlignmentCheck , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(18 , (unsigned long)Exceptions::MachineCheck , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(19 , (unsigned long)Exceptions::SIMDFloatingPointException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(20 , (unsigned long)Exceptions::VirtualizationException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(21 , (unsigned long)Exceptions::ControlProtectionException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(22 , (unsigned long)Exceptions::Reserved22 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(23 , (unsigned long)Exceptions::Reserved23 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(24 , (unsigned long)Exceptions::Reserved24 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(25 , (unsigned long)Exceptions::Reserved25 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(26 , (unsigned long)Exceptions::Reserved26 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(27 , (unsigned long)Exceptions::Reserved27 , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(28 , (unsigned long)Exceptions::HypervisorInjectionException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(29 , (unsigned long)Exceptions::VMMCommunicationException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(30 , (unsigned long)Exceptions::SecurityException , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(0 , (unsigned long)Exceptions::DividedByZero , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(1 , (unsigned long)Exceptions::Debug , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(2 , (unsigned long)Exceptions::NonMaskableInterrupt , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(3 , (unsigned long)Exceptions::Breakpoint , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(4 , (unsigned long)Exceptions::Overflow , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(5 , (unsigned long)Exceptions::BoundRangeExceeded , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(6 , (unsigned long)Exceptions::InvalidOpcode , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(7 , (unsigned long)Exceptions::DeviceNotAvailable , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(8 , (unsigned long)Exceptions::DoubleFault , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(9 , (unsigned long)Exceptions::CorprocessorSegmentOverrun , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(10 , (unsigned long)Exceptions::InvalidTSS , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(11 , (unsigned long)Exceptions::SegmentNotPresent , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(12 , (unsigned long)Exceptions::StackSegmentFault , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(13 , (unsigned long)Exceptions::GeneralProtectionFault , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(14 , (unsigned long)Exceptions::PageFault , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(15 , (unsigned long)Exceptions::Reserved15 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(16 , (unsigned long)Exceptions::x87FloatPointException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(17 , (unsigned long)Exceptions::AlignmentCheck , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(18 , (unsigned long)Exceptions::MachineCheck , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(19 , (unsigned long)Exceptions::SIMDFloatingPointException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(20 , (unsigned long)Exceptions::VirtualizationException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(21 , (unsigned long)Exceptions::ControlProtectionException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(22 , (unsigned long)Exceptions::Reserved22 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(23 , (unsigned long)Exceptions::Reserved23 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(24 , (unsigned long)Exceptions::Reserved24 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(25 , (unsigned long)Exceptions::Reserved25 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(26 , (unsigned long)Exceptions::Reserved26 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(27 , (unsigned long)Exceptions::Reserved27 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(28 , (unsigned long)Exceptions::HypervisorInjectionException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(29 , (unsigned long)Exceptions::VMMCommunicationException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(30 , (unsigned long)Exceptions::SecurityException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     
-    SetIDTEntry(32 , (unsigned long)Kernel::PIT::InterruptHandler , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(33 , (unsigned long)Kernel::Keyboard::InterruptHandler , 0x08 , IDT_TYPE_64BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(32 , (unsigned long)Kernel::PIT::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(33 , (unsigned long)Kernel::Keyboard::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     
     __asm__ ("lidt [%0]"::"r"((RegisterAddress)));
 }
