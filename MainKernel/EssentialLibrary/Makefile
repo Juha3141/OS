@@ -4,7 +4,7 @@ OBJECTSTEMPRORYFOLDER = $(TEMPRORYFOLDER)/EssentialLibrary
 CC = g++
 AR = ar
 
-CCOPTIONS = -Os -m64 -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -masm=intel # -nostdlib # -mno-red-zone -mno-mmx -mno-sse -mno-sse2
+CCOPTIONS = -Os -m64 -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -masm=intel -nostdlib # -mno-red-zone -mno-mmx -mno-sse -mno-sse2
 MAINSOURCES = string.obj vsprintf.obj
 TARGET = $(TEMPRORYFOLDER)/libEssentialLibrary.a
 
