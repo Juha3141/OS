@@ -1,68 +1,8 @@
 #include <EssentialLibrary.hpp>
 #include <Kernel.hpp>
+#include <Keyboard.hpp>
 
 #include <Queue.hpp>
-
-struct VBEInfoStructure {
-	unsigned short Attributes;
-	unsigned char WinA;
-	unsigned char WinB;
-	unsigned short Granularity;
-	unsigned short WinSize;
-	unsigned short SegmentA;
-	unsigned short SegmentB;
-	unsigned int ForRealMode1;
-	unsigned short BytesPerScanLine;
-	unsigned short Width;
-	unsigned short Height;	
-	unsigned char WidthCharSize;
-	unsigned char HeightCharSize;
-	unsigned char NumberOfPlane;
-	unsigned char BitsPerPixel;
-	unsigned char NumberOfBanks;
-	unsigned char MemoryModel;
-	unsigned char BankSize;
-	unsigned char NumberOfImagedPages;
-	unsigned char Reserved1;
-
-	unsigned char RedMaskSize;
-	unsigned char RedFieldPosition;
-	unsigned char GreenMaskSize;
-	unsigned char GreenFieldPosition;
-	unsigned char BlueMaskSize;
-	unsigned char BlueFieldPosition;
-
-	unsigned char ReservedMaskSize;
-	unsigned char ReservedFieldPosition;
-	unsigned char DirectColorModeInfo;
-
-	unsigned int Address;
-	unsigned int Reserved2;
-	unsigned int Reserved3;
-
-	unsigned short LinearBytesPerScanLine;
-	unsigned char BankNumberOfImagePages;
-    unsigned char LinearNumberOfImagePages;
-    unsigned char LinearRedMaskSize;
-    unsigned char LinearRedFieldPosition;
-    unsigned char LinearGreenMaskSize;
-    unsigned char LinearGreenFieldPosition;
-    unsigned char LinearBlueMaskSize;
-    unsigned char LinearBlueFieldPosition;
-    unsigned char LinearReservedMaskSize;
-    unsigned char LinearReservedFieldPosition;
-    unsigned int MaxPixelClock;
-
-    unsigned char Reserved4[189];
-};
-
-void DrawPixel(int X , int Y , unsigned int Color) {
-    struct VBEInfoStructure *VBEInfoStructure = (struct VBEInfoStructure *)0x8C09;
-    unsigned char *VideoMemory = (unsigned char *)VBEInfoStructure->Address;
-    VideoMemory[((Y*VBEInfoStructure->Width)+X)*3] = Color & 0xFF;
-    VideoMemory[(((Y*VBEInfoStructure->Width)+X)*3)+1] = (Color >> 8) & 0xFF;
-    VideoMemory[(((Y*VBEInfoStructure->Width)+X)*3)+2] = (Color >> 16) & 0xFF;
-}
 
 extern "C" void Main(void) {
     /*
@@ -96,31 +36,14 @@ extern "C" void Main(void) {
     Kernel::DescriptorTables::Initialize();
     Kernel::MemoryManagement::Initialize();
     Kernel::PIT::Initialize();
+    Kernel::Keyboard::Initialize();
 
-    int Color = 0;
-    int Add = 1;
-    int Delta = 8;
-    int X;
-    int Y;
-    struct VBEInfoStructure *VBEInfoStructure = (struct VBEInfoStructure *)0x8C09;
-    unsigned short *VideoMemory = (unsigned short *)VBEInfoStructure->Address;
-    while(1) {
-        for(Y = 0; Y < VBEInfoStructure->Height; Y++) {
-            for(X = 0; X < VBEInfoStructure->Width; X++) {
-                DrawPixel(X , Y , (Color & 0xFF));
-            }
-        }
-        Color += Delta*Add;
-        if(Color >= 0xFF) {
-            Color = 0xFF;
-            Add = -1;
-        }
-        if(Color <= 0) {
-            Color = 0;
-            Add = 1;
-        }
-        Kernel::PIT::DelayMilliseconds(10);
-    }
+    __asm__ ("mov al , 0x00");
+    __asm__ ("out 0x21 , al");
+    __asm__ ("out 0xA1 , al");
+
+    Kernel::printf("Hello world.\n");
+
     /*
     if(Kernel::ACPI::SaveCoresInformation() == 0) {
         Kernel::printf("Using MP Configurating Table\n");
@@ -132,7 +55,7 @@ extern "C" void Main(void) {
    
     __asm__ ("sti");
     while(1) {
-        ;
+        Kernel::printf("%c" , Kernel::Keyboard::GetASCIIData());
     }
 }
 
