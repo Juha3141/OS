@@ -302,7 +302,7 @@ void Kernel::MemoryManagement::NodeManager::MapNode(void) {
 	Kernel::printf("\n");
 }
 
-// 
+// Description : Initializes the variables
 void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory) {
 	this->StartAddress = StartAddress; 				// StartAddress 	 : The location of the memory pool
 	this->CurrentAddress = StartAddress;			// CurrentAddress    : The location of current position

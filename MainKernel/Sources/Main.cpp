@@ -38,11 +38,7 @@ extern "C" void Main(void) {
     Kernel::PIT::Initialize();
     Kernel::Keyboard::Initialize();
 
-    __asm__ ("mov al , 0x00");
-    __asm__ ("out 0x21 , al");
-    __asm__ ("out 0xA1 , al");
-
-    Kernel::printf("Hello world.\n");
+    Kernel::printf("Kernel is initialized.\n");
 
     /*
     if(Kernel::ACPI::SaveCoresInformation() == 0) {
@@ -52,7 +48,7 @@ extern "C" void Main(void) {
     Kernel::LocalAPIC::EnableLocalAPIC();
     Kernel::LocalAPIC::ActiveAPCores();   
     */
-   
+    Kernel::printf("Enabling Interrupt.\n");
     __asm__ ("sti");
     while(1) {
         Kernel::printf("%c" , Kernel::Keyboard::GetASCIIData());
