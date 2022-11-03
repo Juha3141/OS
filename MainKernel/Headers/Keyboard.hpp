@@ -45,6 +45,7 @@
 #define KEYBOARD_SCANCODE_NUMLOCK     0x45
 #define KEYBOARD_SCANCODE_SUPER       0xDB
 
+// <Special Key Table, macro version>
 #define KEYBOARD_KEYLIST_CAPSLOCK     0
 #define KEYBOARD_KEYLIST_INSERT       1
 #define KEYBOARD_KEYLIST_LEFTCONTROL  2
@@ -71,23 +72,24 @@ namespace Kernel {
                 int IsScanCodeQueueEmpty(void);
                 unsigned char GetScanCodeQueueData(void);
                 Queue<unsigned char>ScanCodeQueue;
-                
+                /* 
+                 * <Special Key Table>
+                 * CapsLock     - Flag : SpecialKeys[0]
+                 * Insert       - Flag : SpecialKeys[1]
+                 * LeftControl  - Flag : SpecialKeys[2]
+                 * RightControl - Flag : SpecialKeys[3]
+                 * NumLock      - Flag : SpecialKeys[4]
+                 * LeftShift    - Flag : SpecialKeys[5]
+                 * RightShift   - Flag : SpecialKeys[6]
+                 * LeftAlt      - Flag : SpecialKeys[7]
+                 * RightAlt     - Flag : SpecialKeys[8]
+                 * E(0x0E)      - Flag : SpecialKeys[9]
+                 * Super        - Flag : SpecialKeys[10]
+                 */
+                // Stores status of the special keys, 1 is pressed, or on, 0 is not pressed or off.
+                // Each array element stores each special keys - which is at the above table.
                 char SpecialKeys[11];
             private:
-                /* 
-                 * Special key list : 
-                 * CapsLock
-                 * Insert
-                 * LeftControl
-                 * RightControl
-                 * NumLock
-                 * LeftShift
-                 * RightShift
-                 * LeftAlt
-                 * RightAlt
-                 * E(0x0E)
-                 * Super
-                 */
                 inline void ChangeFlags(unsigned char ScanCode);
         };
         void Initialize(void);
