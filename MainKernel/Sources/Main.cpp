@@ -1,6 +1,5 @@
 #include <EssentialLibrary.hpp>
 #include <Kernel.hpp>
-#include <Keyboard.hpp>
 
 #include <Queue.hpp>
 
@@ -37,6 +36,7 @@ extern "C" void Main(void) {
     Kernel::MemoryManagement::Initialize();
     Kernel::PIT::Initialize();
     Kernel::Keyboard::Initialize();
+    Kernel::Mouse::Initialize();
 
     Kernel::printf("Kernel is initialized.\n");
 
