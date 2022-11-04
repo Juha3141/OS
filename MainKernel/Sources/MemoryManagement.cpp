@@ -23,6 +23,7 @@ void Kernel::MemoryManagement::Initialize(void) {
 	NodeManager = (Kernel::MemoryManagement::NodeManager*)(SystemStructureLocation
 	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID))); // Allocate system structure
 	Kernel::printf("Node Manager Location : 0x%X\n" , SystemStructureLocation);
+	Kernel::printf("E820 Address		  : 0x%X\n" , E820);
 	while((E820[i].Type > 0) && (E820[i].Type <= 5)) {	// Check until the table is invalid
 		if((E820[i].Type != 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) { // If it's unusable memory
 			Kernel::printf("Unusable Memory : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
@@ -31,6 +32,7 @@ void Kernel::MemoryManagement::Initialize(void) {
 			*/
 		}
 		else {
+			Kernel::printf("Usable Memory   : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
 			TotalUsableMemory += E820[i].Length;				// Calculate total usable memory
 		}
 		i++;

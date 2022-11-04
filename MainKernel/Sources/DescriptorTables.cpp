@@ -12,6 +12,7 @@
 #include <ExceptionHandlers.hpp>
 #include <PIT.hpp>
 #include <Keyboard.hpp>
+#include <Mouse.hpp>
 
 void Kernel::DescriptorTables::Initialize(void) {
     unsigned int ID;
@@ -164,6 +165,8 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::Initialize(unsigned lon
     
     SetIDTEntry(32 , (unsigned long)Kernel::PIT::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     SetIDTEntry(33 , (unsigned long)Kernel::Keyboard::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    
+    // SetIDTEntry(44 , (unsigned long)Kernel::Mouse::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     
     __asm__ ("lidt [%0]"::"r"((RegisterAddress)));
 }
