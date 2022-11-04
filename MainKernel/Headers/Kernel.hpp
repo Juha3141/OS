@@ -9,6 +9,7 @@
 #include <APIC.hpp>
 #include <PIT.hpp>
 #include <Keyboard.hpp>
+#include <Mouse.hpp>
 
 namespace IO {
     unsigned char Read(unsigned short Port);
