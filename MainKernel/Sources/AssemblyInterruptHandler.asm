@@ -12,7 +12,7 @@ SECTION .text
 ; Interrupt handler : 
 global _ZN6Kernel3PIT16InterruptHandlerEv           ; Kernel::PIT::InterruptHandler
 global _ZN6Kernel8Keyboard16InterruptHandlerEv      ; Kernel::Keyboard::InterruptHandler 
-;global _ZN6Kernel5Mouse16InterruptHandlerEv         ; Kernel::Mouse::InterruptHandler
+global _ZN6Kernel5Mouse16InterruptHandlerEv         ; Kernel::Mouse::InterruptHandler
 
 global DividedByZero
 global Debug
@@ -49,7 +49,7 @@ global SecurityException
 ; Functions being called by Interrupt handler(the actual handlers) : 
 extern _ZN6Kernel3PIT20MainInterruptHandlerEv       ; Kernel::PIT::MainInterruptHandler
 extern _ZN6Kernel8Keyboard20MainInterruptHandlerEv  ; Kernel::Keyboard::MainInterruptHandler
-;extern _ZN6Kernel5Mouse20MainInterruptHandlerEv     ; Kernel::Mouse::MainInterruptHandler
+extern _ZN6Kernel5Mouse20MainInterruptHandlerEv     ; Kernel::Mouse::MainInterruptHandler
 
 extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
@@ -541,6 +541,18 @@ _ZN6Kernel8Keyboard16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
     call _ZN6Kernel8Keyboard20MainInterruptHandlerEv    ; call the main function
+    
+    LOAD_REGISTERS_FROM_STACK   ; Load the registers
+    
+    pop rbp                     ; Load stack base from the stack
+    iretq                       ; Return from the interrupt
+
+_ZN6Kernel5Mouse16InterruptHandlerEv:
+    push rbp                    ; Save stack base to the stack
+    mov rbp , rsp               ; Set the stack base to current location of stack
+    SAVE_REGISTERS_TO_STACK     ; Save the registers
+
+    call _ZN6Kernel5Mouse20MainInterruptHandlerEv      ; call the main function
     
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     
