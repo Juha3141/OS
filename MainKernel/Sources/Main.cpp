@@ -3,6 +3,8 @@
 
 #include <Queue.hpp>
 
+#include <Graphics/Graphic.hpp>
+
 extern "C" void Main(void) {
     /*
     int i;
@@ -50,8 +52,36 @@ extern "C" void Main(void) {
     */
     Kernel::printf("Enabling Interrupt.\n");
     __asm__ ("sti");
+    int i = 0;
+    int X;
+    int Y;
+    unsigned int Color[3] = {0xFF0000 , 0x00FF00 , 0x0000FF};
+    struct Kernel::Mouse::MouseData MouseData;
+    for(Y = 0; Y < 768; Y++) {
+        for(X = 0; X < 1024; X++) {
+            Graphics::VBE::DrawPixel(X , Y , 0x444444);
+        }
+    }
+    X = 1024/2;
+    Y = 768/2;
     while(1) {
-        Kernel::printf("%c" , Kernel::Keyboard::GetASCIIData());
+        if(Kernel::Mouse::GetMouseDataQueue(&(MouseData)) == true) {
+            if((MouseData.ButtonData & MOUSE_BUTTONLEFT) == MOUSE_BUTTONLEFT) {
+                i = 0;
+            }
+            else if((MouseData.ButtonData & MOUSE_BUTTONMIDDLE) == MOUSE_BUTTONMIDDLE) {
+                i = 1;
+            }
+            else if((MouseData.ButtonData & MOUSE_BUTTONRIGHT) == MOUSE_BUTTONRIGHT) {
+                i = 2;
+            }
+            X += ((char)MouseData.RelativeX);
+            Y += ((char)MouseData.RelativeY);
+            Graphics::VBE::DrawPixel(X , Y , Color[i]);
+            Graphics::VBE::DrawPixel(X+1 , Y , Color[i]);
+            Graphics::VBE::DrawPixel(X , Y+1 , Color[i]);
+            Graphics::VBE::DrawPixel(X+1 , Y+1 , Color[i]);
+        }
     }
 }
 
