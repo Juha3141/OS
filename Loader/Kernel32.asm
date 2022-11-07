@@ -12,7 +12,7 @@ Kernel32:
     jmp 0x08:Start                              ; Instruction size : 7 bytes
 
                                                 ; Fields that is going to be used for 16bit kernel
-GraphicMode: dw 0xFFF                           ; Location : 0x8C00+7 = 0x8C07
+GraphicMode: dw 0x118                           ; Location : 0x8C00+7 = 0x8C07
                                                 ; Reserved 512 bytes for VBE information structure
 VBEInfoStructure: resb 512                      ; Location : 0x8C00+7+2 = 0x8C09
 
