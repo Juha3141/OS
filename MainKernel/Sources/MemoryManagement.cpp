@@ -24,20 +24,17 @@ void Kernel::MemoryManagement::Initialize(void) {
 	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID))); // Allocate system structure
 	Kernel::printf("Node Manager Location : 0x%X\n" , SystemStructureLocation);
 	Kernel::printf("E820 Address		  : 0x%X\n" , E820);
-	while((E820[i].Type > 0) && (E820[i].Type <= 5)) {	// Check until the table is invalid
-		if((E820[i].Type != 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) { // If it's unusable memory
-			Kernel::printf("Unusable Memory : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
-			/* To-do : 
-			 * Create a node for masking unavailable memory areas.
-			*/
-		}
-		else {
+	while(1) {	// Check until the table is invalid -> ERROR!!!, but why??
+		if((E820[i].Type == 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) {
 			Kernel::printf("Usable Memory   : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
 			TotalUsableMemory += E820[i].Length;				// Calculate total usable memory
 		}
+		if(E820[i].Type == 0) {
+			break;
+		}
 		i++;
 	}
-	TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;  // Calculate the memory
+	//TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;  // Calculate the memory
 	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS , TotalUsableMemory);		// Initialize the node manager
 	Kernel::printf("Total usable memory : %dMB\n" , TotalUsableMemory/1024/1024);
 	Kernel::printf("Memory pool address : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
