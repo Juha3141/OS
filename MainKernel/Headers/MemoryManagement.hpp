@@ -39,6 +39,8 @@ namespace Kernel {
             unsigned long Length;
             unsigned long Type;
         };
+        extern "C" unsigned long GetUsableMemory(unsigned long E820Address , unsigned long MemoryPoolAddress);
+
         void Initialize(void);
         void *Allocate(unsigned long Size);
         void Free(void *Address);
