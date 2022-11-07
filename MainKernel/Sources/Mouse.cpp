@@ -39,7 +39,15 @@ void Kernel::Mouse::Initialize(void) {
 }
 
 void Kernel::Mouse::MainInterruptHandler(void) {
+    static int i = 0;
+    const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};  // Spinner(for debugging purpose)
+    unsigned char *VideoMemory = (unsigned char *)0xB8000;
     MouseDataManager->ProcessMouseData(IO::Read(0x60));
+    VideoMemory[77*2] = Spinner[i];     // Just a basic spinner in the screen
+    i++;                                // If the interrupt is called, the spinner spins
+    if(i >= 4) {
+        i = 0;
+    }
     PIC::SendEOI(44);
 }
 
@@ -55,10 +63,25 @@ void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
     else if(DataPhase == 2) {
         DataPhase++;
         TemproryMouseData.RelativeY = Data;
+        if((TemproryMouseData.ButtonData & 0x10) == 0x10) {
+            TemproryMouseData.RelativeX |= 0xFFFFFF00;
+        }
+        if((TemproryMouseData.ButtonData & 0x20) == 0x20) {
+            TemproryMouseData.RelativeY |= 0xFFFFFF00;
+        }
+        TemproryMouseData.RelativeY = -TemproryMouseData.RelativeY;
+        MouseDataQueue.Enqueue(TemproryMouseData);
+        DataPhase = 0;
     }
     else {
         DataPhase = 0;
-        Kernel::printf("(%d %d 0x%02X)\n" , TemproryMouseData.RelativeX , TemproryMouseData.RelativeY , TemproryMouseData.ButtonData);
-        MouseDataQueue.Enqueue(TemproryMouseData);
     }
+}
+
+bool Kernel::Mouse::IsDataQueueEmpty(void) {
+    return MouseDataManager->MouseDataQueue.IsEmpty();
+}
+
+bool Kernel::Mouse::GetMouseDataQueue(struct Kernel::Mouse::MouseData *Data) {
+    return (struct Kernel::Mouse::MouseData *)MouseDataManager->MouseDataQueue.Dequeue(Data);
 }

@@ -4,29 +4,33 @@
 #include <Kernel.hpp>
 #include <EssentialLibrary.hpp>
 #include <Queue.hpp>
+#include <MemoryManagement.hpp>
+
+#define MOUSE_BUTTONLEFT    0x01
+#define MOUSE_BUTTONRIGHT   0x02
+#define MOUSE_BUTTONMIDDLE  0x04
 
 namespace Kernel {
     namespace Mouse {
         struct MouseData {
-            long RelativeX;
-            long RelativeY;
+            char RelativeX;
+            char RelativeY;
             unsigned char ButtonData;
         };
         class DataManager {
             public:
                 void Initialize(void) {
                     MouseDataQueue.Initialize(2048);
-                    Kernel::printf("0x%X\n" , &(DataPhase));
                 }
                 void ProcessMouseData(unsigned char Data);
                 StructureQueue<struct MouseData>MouseDataQueue;
-                
-                struct MouseData TemproryMouseData;
+            private:
                 int DataPhase = 0;
+                struct MouseData TemproryMouseData;
         };
         void Initialize(void);
-        int IsDataQueueEmpty(void);
-        struct MouseData GetMouseDataQueue(void);
+        bool IsDataQueueEmpty(void);
+        bool GetMouseDataQueue(struct MouseData *Data);
         void InterruptHandler(void);
         void MainInterruptHandler(void);
     };
