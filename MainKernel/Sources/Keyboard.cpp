@@ -53,7 +53,6 @@ void Kernel::Keyboard::Initialize(void) {
     unsigned int ID;
     KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager) , &(ID));    // Allocate the system structure
     KeyboardDataManager->Initialize();
-    PIC::Unmask(33);        // Unmask the keyboard interrupt
     IO::Write(0x64 , 0xAE); // Send the enable command to status register port
     while(1) {              // If Input buffer state bit in the status register port is 1,
                             // the keyboard yet did not take the data from the buffer.
@@ -62,6 +61,8 @@ void Kernel::Keyboard::Initialize(void) {
         }
     }
     IO::Write(0x60 , 0xF4); // Send the enable command to input buffer port
+    Kernel::PIC::Unmask(33);        // Unmask the keyboard interrupt
+    Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
 }
 
 // Description : Handler of the keyboard interrupt
