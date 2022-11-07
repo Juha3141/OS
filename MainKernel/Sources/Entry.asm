@@ -1,5 +1,7 @@
 [BITS 64]
 
+SECTION .text
+
 global LongModeEntry
 extern Main
 extern APStartup
