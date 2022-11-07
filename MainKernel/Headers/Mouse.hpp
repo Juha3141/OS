@@ -7,15 +7,26 @@
 
 namespace Kernel {
     namespace Mouse {
+        struct MouseData {
+            long RelativeX;
+            long RelativeY;
+            unsigned char ButtonData;
+        };
         class DataManager {
             public:
                 void Initialize(void) {
-                    DataQueue.Initialize(2048);
+                    MouseDataQueue.Initialize(2048);
+                    Kernel::printf("0x%X\n" , &(DataPhase));
                 }
-            private:
-                Queue<unsigned char>DataQueue;
+                void ProcessMouseData(unsigned char Data);
+                StructureQueue<struct MouseData>MouseDataQueue;
+                
+                struct MouseData TemproryMouseData;
+                int DataPhase = 0;
         };
         void Initialize(void);
+        int IsDataQueueEmpty(void);
+        struct MouseData GetMouseDataQueue(void);
         void InterruptHandler(void);
         void MainInterruptHandler(void);
     };
