@@ -65,6 +65,15 @@ template <typename T> class Queue {
 
 template<typename T>class StructureQueue : public Queue<T> {
     public:
+        void Initialize(unsigned int QueueSize) {   // Initializes Queue
+            CurrentOffset = 0;                      // Initialize variables
+            SelectingOffset = 0;
+            TotalLength = QueueSize;
+            QueueList = (T *)Kernel::MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
+        }
+        void DeleteQueue(void) {
+            Kernel::MemoryManagement::Free(QueueList);  // 
+        }
         bool Enqueue(T Data) {                          // Put data to queue
             memcpy(&(QueueList[CurrentOffset]) , &(Data) , sizeof(T));
             CurrentOffset += 1;
@@ -73,19 +82,33 @@ template<typename T>class StructureQueue : public Queue<T> {
             }
             return true;
         }
-        T Dequeue(void) {                               // Remove data from queue
-            T Data;
-            memcpy(&(Data) , &(QueueList[SelectingOffset]) , sizeof(T));        // Returns data
+        bool Dequeue(T *Data) {                         // Remove data from queue
+            if(this->IsEmpty() == true) {
+                return false;
+            }
+            memcpy(Data , &(QueueList[SelectingOffset]) , sizeof(T));        // Returns data
             SelectingOffset += 1;
             if(SelectingOffset > TotalLength) {         // Going circular, if we reach the end, 
                 SelectingOffset = 0;                    // return back to the beginning
             }
-            return Data;
+            return true;
+        }
+        bool IsEmpty(void) {
+            if(CurrentOffset == SelectingOffset) {      // If the CurrentOffset and SelectingOffset are same, 
+                return true;                            // which means all the data were returned, 
+            }                                           // It is empty.
+            return false;
+        }
+        bool IsFull(void) {
+            if(CurrentOffset == TotalLength) {          // If the CurrentOffset and TotalLength are same, 
+                return true;                            // which means all the data filled the array 
+            }                                           // It is full.
+            return false;
         }
     private:
         T *QueueList;
         int CurrentOffset;
-        int SelectingOffset;
+        int SelectingOffset; 
         int TotalLength;
 };
 
