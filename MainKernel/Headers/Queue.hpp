@@ -63,4 +63,30 @@ template <typename T> class Queue {
         int TotalLength;
 };
 
+template<typename T>class StructureQueue : public Queue<T> {
+    public:
+        bool Enqueue(T Data) {                          // Put data to queue
+            memcpy(&(QueueList[CurrentOffset]) , &(Data) , sizeof(T));
+            CurrentOffset += 1;
+            if(CurrentOffset > TotalLength) {           // Going circular, if we reach the end, 
+                CurrentOffset = 0;                      // return back to the beginning
+            }
+            return true;
+        }
+        T Dequeue(void) {                               // Remove data from queue
+            T Data;
+            memcpy(&(Data) , &(QueueList[SelectingOffset]) , sizeof(T));        // Returns data
+            SelectingOffset += 1;
+            if(SelectingOffset > TotalLength) {         // Going circular, if we reach the end, 
+                SelectingOffset = 0;                    // return back to the beginning
+            }
+            return Data;
+        }
+    private:
+        T *QueueList;
+        int CurrentOffset;
+        int SelectingOffset;
+        int TotalLength;
+};
+
 #endif
