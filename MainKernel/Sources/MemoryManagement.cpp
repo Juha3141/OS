@@ -19,21 +19,18 @@ void Kernel::MemoryManagement::Initialize(void) {
 	unsigned long TotalUsableMemory = 0;
 	Kernel::MemoryManagement::NodeManager *NodeManager;
 	// Location of the E820, if you are curious, check line 36 of the Kernel16.asm
-	QuerySystemAddressMap *E820 = (QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS;
 	NodeManager = (Kernel::MemoryManagement::NodeManager*)(SystemStructureLocation
 	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID))); // Allocate system structure
 	Kernel::printf("Node Manager Location : 0x%X\n" , SystemStructureLocation);
-	Kernel::printf("E820 Address		  : 0x%X\n" , E820);
-	while(1) {	// Check until the table is invalid -> ERROR!!!, but why??
-		if((E820[i].Type == 1) && (E820[i].Address >= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)) {
-			Kernel::printf("Usable Memory   : 0x%016X~0x%016X\n" , E820[i].Address , E820[i].Address+E820[i].Length);
-			TotalUsableMemory += E820[i].Length;				// Calculate total usable memory
-		}
-		if(E820[i].Type == 0) {
-			break;
-		}
-		i++;
-	}
+	Kernel::printf("E820 Address		  : 0x%X\n" , MEMORYMANAGEMENT_E820_ADDRESS);
+	/* The problem was that the g++ compiler somehow interpretes the code incorrectly, and made a unintentional codes.
+	 * So, to solve the problem, I just made a new function made out of assembly language.
+	 * 
+	 * To : Me from the future
+	 * If you find some weird code that seems like a problem of compiler, just code it to assembly language.
+	 * Remember... assembly language is the way to solve everything..
+	*/
+	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
 	//TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;  // Calculate the memory
 	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS , TotalUsableMemory);		// Initialize the node manager
 	Kernel::printf("Total usable memory : %dMB\n" , TotalUsableMemory/1024/1024);
