@@ -10,6 +10,7 @@
 #include <PIT.hpp>
 #include <Keyboard.hpp>
 #include <Mouse.hpp>
+#include <ExceptionHandlers.hpp>
 
 namespace IO {
     unsigned char Read(unsigned short Port);
