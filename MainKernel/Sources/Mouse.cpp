@@ -32,6 +32,10 @@ void Kernel::Mouse::Initialize(void) {
         }
     }
     IO::Write(0x60 , Output);           // Write command port data
+    
+    Kernel::PIC::Unmask(32+2);          // Unmask IRQ 2(Slave PIC)
+    Kernel::PIC::Unmask(32+9);          // Unmask IRQ 9(Slave PIC)
+    Kernel::PIC::Unmask(44);            // Unmask IRQ 12(Mouse Interrupt)
 }
 
 void Kernel::Mouse::MainInterruptHandler(void) {
