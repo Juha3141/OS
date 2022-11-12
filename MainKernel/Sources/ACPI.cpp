@@ -18,7 +18,7 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
         return 0;
     }
     MADT += 8;
-    CoreInformation = (struct Kernel::CPUProcessorsInformation *)SystemStructure::Allocate(sizeof(struct Kernel::CPUProcessorsInformation) , &(ID));
+    CoreInformation = (struct Kernel::CPUProcessorsInformation *)SystemStructure::Allocate(sizeof(struct Kernel::CPUProcessorsInformation));
     
     __asm__ ("mov rcx , 27");
     __asm__ ("rdmsr");
@@ -39,8 +39,8 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
             break;
         }
     }
-    CoreInformation->LocalAPICID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int) , &(ID));
-    CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int) , &(ID));
+    CoreInformation->LocalAPICID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
+    CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
     while(1) {
