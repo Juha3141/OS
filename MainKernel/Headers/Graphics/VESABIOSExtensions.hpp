@@ -62,6 +62,9 @@ namespace Graphics {
         struct VBE::InfoStructure *GetInfoStructure(void);
         
         void DrawPixel(int X , int Y , unsigned int Color);
+        unsigned int GetPixel(int X , int Y);
+        void DrawRectangle(int X1 , int Y1 , int X2 , int Y2 , unsigned int Color);
+        void DrawText(int X , int Y , unsigned int Color , const char *Format , ...);
     };
 };
 
