@@ -7,7 +7,7 @@ extern char *strcpy(char *Destination , const char *Origin);
 extern char *strncpy(char *Destination , const char *Origin , unsigned long Length);
 extern char *strcat(char *Destination , const char *Origin);
 
-static int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
+int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
     int i = 0;
     int StringLength = 0;
     char Temprory;
@@ -107,7 +107,7 @@ int ToString(char *String , long Value) {
     return ToString(String , (long long)Value);
 }
 
-static int ToString_Double(char *String , long double Value , int Length) {
+int ToString_Double(char *String , long double Value , int Length) {
     int i = 0;
     int j = 0;
     int Position = 0;
@@ -159,7 +159,7 @@ int ToInteger(const char *String) {
     return Value;
 }
 
-static char GetFlag(const char *Format) {
+char GetFlag(const char *Format) {
     switch(Format[0]) {
         case '+':
         case '-':
@@ -173,7 +173,7 @@ static char GetFlag(const char *Format) {
     }
 }
 
-static int GetWidth(const char *Format , int *CurrentPosition) {
+int GetWidth(const char *Format , int *CurrentPosition) {
     int i;
     int Position;
     char WidthString[16] = {0 , };
@@ -199,7 +199,7 @@ static int GetWidth(const char *Format , int *CurrentPosition) {
     return ToInteger(WidthString);
 }
 
-static int GetPrecision(const char *Format , int LastPosition , int *CurrentPosition) {
+int GetPrecision(const char *Format , int LastPosition , int *CurrentPosition) {
     int i;
     char PrecisionString[16] = {0 , };
     if(Format[LastPosition-1] != '.') {
@@ -216,7 +216,7 @@ static int GetPrecision(const char *Format , int LastPosition , int *CurrentPosi
     return ToInteger(PrecisionString);
 }
 
-static unsigned short GetLength(const char *Format , int LastPosition) {
+unsigned short GetLength(const char *Format , int LastPosition) {
     int i;
     unsigned short Length;
     switch(Format[LastPosition]) {
@@ -243,7 +243,7 @@ static unsigned short GetLength(const char *Format , int LastPosition) {
     return Length;
 }
 
-static char GetType(const char *Format , unsigned short Length , int LastPosition) {
+char GetType(const char *Format , unsigned short Length , int LastPosition) {
     char Type;
     if((Length & 0x0F) == 0x00) {
         Type = Format[LastPosition];
@@ -274,8 +274,8 @@ int vsprintf(char *String , const char *Format , va_list ap) {
     unsigned long UnsignedLong;
 
     double Double;
-    char TemproryBuffer1[128] = {0 , };
-    char TemproryBuffer2[16] = {0 , };
+    char TemproryBuffer1[128];
+    char TemproryBuffer2[16];
     for(i = 0; i < strlen(Format); i++) {
 		switch(Format[i]) {
 			case '%':
