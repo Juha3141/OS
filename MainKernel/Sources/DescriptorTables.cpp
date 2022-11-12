@@ -19,29 +19,28 @@ void Kernel::DescriptorTables::Initialize(void) {
     // Allocate space for each descriptor respectively
     Kernel::DescriptorTables::GlobalDescriptorTable *GlobalDescriptorTable
                                                     = (Kernel::DescriptorTables::GlobalDescriptorTable *)Kernel::SystemStructure::Allocate(
-                                                    sizeof(Kernel::DescriptorTables::GlobalDescriptorTable) , &(ID));
+                                                    sizeof(Kernel::DescriptorTables::GlobalDescriptorTable));
     Kernel::DescriptorTables::InterruptDescriptorTable *InterruptDescriptorTable
                                                        = (Kernel::DescriptorTables::InterruptDescriptorTable*)Kernel::SystemStructure::Allocate(
-                                                       sizeof(Kernel::DescriptorTables::InterruptDescriptorTable) , &(ID));
+                                                       sizeof(Kernel::DescriptorTables::InterruptDescriptorTable));
 #ifdef DEBUG
     Kernel::printf("GDT Management Structure : 0x%X\n" , GlobalDescriptorTable);
     Kernel::printf("IDT Management Structure : 0x%X\n" , InterruptDescriptorTable);
 #endif
     // Initialize and allocate space for descriptor table entries and registers
-    GlobalDescriptorTable->Initialize(Kernel::SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(TSSEntry)) , &(ID))
-                                    , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister) , &(ID)));
-    InterruptDescriptorTable->Initialize(Kernel::SystemStructure::Allocate(IDT_ENTRYCOUNT*sizeof(IDTEntry) , &(ID))
-                                       , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister) , &(ID)));
+    GlobalDescriptorTable->Initialize(Kernel::SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(TSSEntry)))
+                                    , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
+    InterruptDescriptorTable->Initialize(Kernel::SystemStructure::Allocate(IDT_ENTRYCOUNT*sizeof(IDTEntry))
+                                       , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
 }
 
 void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long BaseAddress , unsigned long RegisterAddress) {
-    unsigned int ID;
     // BaseAddress = Location of GDT Entry
     // BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Location of TSS Entry
     // (GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Size of GDT Entry
     GDTEntry = (struct GDTEntry *)BaseAddress;
     TSSEntry = (struct TSSEntry *)(BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))); // Note : Always put "()" in the address ****
-    TSS = (struct TSS *)Kernel::SystemStructure::Allocate(sizeof(struct TSS)*TSS_ENTRYCOUNT , &(ID));
+    TSS = (struct TSS *)Kernel::SystemStructure::Allocate(sizeof(struct TSS)*TSS_ENTRYCOUNT);
     memset(TSS , 0 , sizeof(struct TSS));
     GDTR = (struct DescriptorTablesRegister *)RegisterAddress;
     // Size of "struct GDTEntry" : 8 , size of "struct TSSEntry" : 16
