@@ -51,7 +51,7 @@ unsigned char ScanCodeInterpreter[4][0x80] = { // normal , shift , capslock , ca
 // Description : Initialize the data manager, and ps/2 keyboard hardware, and unmask the keyboard interrupt.
 void Kernel::Keyboard::Initialize(void) {
     unsigned int ID;
-    KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager) , &(ID));    // Allocate the system structure
+    KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager));    // Allocate the system structure
     KeyboardDataManager->Initialize();
     IO::Write(0x64 , 0xAE); // Send the enable command to status register port
     while(1) {              // If Input buffer state bit in the status register port is 1,
