@@ -49,7 +49,7 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Security Exception" , 
     };*/
     /*
-     * FIXME : Large array causes error in the kernel
+     * FIXME : Large array causes error in the entire kernel
     */
     __asm__ ("cli");/*
     Kernel::ClearScreen(0x00 , 0x04);*/
