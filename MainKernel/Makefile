@@ -5,16 +5,16 @@ ESSENTIALLIBRARYFOLDER = EssentialLibrary
 ISOFOLDER = ../iso
 MAINKERNELTEMPRORYFOLDER = $(TEMPRORYFOLDER)/MainKernel
 
-CC = g++
+CC = x86_64-elf-g++
 LD = ld
 OBJCOPY = objcopy
 
-CCOPTIONS = -mcmodel=large -ffreestanding -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -mno-red-zone -mno-red-zone -mno-mmx -mno-sse -mno-sse2
+CCOPTIONS = -mcmodel=large -ffreestanding -fpack-struct=1 -fno-exceptions -fno-rtti -fno-stack-protector -fno-builtin -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2
 #  -fomit-frame-pointer -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
 ELF = $(TEMPRORYFOLDER)/MainKernel.elf
-MAINSOURCES = Main.obj MemoryManagement.obj DescriptorTables.obj KernelSystemStructure.obj TextScreen.obj \
+MAINSOURCES = Main.obj TextScreen.obj MemoryManagement.obj DescriptorTables.obj KernelSystemStructure.obj \
 ExceptionHandlers.obj PIT.obj Keyboard.obj Mouse.obj IO.obj APIC.obj ACPI.obj \
 Graphics/Graphic.obj Graphics/VESABIOSExtensions.obj
 
@@ -28,8 +28,8 @@ prepare:
 	make -C $(ESSENTIALLIBRARYFOLDER) clean all
 
 all: prepare asm $(MAINSOURCES)
-	cd $(MAINKERNELTEMPRORYFOLDER); ld $(LDOPTIONS) -T ../../MainKernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj $(MAINSOURCES) -L ../ -lEssentialLibrary
-	$(OBJCOPY) -O binary $(ELF) $(TARGET) # -j .text -j .data -j .bss -j .rodata -j .rodata1 -R .eh_frame -R .eh_frame_hdr -R .comment
+	cd $(MAINKERNELTEMPRORYFOLDER); ld -T ../../MainKernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj $(MAINSOURCES) -L ../ -lEssentialLibrary
+	$(OBJCOPY) -O binary $(ELF) $(TARGET)
 
 asm:
 	nasm $(SOURCESFOLDER)/$(ASMSOURCE) -f elf64 -o $(MAINKERNELTEMPRORYFOLDER)/Entry.obj
