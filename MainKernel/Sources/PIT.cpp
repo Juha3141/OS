@@ -11,21 +11,13 @@ void Kernel::PIT::MainInterruptHandler(void) {
     
     PIC::SendEOI(32);
 }
-/*
-__attribute__ ((naked)) void Kernel::PIT::InterruptHandler(void) {
-    __asm__ ("push rbp");
-    __asm__ ("mov rbp , rsp");
-
-    __asm__ ("pop rbp");
-    __asm__ ("iretq");
-}*/
 
 unsigned long Kernel::PIT::GetTickCount(void) {
     return TickCount;
 }
 
 void Kernel::PIT::Initialize(void) {
-    PITFrequency = PIT_CONVERT_US_TO_HZ(200);          // Do NOT set this value to 100, it might crash
+    PITFrequency = PIT_CONVERT_US_TO_HZ(500);          // Do NOT set this value to 100, it might crash
                                                        // the timer system!
     
     IO::Write(PIT_MODE_COMMAND_REGISTER , 0b00110000);
