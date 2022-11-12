@@ -12,6 +12,9 @@
 #include <Mouse.hpp>
 #include <ExceptionHandlers.hpp>
 
+#define MIN(X , Y) ((X) > (Y) ? (Y) : (X))
+#define MAX(X , Y) ((X) > (Y) ? (X) : (Y))
+
 namespace IO {
     unsigned char Read(unsigned short Port);
     void Write(unsigned short Port , unsigned char Data);
