@@ -173,8 +173,6 @@ static char GetFlag(const char *Format) {
     }
 }
 
-int DBGGGGGG = 0;
-
 static int GetWidth(const char *Format , int *CurrentPosition) {
     int i;
     int Position;
