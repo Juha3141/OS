@@ -34,7 +34,7 @@ Kernel16:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	xor ax , ax                 ; Set ES register to 0x00 - Location saving E820 Map is ES:DI
 	mov es , ax                 ; (ES can't be written directly)
-	mov di , 0xA000             ; 0x00:0xA000 is where all the memory maps are saved.
+	mov di , 0xB000             ; 0x00:0xA000 is where all the memory maps are saved.
 	
 	mov ebx , 0x00              ; Always set EBX to 0
 
