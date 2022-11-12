@@ -1,5 +1,6 @@
 #include <ExceptionHandlers.hpp>
 #include <Kernel.hpp>
+#include <Graphics/Graphic.hpp>
 
 // Function usage : Mask the specified interrupt
 // Master : controlls
@@ -35,7 +36,7 @@ void Kernel::PIC::SendEOI(int InterruptNumber) {
 }
 
 void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long ErrorCode) {
-    /*char ExceptionNames[29][32] = {
+   /*static char ExceptionNames[29][32] = {
         "Divided by Zero" , "Debug" , "Non-Maskable Interrupt" , 
         "Breakpoint" , "Overflow" , "Bound Range Exceeded" , 
         "Invalid Opcode" , "Device not Available" , "Double Fault" , 
@@ -47,11 +48,17 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Hypervisor Injection Exception" , "VMM Communication Exception" , 
         "Security Exception" , 
     };*/
+    /*
+     * FIXME : Large array causes error in the kernel
+    */
     __asm__ ("cli");/*
     Kernel::ClearScreen(0x00 , 0x04);*/
     Kernel::PrintString("[Exception occurred]\n");
+    Graphics::VBE::DrawText(10 , 10 , 0xFF0000 , "[Exception occurred]");
     Kernel::printf("Vector Number : %d\n" , ExceptionNumber);
+    Graphics::VBE::DrawText(10 , 10+16 , 0xFF0000 , "Vector Number : %d\n" , ExceptionNumber);
     Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
+    Graphics::VBE::DrawText(10 , 10+(16*2) , 0xFF0000 , "IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
     while(1) {
         ;
     }
