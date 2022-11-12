@@ -5,7 +5,7 @@ static Kernel::Mouse::DataManager *MouseDataManager; // Management structure of 
 void Kernel::Mouse::Initialize(void) {
     unsigned int ID;
     unsigned char Output;
-    MouseDataManager = (Kernel::Mouse::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Mouse::DataManager) , &(ID));    // Allocate the system structure
+    MouseDataManager = (Kernel::Mouse::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Mouse::DataManager));    // Allocate the system structure
     MouseDataManager->Initialize();
 
     IO::Write(0x64 , 0xA8);             // Send Mouse Enable command to command port
@@ -63,6 +63,11 @@ void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
     else if(DataPhase == 2) {
         DataPhase++;
         TemproryMouseData.RelativeY = Data;
+    }
+    else {
+        DataPhase = 0;
+    }
+    if(DataPhase >= 3) {
         if((TemproryMouseData.ButtonData & 0x10) == 0x10) {
             TemproryMouseData.RelativeX |= 0xFFFFFF00;
         }
@@ -71,9 +76,6 @@ void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
         }
         TemproryMouseData.RelativeY = -TemproryMouseData.RelativeY;
         MouseDataQueue.Enqueue(TemproryMouseData);
-        DataPhase = 0;
-    }
-    else {
         DataPhase = 0;
     }
 }
