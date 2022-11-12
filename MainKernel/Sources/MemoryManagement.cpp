@@ -10,19 +10,15 @@
 
 // #define DEBUG
 
-unsigned long SystemStructureLocation; // Location of the NodeManager
-
 void Kernel::MemoryManagement::Initialize(void) {
 	int i = 0;
 	int j;
-	unsigned int ID;
 	unsigned long TotalUsableMemory = 0;
 	Kernel::MemoryManagement::NodeManager *NodeManager;
 	// Location of the E820, if you are curious, check line 36 of the Kernel16.asm
-	NodeManager = (Kernel::MemoryManagement::NodeManager*)(SystemStructureLocation
-	              = Kernel::SystemStructure::Allocate(sizeof(Kernel::MemoryManagement::NodeManager) , &(ID))); // Allocate system structure
-	Kernel::printf("Node Manager Location : 0x%X\n" , SystemStructureLocation);
-	Kernel::printf("E820 Address		  : 0x%X\n" , MEMORYMANAGEMENT_E820_ADDRESS);
+	NodeManager = (Kernel::MemoryManagement::NodeManager*)MEMORYMANAGEMENT_MEMORY_STARTADDRESS; // Allocate system structure
+	Kernel::printf("Node Manager Location : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
+	Kernel::printf("E820 Address          : 0x%X\n" , MEMORYMANAGEMENT_E820_ADDRESS);
 	/* The problem was that the g++ compiler somehow interpretes the code incorrectly, and made a unintentional codes.
 	 * So, to solve the problem, I just made a new function made out of assembly language.
 	 * 
@@ -30,30 +26,10 @@ void Kernel::MemoryManagement::Initialize(void) {
 	 * If you find some weird code that seems like a problem of compiler, just code it to assembly language.
 	 * Remember... assembly language is the way to solve everything..
 	*/
-	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
-	//TotalUsableMemory -= MEMORYMANAGEMENT_MEMORY_STARTADDRESS;  // Calculate the memory
-	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS , TotalUsableMemory);		// Initialize the node manager
-	Kernel::printf("Total usable memory : %dMB\n" , TotalUsableMemory/1024/1024);
-	Kernel::printf("Memory pool address : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
-	
 	// Testing the memory allocation & deallocation
-	unsigned long Address[20] = {0 , };
-	Kernel::printf("Testing allocation/Deallocation sequence... ");
-	for(j = 0; j < 2; j++) { // 2GB memory test (Do the test 2 times)
-		for(i = 0; i < 8; i++) {															// 256MBx8 = 2GB
-			Address[i] = (unsigned long)Kernel::MemoryManagement::Allocate(256*1024*1024);	// Allocate 256MB
-		}
-		for(i = 0; i < 8; i++) {
-			Kernel::MemoryManagement::Free((void*)Address[i]);	// Free
-#ifdef DEBUG
-			NodeManager->MapNode();								// Print the map
-#endif
-		}
-	}
-#ifdef DEBUG
-	NodeManager->MapNode();
-#endif
-	Kernel::printf("Done\n");
+	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
+	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS+sizeof(Kernel::MemoryManagement::NodeManager) , TotalUsableMemory);		// Initialize the node manager
+	return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +79,7 @@ void Kernel::MemoryManagement::Initialize(void) {
 void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 	unsigned long TotalNodeSize = 0;	// TotalNodeSize : Size of the total node that is going to be used for allocation
 	// Load the NodeManager from the local address
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)SystemStructureLocation;
+	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if(Size == 0) {
 		Kernel::printf("Allocation Error #0 : Zero allocated size");
 		return 0x00;
@@ -205,7 +181,7 @@ void Kernel::MemoryManagement::Free(void *Address) {
 	unsigned long NextNode;
 	unsigned long PreviousNode;
 	// Load the NodeManager from the local address
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)SystemStructureLocation;
+	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if((unsigned long)Address < NodeManager->StartAddress) {
 		Kernel::printf("Deallocation Error #0 : Low Memory Address\n");
 		return;
