@@ -1,7 +1,7 @@
 #ifndef _ESSENTIAL_LIBRARY_HPP_
 #define _ESSENTIAL_LIBRARY_HPP_
 
-#include <cstdarg>
+#include <stdarg.h>
 
 extern void *memset(void *Destination , unsigned char Value , unsigned long Size);
 extern void *memcpy(void *Destination , const void *Source , unsigned long Size);
