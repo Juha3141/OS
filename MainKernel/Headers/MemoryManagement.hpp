@@ -10,7 +10,7 @@
 #define _MEMORYMANAGEMENT_H_
 
 #define MEMORYMANAGEMENT_MEMORY_STARTADDRESS 0x1720000
-#define MEMORYMANAGEMENT_E820_ADDRESS        0xA000
+#define MEMORYMANAGEMENT_E820_ADDRESS        0xB000
 #define MEMORYMANAGEMENT_SIGNATURE           0x3141
 
 namespace Kernel {
@@ -28,7 +28,7 @@ namespace Kernel {
                 unsigned long SearchNewNodeLocation(void);
 
                 void MapNode(void);
-
+                
                 unsigned long StartAddress;
                 unsigned long CurrentAddress; // Next address of lastly allocated node
                 unsigned long LastFreedAddress;
