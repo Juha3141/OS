@@ -1,6 +1,5 @@
 #include <EssentialLibrary.hpp>
 #include <Kernel.hpp>
-
 #include <Queue.hpp>
 
 #include <Graphics/Graphic.hpp>
@@ -33,12 +32,19 @@ extern "C" void Main(void) {
     __asm__ ("cli");
     Kernel::SystemStructure::Initialize();
     Kernel::TextScreen80x25::Initialize();
-    Kernel::ClearScreen(0x00 , 0x07);
+    Kernel::printf("Kernel::TextScreen80x25::Initialize();\n");
     Kernel::DescriptorTables::Initialize();
+    Kernel::printf("Kernel::DescriptorTables::Initialize();\n");
     Kernel::MemoryManagement::Initialize();
+    Kernel::printf("Kernel::MemoryManagement::Initialize();\n");
     Kernel::PIT::Initialize();
+    Kernel::printf("Kernel::PIT::Initialize();\n");
     Kernel::Keyboard::Initialize();
+    Kernel::printf("Kernel::Keyboard::Initialize();\n");
     Kernel::Mouse::Initialize();
+    Kernel::printf("Kernel::Mouse::Initialize();\n");
+
+    Graphics::Initialize();
 
     Kernel::printf("Kernel is initialized.\n");
 
@@ -57,31 +63,32 @@ extern "C" void Main(void) {
     int Y;
     unsigned int Color[3] = {0xFF0000 , 0x00FF00 , 0x0000FF};
     struct Kernel::Mouse::MouseData MouseData;
-    for(Y = 0; Y < 768; Y++) {
-        for(X = 0; X < 1024; X++) {
-            Graphics::VBE::DrawPixel(X , Y , 0x444444);
-        }
-    }
-    X = 1024/2;
-    Y = 768/2;
+    Graphics::Layer Layer1;
+    Graphics::Layer Layer2;
+    Layer1.Initialize(0 , 0 , 1024 , 768);
+    Layer2.Initialize(512-36 , 334-36 , 72 , 16);
+    Layer1.DrawRectangle(0 , 0 , 1024/2 , 768/2 , 0xFF0000);
+    Layer1.DrawRectangle(1024/2 , 0 , 1024 , 768/2 , 0x00FF00);
+    Layer1.DrawRectangle(0 , 768/2 , 1024/2 , 768 , 0x0000FF);
+    Layer1.DrawRectangle(1024/2 , 768/2 , 1024 , 768 , 0xFFFFFF);
+    Layer2.DrawRectangle(0 , 0 , 72 , 16 , 0xFFFFFF);
+    Layer2.DrawText(0 , 0 , 0x00 , "DEEZ NUTS");  // Add redrawing system
+
+    Layer1.Register();
+    Layer2.Register();
+    X = 512-4;
+    Y = 334-4;
+
+    Graphics::UpdateLayer(&(Layer1));
     while(1) {
         if(Kernel::Mouse::GetMouseDataQueue(&(MouseData)) == true) {
-            if((MouseData.ButtonData & MOUSE_BUTTONLEFT) == MOUSE_BUTTONLEFT) {
-                i = 0;
-            }
-            else if((MouseData.ButtonData & MOUSE_BUTTONMIDDLE) == MOUSE_BUTTONMIDDLE) {
-                i = 1;
-            }
-            else if((MouseData.ButtonData & MOUSE_BUTTONRIGHT) == MOUSE_BUTTONRIGHT) {
-                i = 2;
-            }
-            X += ((char)MouseData.RelativeX);
-            Y += ((char)MouseData.RelativeY);
-            Graphics::VBE::DrawPixel(X , Y , Color[i]);
-            Graphics::VBE::DrawPixel(X+1 , Y , Color[i]);
-            Graphics::VBE::DrawPixel(X , Y+1 , Color[i]);
-            Graphics::VBE::DrawPixel(X+1 , Y+1 , Color[i]);
+            X += MouseData.RelativeX;
+            Y += MouseData.RelativeY;
+            Layer2.Move(X , Y);
         }
+    }
+    while(1) {
+        ;
     }
 }
 
