@@ -32,15 +32,14 @@ void Graphics::Layer::Move(int X , int Y) {
     Coordinates.Y2 = Y+Height;
     Movement.NewX = X;
     Movement.NewY = Y;
+    
     GraphicLayerManager->UpdateArea(OldCoordinates);
+    GraphicLayerManager->UpdateArea(Coordinates);
 }
 
 void Graphics::Layer::DrawPixel(int X , int Y , unsigned int Color) {
-    if(X >= Coordinates.X2-Coordinates.X1) {
-        X = Coordinates.X2-Coordinates.X1-1;
-    }
-    if(Y >= Coordinates.Y2-Coordinates.Y1) {
-        Y = Coordinates.Y2-Coordinates.Y1-1;
+    if((X >= Coordinates.X2-Coordinates.X1)||(Y >= Coordinates.Y2-Coordinates.Y1)) {
+        return;
     }
     VideoMemory[(Y*(Coordinates.X2-Coordinates.X1))+X] = Color;
 }
@@ -135,25 +134,30 @@ void Graphics::LayerManager::UpdateArea(const struct Rectangle Area) { // !!!
     int IsInside;
     struct Rectangle OverlappingArea;
     struct Rectangle OverlappingArea2;
+    //VBE::DrawRectangle(10 , 10 , 500 , 10+(MaxLayerIndex*16*5) , 0xFF0000);
     for(i = 0; i < MaxLayerIndex; i++) {
-        if(GetOverlappedArea(Area , ((Layer *)Layers[i])->Coordinates , &(OverlappingArea)) == false) {
+        if(GetOverlappedArea(Area , ((Layer *)Layers[i])->Coordinates , &(OverlappingArea)) == false) { // error
             continue;
         }
         
         IsInside = GetOverlappedArea(Area , ((Layer *)Layers[i])->Coordinates , &(OverlappingArea2));
-        if(IsInside == false) {
-            memcpy(&(OverlappingArea2) , &(Area) , sizeof(struct Rectangle));
-        }
+
         for(j = i+1; j < MaxLayerIndex; j++) {
             GetOverlappedArea(OverlappingArea2 , ((Layer *)Layers[j])->Coordinates , &(OverlappingArea2));
         }
         IsInside = IsRectangleInside(Area , ((Layer *)Layers[i])->Coordinates);
         Width = ((Layer *)Layers[i])->Coordinates.X2-((Layer *)Layers[i])->Coordinates.X1;
-        
+        /*
+        VBE::DrawText(10 , 10+(i*16*5) , 0xFFFFFF , "Area : [(%d,%d) (%d,%d)]" , Area.X1 , Area.Y1 , Area.X2 , Area.Y2);
+        VBE::DrawText(10 , 10+(16*1)+(i*16*5) , 0xFFFFFF , "L%d  : [(%d,%d) (%d,%d)]" , i , ((Layer *)Layers[i])->Coordinates.X1 , ((Layer *)Layers[i])->Coordinates.Y1 , ((Layer *)Layers[i])->Coordinates.X2 , ((Layer *)Layers[i])->Coordinates.Y2);
+        VBE::DrawText(10 , 10+(16*2)+(i*16*5) , 0xFFFFFF , "1    : [(%d,%d) (%d,%d)]" , OverlappingArea.X1 , OverlappingArea.Y1 , OverlappingArea.X2 , OverlappingArea.Y2);
+        VBE::DrawText(10 , 10+(16*3)+(i*16*5) , 0xFFFFFF , "2    : [(%d,%d) (%d,%d)]" , OverlappingArea2.X1 , OverlappingArea2.Y1 , OverlappingArea2.X2 , OverlappingArea2.Y2);
+        */
         X1 = (IsInside != 0) ? OverlappingArea.X1 : ((Layer *)Layers[i])->Coordinates.X1;
-        Y1 = (IsInside != 0) ? OverlappingArea.Y1 : ((Layer *)Layers[i])->Coordinates.Y1;
         X2 = (IsInside != 0) ? OverlappingArea.X2 : ((Layer *)Layers[i])->Coordinates.X2;
+        Y1 = (IsInside != 0) ? OverlappingArea.Y1 : ((Layer *)Layers[i])->Coordinates.Y1;
         Y2 = (IsInside != 0) ? OverlappingArea.Y2 : ((Layer *)Layers[i])->Coordinates.Y2;
+        
         for(Y = Y1; Y < Y2; Y++) {
             for(X = X1; X < X2; X++) {
                 VBE::DrawPixel(X , Y , ((Layer *)Layers[i])->VideoMemory[((Y-(((Layer *)Layers[i])->Coordinates.Y1))*Width)+(X-(((Layer *)Layers[i])->Coordinates.X1))]);
@@ -168,6 +172,9 @@ void Graphics::UpdateLayer(Layer *Layer) {
 
 bool Graphics::LayerManager::IsLayerOverlapped(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2) {
     // to-do list
+    if(IsRectangleInside(Rectangle1 , Rectangle2) != 0) {
+        return true;
+    }
     if(((Rectangle2.Y1 >= Rectangle1.Y1) && (Rectangle2.Y1 <= Rectangle1.Y2))
      ||((Rectangle1.Y1 >= Rectangle2.Y1) && (Rectangle1.Y1 <= Rectangle2.Y2))) {
         if(((Rectangle2.X1 >= Rectangle1.X1) && (Rectangle2.X1 <= Rectangle1.X2))
@@ -188,12 +195,16 @@ bool Graphics::LayerManager::IsLayerOverlapped(const struct Rectangle Rectangle1
 
 int Graphics::LayerManager::IsRectangleInside(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2) {
     if(((Rectangle1.X1 >= Rectangle2.X1) && (Rectangle1.X1 <= Rectangle2.X2))
-    && ((Rectangle1.Y1 >= Rectangle2.Y1) && (Rectangle1.Y1 <= Rectangle2.Y2))) {        // Is A is in B
+    && ((Rectangle1.X2 >= Rectangle2.X1) && (Rectangle1.X2 <= Rectangle2.X2))
+    && ((Rectangle1.Y1 >= Rectangle2.Y1) && (Rectangle1.Y1 <= Rectangle2.Y2))
+    && ((Rectangle1.Y2 >= Rectangle2.Y1) && (Rectangle1.Y2 <= Rectangle2.Y2))) {        // Is A is in B
         return 1;   // 1 = A is inside B
     }
-    if(((Rectangle2.X1 >= Rectangle1.X1) && (Rectangle2.X2 <= Rectangle1.X2))
-    && ((Rectangle2.Y1 >= Rectangle1.Y1) && (Rectangle2.Y2 <= Rectangle1.Y2))) {        // Is Rectangle2 is in Rectangle1 in terms of X position
-        return 2;
+    if(((Rectangle2.X1 >= Rectangle1.X1) && (Rectangle2.X1 <= Rectangle1.X2))
+    && ((Rectangle2.X2 >= Rectangle1.X1) && (Rectangle2.X2 <= Rectangle1.X2))
+    && ((Rectangle2.Y1 >= Rectangle1.Y1) && (Rectangle2.Y1 <= Rectangle1.Y2))
+    && ((Rectangle2.Y2 >= Rectangle1.Y1) && (Rectangle2.Y2 <= Rectangle1.Y2))) {        // Is Rectangle2 is in Rectangle1 in terms of X position
+        return 2;   // 2 = B is inside A
     }
     return 0;
 }
@@ -208,6 +219,20 @@ bool Graphics::LayerManager::IsCoordinateInside(int X , int Y , const struct Rec
 bool Graphics::LayerManager::GetOverlappedArea(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2 , struct Rectangle *OverlappingArea) {
     if(IsLayerOverlapped(Rectangle1 , Rectangle2) == false) {
         return false;
+    }
+    if(IsRectangleInside(Rectangle1 , Rectangle2) == 1) {
+        OverlappingArea->X1 = Rectangle1.X1;
+        OverlappingArea->Y1 = Rectangle1.Y1;
+        OverlappingArea->X2 = Rectangle1.X2;
+        OverlappingArea->Y2 = Rectangle1.Y2;
+        return true;
+    }
+    if(IsRectangleInside(Rectangle1 , Rectangle2) == 2) {
+        OverlappingArea->X1 = Rectangle2.X1;
+        OverlappingArea->Y1 = Rectangle2.Y1;
+        OverlappingArea->X2 = Rectangle2.X2;
+        OverlappingArea->Y2 = Rectangle2.Y2;
+        return true;
     }
     OverlappingArea->X1 = MAX(Rectangle1.X1 , Rectangle2.X1);
     OverlappingArea->Y1 = MAX(Rectangle1.Y1 , Rectangle2.Y1);
