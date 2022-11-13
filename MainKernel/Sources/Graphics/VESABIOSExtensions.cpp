@@ -11,11 +11,11 @@ struct Graphics::VBE::InfoStructure *Graphics::VBE::GetInfoStructure(void) {
 void Graphics::VBE::DrawPixel(int X , int Y , unsigned int Color) {
     struct VBE::InfoStructure *VBEInfoStructure = (struct VBE::InfoStructure *)VBE_INFOSTRUCTURE_ADDRESS;
     unsigned char *VideoMemory = (unsigned char *)VBEInfoStructure->Address;
-    if(X > VBEInfoStructure->Width) {
-        X = VBEInfoStructure->Width;
+    if((X < 0)||(Y < 0)) {
+        return;
     }
-    if(Y > VBEInfoStructure->Height) {
-        Y = VBEInfoStructure->Height;
+    if((X >= VBEInfoStructure->Width)||(Y >= VBEInfoStructure->Height)) {
+        return;
     }
     VideoMemory[((Y*VBEInfoStructure->Width)+X)*3] = Color & 0xFF;
     VideoMemory[(((Y*VBEInfoStructure->Width)+X)*3)+1] = (Color >> 8) & 0xFF;
@@ -50,7 +50,7 @@ void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Fo
 	int CurrentY;
 	unsigned char BitMask;
 	int BitMaskStartAddress;
-	char String[128];
+	char *String = (char *)Kernel::MemoryManagement::Allocate(512);
     struct VBE::InfoStructure *VBEInfoStructure = (struct VBE::InfoStructure *)VBE_INFOSTRUCTURE_ADDRESS;
     unsigned char *VideoMemory = (unsigned char *)VBEInfoStructure->Address;
 	unsigned char *Consolas_8x16_Bold = (unsigned char *)0x9C00;
@@ -75,6 +75,6 @@ void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Fo
 		}
 		CurrentX += Width;
 	}
-
+	memset(String , 0 , strlen(String));
 	va_end(ap);
 }
