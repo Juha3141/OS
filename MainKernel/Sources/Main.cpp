@@ -65,26 +65,38 @@ extern "C" void Main(void) {
     struct Kernel::Mouse::MouseData MouseData;
     Graphics::Layer Layer1;
     Graphics::Layer Layer2;
+    Graphics::Layer Layer3;
     Layer1.Initialize(0 , 0 , 1024 , 768);
     Layer2.Initialize(512-36 , 334-36 , 72 , 16);
+    Layer3.Initialize(300 , 300 , 300 , 200);
     Layer1.DrawRectangle(0 , 0 , 1024/2 , 768/2 , 0xFF0000);
     Layer1.DrawRectangle(1024/2 , 0 , 1024 , 768/2 , 0x00FF00);
     Layer1.DrawRectangle(0 , 768/2 , 1024/2 , 768 , 0x0000FF);
     Layer1.DrawRectangle(1024/2 , 768/2 , 1024 , 768 , 0xFFFFFF);
     Layer2.DrawRectangle(0 , 0 , 72 , 16 , 0xFFFFFF);
-    Layer2.DrawText(0 , 0 , 0x00 , "DEEZ NUTS");  // Add redrawing system
+    
+    for(i = 0; i < 200; i += 200/10) {
+        Layer3.DrawRectangle(0 , i , 300 , i+(200/10) , 0xAAAAAA);
+    }
 
     Layer1.Register();
     Layer2.Register();
+    Layer3.Register();
+    
     X = 512-4;
     Y = 334-4;
 
+    Layer2.DrawText(0 , 0 , 0x00 , "%d" , i);  // Add redrawing system
     Graphics::UpdateLayer(&(Layer1));
     while(1) {
         if(Kernel::Mouse::GetMouseDataQueue(&(MouseData)) == true) {
             X += MouseData.RelativeX;
             Y += MouseData.RelativeY;
+            Layer2.DrawRectangle(0 , 0 , 72 , 16 , 0xFFFFFF);
+            Layer2.DrawText(0 , 0 , 0x00 , "%d" , i);  // Add redrawing system
+            
             Layer2.Move(X , Y);
+            i++;
         }
     }
     while(1) {
