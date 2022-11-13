@@ -7,6 +7,179 @@ extern char *strcpy(char *Destination , const char *Origin);
 extern char *strncpy(char *Destination , const char *Origin , unsigned long Length);
 extern char *strcat(char *Destination , const char *Origin);
 
+int SizeOfNumber(int Number);
+int IndexOfNumber(int Number , int Index);
+
+unsigned long atoi(const char *Buffer) {
+	unsigned long Value = 0;
+	int Positive = 1;
+	if(*Buffer == '-') {
+		Positive = -1;
+		Buffer++;
+	}
+	if(*Buffer == '+') {
+		Positive = 1;
+		Buffer++;
+	}
+	if(*Buffer == '\0') {
+		return 0;
+	}
+	while(*Buffer != 0) {
+		if((*Buffer >= '0') && (*Buffer <= '9')) {
+			Value = Value*10+(*Buffer)-'0';
+			Buffer++;
+		}
+	}
+	if(Positive == -1) {
+		Value = -Value;
+	}
+	return Value;
+}
+
+unsigned long atol(const char *Buffer) {
+	unsigned long Value = 0;
+	int Positive = 1;
+	if(*Buffer == '-') {
+		Positive = -1;
+		Buffer++;
+	}
+	if(*Buffer == '+') {
+		Positive = 1;
+		Buffer++;
+	}
+	if(*Buffer == '\0') {
+		return 0;
+	}
+	while(*Buffer != 0) {
+        Value *= 16;
+		if(((*Buffer >= 'A') && (*Buffer <= 'Z'))) {
+			Value += ((*Buffer)-'A')+10;
+			Buffer++;
+		}
+        else if(((*Buffer >= 'a') && (*Buffer <= 'z'))) {
+			Value += ((*Buffer)-'a')+10;
+			Buffer++;
+        }
+        else {
+            Value += ((*Buffer)-'0');
+            Buffer++;
+        }
+	}
+	if(Positive == -1) {
+		Value = -Value;
+	}
+	return Value;
+}
+
+void ReverseString(char *Buffer) {
+	int i;
+	char TempBuffer;
+	for(i = 0; i < strlen(Buffer)/2; i++) {
+		TempBuffer = Buffer[i];
+		Buffer[i] = Buffer[(strlen(Buffer)-1)-i];
+		Buffer[(strlen(Buffer)-1)-i] = TempBuffer;
+	}
+	return;
+}
+
+char *itoa(unsigned long Value , char *Buffer , int Radix) {
+	unsigned long TempBuffer;
+	if(Value == 0) {
+		Buffer[0] = '0';
+		Buffer[1] = '\0';
+		return Buffer;
+	}
+	while(Value) {
+		if(Radix <= 10) {
+			*Buffer++ = (Value%Radix)+'0';
+		}
+		else {
+			TempBuffer = Value%Radix;
+			if(TempBuffer <= 9) {
+				*Buffer++ = TempBuffer+'0';
+			}
+			else {
+				*Buffer++ = TempBuffer-10+'A';
+			}
+		}
+		Value /= Radix;
+	}
+	*Buffer = '\0';
+	ReverseString(Buffer);
+	return Buffer;
+}
+
+void vsprintf(char *Destination , const char *Format , va_list ap) {
+	int i;
+	int j = 0;
+	for(i = 0; i < strlen(Format); i++) {
+		switch(Format[i]) {
+			case '%':
+				switch(Format[i+1]) {
+					case 'c': {
+						char Buffer = va_arg(ap , int);
+						Destination[j++] = Buffer;
+						i++;
+						break;
+					}
+					case 's': {
+						char *Buffer = va_arg(ap , char*);
+						strcpy(Destination+j , Buffer);
+						j += strlen(Buffer);
+						i++;
+						break;
+					}
+					case 'd':
+					case 'i': {
+						int Value = va_arg(ap , int);
+						char *Buffer = {0 , };
+						itoa(Value , Buffer , 10);
+						ReverseString(Buffer);
+						strcpy(Destination+j , Buffer);
+						j += strlen(Buffer);
+						i++;
+						break;
+					}
+					case 'X': {
+						unsigned long Value = va_arg(ap , unsigned long);
+						char Buffer[128] = {0 , };
+						itoa(Value , Buffer , 16);
+						ReverseString(Buffer);
+						strcpy(Destination+j , Buffer);
+						j += strlen(Buffer);
+						i++;
+						break;
+					}
+					case 'f': {
+						break; 
+					}
+					case '%': {
+						Destination[j++] = '%';
+						i++;
+						break;
+					}
+					default: {
+						i++;
+						break;
+					}
+				}
+				break;
+			default:
+				Destination[j++] = Format[i];
+				break;
+		}
+	}
+	Destination[j] = '\0';
+}
+
+void sprintf(char *Destination , const char *Format , ...) {
+	va_list ap;
+	va_start(ap , Format);
+	vsprintf(Destination , Format , ap);
+	va_end(ap);
+}
+
+/*
 int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
     int i = 0;
     int StringLength = 0;
@@ -286,18 +459,18 @@ int vsprintf(char *String , const char *Format , va_list ap) {
                     CurrentPosition++;
                 }
                 Length = GetLength(Format+i+1 , CurrentPosition);
-                Type = GetType(Format+i+1 , Length , CurrentPosition);/*
-                __asm__ ("mov r8 , %0"::"r"((unsigned long)(Format+i+1)));
-                __asm__ ("mov r9 , %0"::"r"((unsigned long)i));
-                __asm__ ("mov r10 , %0"::"r"((unsigned long)Flags));
-                __asm__ ("mov r11 , %0"::"r"((unsigned long)Width));
-                __asm__ ("mov r12 , %0"::"r"((unsigned long)Precision));
-                __asm__ ("mov r13 , %0"::"r"((unsigned long)Length));
-                __asm__ ("mov r14 , %0"::"r"((unsigned long)Type));
-                __asm__ ("mov r15 , %0"::"r"((unsigned long)CurrentPosition));
-                while(1) {
-                    ;
-                }*/
+                Type = GetType(Format+i+1 , Length , CurrentPosition);
+                //__asm__ ("mov r8 , %0"::"r"((unsigned long)(Format+i+1)));
+                //__asm__ ("mov r9 , %0"::"r"((unsigned long)i));
+                //__asm__ ("mov r10 , %0"::"r"((unsigned long)Flags));
+                //__asm__ ("mov r11 , %0"::"r"((unsigned long)Width));
+                //__asm__ ("mov r12 , %0"::"r"((unsigned long)Precision));
+                //__asm__ ("mov r13 , %0"::"r"((unsigned long)Length));
+                //__asm__ ("mov r14 , %0"::"r"((unsigned long)Type));
+                //__asm__ ("mov r15 , %0"::"r"((unsigned long)CurrentPosition));
+                //while(1) {
+                //    ;
+                //}
                 if(Type == '%') {
                     String[j++] = '%';
                 }
@@ -415,4 +588,4 @@ int sprintf(char *String , const char *Format , ...) {
     Length = vsprintf(String , Format , ap);
     va_end(ap);
     return Length;
-}
+}*/
