@@ -54,11 +54,11 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
     __asm__ ("cli");/*
     Kernel::ClearScreen(0x00 , 0x04);*/
     Kernel::PrintString("[Exception occurred]\n");
-    Graphics::VBE::DrawText(10 , 10 , 0xFF0000 , "[Exception occurred]");
+    Graphics::VBE::DrawText(10 , 10 , 0xFF0000 , 0x00 , "[Exception occurred]");
     Kernel::printf("Vector Number : %d\n" , ExceptionNumber);
-    Graphics::VBE::DrawText(10 , 10+16 , 0xFF0000 , "Vector Number : %d\n" , ExceptionNumber);
+    Graphics::VBE::DrawText(10 , 10+16 , 0xFF0000 , 0x00 , "Vector Number : %d\n" , ExceptionNumber);
     Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
-    Graphics::VBE::DrawText(10 , 10+(16*2) , 0xFF0000 , "IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
+    Graphics::VBE::DrawText(10 , 10+(16*2) , 0xFF0000 , 0x00 , "IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
     while(1) {
         ;
     }
