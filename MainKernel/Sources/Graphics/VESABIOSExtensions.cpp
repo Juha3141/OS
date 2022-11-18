@@ -1,9 +1,5 @@
 #include <Graphics/VESABIOSExtensions.hpp>
 
-unsigned char Consolas_8x16_Bold[4096] = {
-
-};
-
 struct Graphics::VBE::InfoStructure *Graphics::VBE::GetInfoStructure(void) {
     return (struct VBE::InfoStructure *)VBE_INFOSTRUCTURE_ADDRESS;
 }
@@ -29,6 +25,7 @@ unsigned int Graphics::VBE::GetPixel(int X , int Y) {
     Color = VideoMemory[((Y*VBEInfoStructure->Width)+X)*3];
     Color |= VideoMemory[(((Y*VBEInfoStructure->Width)+X)*3)+1] << 8;
     Color |= VideoMemory[(((Y*VBEInfoStructure->Width)+X)*3)+2] << 16;
+	return Color;
 } 
 
 void Graphics::VBE::DrawRectangle(int X1 , int Y1 , int X2 , int Y2 , unsigned int Color) {
@@ -41,7 +38,7 @@ void Graphics::VBE::DrawRectangle(int X1 , int Y1 , int X2 , int Y2 , unsigned i
     }
 }
 
-void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Format , ...) {
+void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , unsigned int BackgroundColor , const char *Format , ...) {
 	int i;
 	int j;
 	int k;
@@ -50,7 +47,7 @@ void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Fo
 	int CurrentY;
 	unsigned char BitMask;
 	int BitMaskStartAddress;
-	char *String = (char *)Kernel::MemoryManagement::Allocate(512);
+	static char String[256];
     struct VBE::InfoStructure *VBEInfoStructure = (struct VBE::InfoStructure *)VBE_INFOSTRUCTURE_ADDRESS;
     unsigned char *VideoMemory = (unsigned char *)VBEInfoStructure->Address;
 	unsigned char *Consolas_8x16_Bold = (unsigned char *)0x9C00;
@@ -60,6 +57,7 @@ void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Fo
 	va_start(ap , Format);
 
 	vsprintf(String , Format , ap);
+
 	CurrentX = X;
 	for(k = 0; k < strlen(String); k++) {
 		CurrentY = Y;
@@ -68,13 +66,16 @@ void Graphics::VBE::DrawText(int X , int Y , unsigned int Color , const char *Fo
 			BitMask = Consolas_8x16_Bold[BitMaskStartAddress++];
 			for(i = 0; i < Width; i++) {
 				if(BitMask & (0x01 << (Width-i-1))) {
-					VBE::DrawPixel(CurrentX+i , CurrentY , Color);
+					DrawPixel(CurrentX+i , CurrentY , Color);
+				}
+				else {
+					DrawPixel(CurrentX+i , CurrentY , BackgroundColor);
 				}
 			}
 			CurrentY += 1;
 		}
 		CurrentX += Width;
 	}
-	memset(String , 0 , strlen(String));
+
 	va_end(ap);
 }
