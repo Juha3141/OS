@@ -31,9 +31,10 @@ namespace Graphics {
             void DrawRectangle(int X1 , int Y1 , int X2 , int Y2 , unsigned int Color);
             void DrawText(int X , int Y , unsigned int Color , const char *Format , ...);
 
-            unsigned long ID; // ID = Elevation, and index
-        private:
+            unsigned long Elevation; // Elevation, and index
+            
             struct Rectangle Coordinates;
+        private:
             unsigned int *VideoMemory;
             
             struct Movement Movement;
@@ -47,14 +48,16 @@ namespace Graphics {
 
             unsigned long AddLayer(Layer *Layer);
             void RemoveLayer(unsigned long LayerID);
-            void UpdateLayer(unsigned long LayerID);
             void UpdateArea(const struct Rectangle Area);
+
+            void Move(Layer *Layer , int NewX , int NewY);
         private:
             bool IsLayerOverlapped(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2);
             int IsRectangleInside(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2);
             bool IsCoordinateInside(int X , int Y , const struct Rectangle Rectangle);
             bool GetOverlappedArea(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2 , struct Rectangle *OverlappingArea);
-            
+            bool IsRectangleSame(const struct Rectangle Rectangle1 , const struct Rectangle Rectangle2);
+
             unsigned char *VideoMemory;
             int ScreenWidth;
             int ScreenHeight;
@@ -65,8 +68,10 @@ namespace Graphics {
     };
     void Initialize(void);
 
-    void UpdateLayer(Layer *Layer);
+    void UpdateLayer(const Layer Layer);
     void UpdateAllLayers(void);
+
+    void MoveToTop(Layer *Layer);
 }
 
 #endif
