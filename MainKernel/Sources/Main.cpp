@@ -1,10 +1,13 @@
 #include <EssentialLibrary.hpp>
 #include <Kernel.hpp>
 #include <Queue.hpp>
+#include <TaskManagement.hpp>
 
 #include <Graphics/Graphic.hpp>
 
 void GraphicModeDemo(void);
+void HelloWorld(void);
+void PrivilagedOnes(void);
 
 extern "C" void Main(void) {
     /*
@@ -34,21 +37,14 @@ extern "C" void Main(void) {
     __asm__ ("cli");
     Kernel::SystemStructure::Initialize();
     Kernel::TextScreen80x25::Initialize();
-    Kernel::printf("Kernel::TextScreen80x25::Initialize();\n");
     Kernel::DescriptorTables::Initialize();
-    Kernel::printf("Kernel::DescriptorTables::Initialize();\n");
     Kernel::MemoryManagement::Initialize();
-    Kernel::printf("Kernel::MemoryManagement::Initialize();\n");
     Kernel::PIT::Initialize();
-    Kernel::printf("Kernel::PIT::Initialize();\n");
     Kernel::Keyboard::Initialize();
-    Kernel::printf("Kernel::Keyboard::Initialize();\n");
     Kernel::Mouse::Initialize();
-    Kernel::printf("Kernel::Mouse::Initialize();\n");
+    Kernel::TaskManagement::Initialize();
 
-    Graphics::Initialize();
-
-    Kernel::printf("Kernel is initialized.\n");
+    //Graphics::Initialize();
 
     /*
     if(Kernel::ACPI::SaveCoresInformation() == 0) {
@@ -56,14 +52,56 @@ extern "C" void Main(void) {
     }
     
     Kernel::LocalAPIC::EnableLocalAPIC();
-    Kernel::LocalAPIC::ActiveAPCores();   
+    Kernel::LocalAPIC::ActiveAPCores();
     */
+    
     Kernel::printf("Enabling Interrupt.\n");
+    Kernel::printf("Kernel is initialized.\n");
     __asm__ ("sti");
 
-    GraphicModeDemo();
+    int i = 0;
+    unsigned long ID[320];
+    for(i = 0; i < 80; i++) {
+        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 9 , "Test1");
+    }
+    for(; i < 160; i++) {
+        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 9 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 3 , "Test1");
+    }
+    for(; i < 160; i++) {
+        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 3 , "Test1");
+    }
+    for(i = 0; i < 10; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)PrivilagedOnes , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 0 , "Privilaged Ones");
+    }
+    unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
+    unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
     while(1) {
-        ;
+        VideoMemory[80*6*2] = Spinner[i++];
+        VideoMemory[80*6*2+1] = 0x0E;
+        if(i >= 4) {
+            i = 0;
+        }
+    }
+}
+
+void HelloWorld(void) {
+    unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
+    int i = 0;
+    while(1) {
+        VideoMemory[(80+(Kernel::TaskManagement::GetCurrentlyRunningTaskID()-1))*2] = ((i++)%10)+'0';
+        VideoMemory[(80+(Kernel::TaskManagement::GetCurrentlyRunningTaskID()-1))*2+1] = ((Kernel::TaskManagement::GetCurrentlyRunningTaskID())%0x0E)+1;
+    }
+}
+
+void PrivilagedOnes(void) {
+    unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
+    int i = 0;
+    while(1) {
+        VideoMemory[(80+(Kernel::TaskManagement::GetCurrentlyRunningTaskID()-1))*2] = ((i++)%10)+'0';
+        VideoMemory[(80+(Kernel::TaskManagement::GetCurrentlyRunningTaskID()-1))*2+1] = 0x0F;
     }
 }
 
