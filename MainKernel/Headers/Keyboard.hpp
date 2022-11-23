@@ -69,7 +69,7 @@ namespace Kernel {
                 void InsertDataToQueue(unsigned char ScanCode);
                 char ProcessSpecialKeys(unsigned char ScanCode);
 
-                int IsScanCodeQueueEmpty(void);
+                bool IsScanCodeQueueEmpty(void);
                 unsigned char GetScanCodeQueueData(void);
                 Queue<unsigned char>ScanCodeQueue;
                 /* 

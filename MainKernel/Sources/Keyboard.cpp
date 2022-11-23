@@ -101,8 +101,8 @@ void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
 }
 
 
-int Kernel::Keyboard::DataManager::IsScanCodeQueueEmpty(void) {
-    int Value;
+bool Kernel::Keyboard::DataManager::IsScanCodeQueueEmpty(void) {
+    bool Value;
     // To-do : Create MutEx
     Value = ScanCodeQueue.IsEmpty();    // Is main queue is empty?
     return Value;
