@@ -92,8 +92,8 @@ DividedByZero:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 0
-    push 0
+    mov rdi , 0
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -106,8 +106,8 @@ Debug:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 1
-    push 0
+    mov rdi , 1
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -120,8 +120,8 @@ NonMaskableInterrupt:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 2
-    push 0
+    mov rdi , 2
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -134,8 +134,8 @@ Breakpoint:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 3
-    push 0
+    mov rdi , 3
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -148,8 +148,8 @@ Overflow:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 4
-    push 0
+    mov rdi , 4
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -162,8 +162,8 @@ BoundRangeExceeded:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 5
-    push 0
+    mov rdi , 5
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -176,8 +176,8 @@ InvalidOpcode:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 6
-    push 0
+    mov rdi , 6
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -190,8 +190,8 @@ DeviceNotAvailable:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 7
-    push 0
+    mov rdi , 7
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -204,8 +204,8 @@ DoubleFault:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 8
-    push 0
+    mov rdi , 8
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -218,8 +218,8 @@ CorprocessorSegmentOverrun:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 9
-    push 0
+    mov rdi , 9
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -232,8 +232,8 @@ InvalidTSS:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 10
-    push 0
+    mov rdi , 10
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -246,8 +246,8 @@ SegmentNotPresent:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 11
-    push 0
+    mov rdi , 11
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -260,8 +260,8 @@ StackSegmentFault:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 12
-    push 0
+    mov rdi , 12
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -274,8 +274,8 @@ GeneralProtectionFault:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 13
-    push 0
+    mov rdi , 13
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -288,8 +288,8 @@ PageFault:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 14
-    push 0
+    mov rdi , 14
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -302,8 +302,8 @@ Reserved15:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 15
-    push 0
+    mov rdi , 15
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -316,8 +316,8 @@ x87FloatPointException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 16
-    push 0
+    mov rdi , 16
+    mov rsi ,  0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -330,8 +330,8 @@ AlignmentCheck:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 17
-    push 0
+    mov rdi ,  17
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -344,8 +344,8 @@ MachineCheck:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 18
-    push 0
+    mov rdi , 18
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -358,8 +358,8 @@ SIMDFloatingPointException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 19
-    push 0
+    mov rdi , 19
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -372,8 +372,8 @@ VirtualizationException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 20
-    push 0
+    mov rdi , 20
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -386,8 +386,8 @@ ControlProtectionException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 21
-    push 0
+    mov rdi , 21
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -400,8 +400,8 @@ Reserved22:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 22
-    push 0
+    mov rdi , 22
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -414,8 +414,8 @@ Reserved23:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 23
-    push 0
+    mov rdi , 23
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -428,8 +428,8 @@ Reserved24:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 24
-    push 0
+    mov rdi , 24
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -442,8 +442,8 @@ Reserved25:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 25
-    push 0
+    mov rdi , 25
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -456,8 +456,8 @@ Reserved26:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 26
-    push 0
+    mov rdi , 26
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -470,8 +470,8 @@ Reserved27:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 27
-    push 0
+    mov rdi , 27
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -484,8 +484,8 @@ HypervisorInjectionException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 28
-    push 0
+    mov rdi , 28
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -498,8 +498,8 @@ VMMCommunicationException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 29
-    push 0
+    mov rdi , 29
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
@@ -512,8 +512,8 @@ SecurityException:
     mov rbp , rsp               ; Set the stack base to current location of stack
     SAVE_REGISTERS_TO_STACK     ; Save the registers
 
-    push 30
-    push 0
+    mov rdi , 30
+    mov rsi , 0
     call _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
