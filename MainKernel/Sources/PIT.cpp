@@ -1,4 +1,5 @@
 #include <PIT.hpp>
+#include <TaskManagement.hpp>
 
 volatile unsigned short PITFrequency;
 unsigned long TickCount = 0;
@@ -8,7 +9,8 @@ void Kernel::PIT::MainInterruptHandler(void) {
     unsigned char *VideoMemory = (unsigned char *)0xB8000;
     VideoMemory[79*2] = Spinner[TickCount%4];
     TickCount += 1;
-    
+
+    Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
     PIC::SendEOI(32);
 }
 
@@ -17,8 +19,8 @@ unsigned long Kernel::PIT::GetTickCount(void) {
 }
 
 void Kernel::PIT::Initialize(void) {
-    PITFrequency = PIT_CONVERT_US_TO_HZ(500);          // Do NOT set this value to 100, it might crash
-                                                       // the timer system!
+    PITFrequency = PIT_CONVERT_US_TO_HZ(200);          // Do NOT set this value to 100, it might crash
+                                                        // the timer system!
     
     IO::Write(PIT_MODE_COMMAND_REGISTER , 0b00110000);
     IO::Write(PIT_MODE_COMMAND_REGISTER , 0b00110100); // 16bit binary mode , Rate generator , Channel 0
