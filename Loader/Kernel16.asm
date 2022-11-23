@@ -23,12 +23,16 @@ DAP:                ; DAP Area(Disk Address Packet)
     dd 0x00
     dd 0x00
 
+EnableGraphicMode: db 0x00
+
 Kernel16:
     mov ax , 0x00               ; Initialize segments as we did in boot loader
     mov ds , ax
+    
+    cmp byte[EnableGraphicMode] , 1
+    je SwitchToGraphicMode
 
-    call SwitchToGraphicMode     ; Switch to graphic mode
-
+L1:
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;     Initialization for E820 Memory Map     ;
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,7 +66,7 @@ Kernel16:
     mov cr0 , eax
     
     jmp 0x08:0x8C00     ; Far jump to 32bit kernel
-
+    
 SwitchToGraphicMode:
     mov ax , 0x00
     mov es , ax
@@ -75,8 +79,8 @@ SwitchToGraphicMode:
     mov bx , word[0x8C07]
     or bx , 0x4000
     int 0x10
-
-    ret
+    
+    jmp L1
 
 GDTR:
     dw GDTEND-GDT
