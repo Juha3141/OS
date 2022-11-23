@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "cstdarg": "cpp",
-        "chrono": "cpp",
-        "__locale": "cpp"
-    }
-}
