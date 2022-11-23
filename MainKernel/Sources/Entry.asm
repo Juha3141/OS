@@ -14,8 +14,8 @@ LongModeEntry:
     mov gs , ax
     mov ss , ax
     
-    mov rbp , 0x61FFF8
-    mov rsp , 0x61FFF8
+    mov rbp , 0x31FFF8
+    mov rsp , 0x31FFF8
     
     cmp byte[0x8000+2] , 0x01
     je .BSP
