@@ -8,13 +8,13 @@ SECTIONS {
   .data : {
     *(.data .data.*)
   }
+  .bss : {
+    *(.bss .bss.*)
+  }
   .rodata : {
     *(.rodata .rodata.*)
   }
   .rodata1 : {
     *(.rodata1)
-  }
-  .bss : {
-    *(.bss .bss.*)
   }
 }
