@@ -16,10 +16,11 @@
 #define TASK_STATUS_WORKING           0x01
 #define TASK_STATUS_PAUSED            0x02
 
-#define TASK_STACK_SIZE               8*1024*1024
+#define TASK_STACK_SIZE               2*1024
 
-#define TASK_MAX_DEMANDED_TIME        50
+#define TASK_QUANTUMN                 5
 #define TASK_PRIORITY_COUNT           10
+#define TASK_MIN_TASKCOUNT            15
 
 namespace Kernel {
     struct TaskRegisters {
@@ -69,29 +70,59 @@ namespace Kernel {
             struct Task *NextTask;
             struct Task *PreviousTask;
         };
-
         class PriorityQueue {
             friend class SchedulingManager;
+            friend class PriorityQueueManager;
             friend class PriorityQueue;
             public:
-                void Initialize(int Time);
-                void AddTask(struct Task *Task);
-                void RemoveTask(unsigned long TaskID);
+                void Initialize(int MaxTaskCount , int Time);
+                bool AddTask(struct Task *Task);
+                bool RemoveTask(unsigned long TaskID);
 
                 struct Task *GetCurrentTask(void);
                 void SwitchToNextTask(void);
                 
+                bool IsPriorityQueueEmpty(void);
+                bool IsPriorityQueueFull(void);
+                
                 int RunningTime;
+
+                unsigned long NextQueue;
             private:
                 struct Task *StartTask;
                 struct Task *CurrentTask;
                 int TaskCount = 0;
+
+                int MaxTaskCount = 0;
+        };
+        class PriorityQueueManager {
+            friend class SchedulingManager;
+            friend class PriorityQueue;
+            friend class PriorityQueueManager;
+            public:
+                void Initialize(int MaxTaskCount , int Time);
+                bool AddTask(struct Task *Task);
+                bool RemoveTask(unsigned long ID);
+                
+                struct Task *GetCurrentTask(void);
+                void SwitchToNextTask(void);
+                
+                PriorityQueue *StartPriorityQueue;
+                PriorityQueue *CurrentPriorityQueue;
+            private:
+                int DebugPriority; // For debug
+                
+                int CommonMaxTaskCount;
+                int CommonDemandedTime;
+                int PriorityQueueCount;
+
+                int TotalTaskCount = 0;
         };
         class SchedulingManager {
             friend class PriorityQueue;
             public:
                 void Initialize(void);
-                void AddTaskToPriorityQueue(struct Task *Task);
+                bool AddTaskToPriorityQueue(struct Task *Task);
                 struct Task *SwitchTask(void);
 
                 bool IsTaskDone(void) {
@@ -110,7 +141,8 @@ namespace Kernel {
                 struct Task *CurrentlyRunningTask;
                 int CurrentMaxAllocatedID = 0x00;
             private:
-                PriorityQueue *PriorityQueues;
+                //PriorityQueue *PriorityQueues; // Change to PriorityQueueManager
+                PriorityQueueManager *PriorityQueueManagerArray;
                 int TotalTaskCount;
                 int CurrentPriority = 0;
 
