@@ -9,31 +9,9 @@ void GraphicModeDemo(void);
 void HelloWorld(void);
 void PrivilagedOnes(void);
 
-extern "C" void Main(void) {
-    /*
-    int i;
-    long double X = -7;
-    long double Y = -7;
-    long double Value;
-    int ScreenX = 0;
-    int ScreenY = 0; // (((x)^2+(y)^2-36))^3+(-1)(x)^2(y)^3=0
-    unsigned char *VideoMemory = (unsigned char *)0xA0000;
+int ActivatedAPCount = 0;
 
-    for(Y = 7; Y > -7; Y -= 0.1) {
-        for(X = -7; X < 7; X += 0.1) {
-            Value = (((double)(X*X)+(double)(Y*Y))-36);
-            Value = ((double)(Value*Value*Value)-((double)(X*X*Y*Y*Y)));
-            if((Value <= 40) && (Value >= -40)) {
-                VideoMemory[ScreenY*320+ScreenX] = 0x0F;
-            }
-            ScreenX += 1;
-        }
-        ScreenX = 0;
-        ScreenY += 1;
-    }
-    while(1) {
-        ;
-    }*/
+extern "C" void Main(void) {
     __asm__ ("cli");
     Kernel::SystemStructure::Initialize();
     Kernel::TextScreen80x25::Initialize();
@@ -42,22 +20,34 @@ extern "C" void Main(void) {
     Kernel::PIT::Initialize();
     Kernel::Keyboard::Initialize();
     Kernel::Mouse::Initialize();
+    
     Kernel::TaskManagement::Initialize();
-
-    //Graphics::Initialize();
-
-    /*
-    if(Kernel::ACPI::SaveCoresInformation() == 0) {
-        Kernel::printf("Using MP Configurating Table\n");
+    
+    if(Kernel::ACPI::SaveCoresInformation() == false) {
+        Kernel::printf("Using MP Floating Table\n");
+        if(Kernel::MPFloatingTable::SaveCoresInformation() == false) {
+            Kernel::printf("Failed gathering core information\n");
+            __asm__ ("cli");
+            while(1) {
+                __asm__ ("hlt");
+            }
+        }
     }
     
     Kernel::LocalAPIC::EnableLocalAPIC();
     Kernel::LocalAPIC::ActiveAPCores();
-    */
     
+    Kernel::LocalAPIC::Timer::Initialize();
+    //Graphics::Initialize();
+
     Kernel::printf("Enabling Interrupt.\n");
     Kernel::printf("Kernel is initialized.\n");
     __asm__ ("sti");
+    
+    
+    while(1) { // Temporarly disable code
+        ;
+    }
 
     int i = 0;
     unsigned long ID[320];
@@ -78,12 +68,12 @@ extern "C" void Main(void) {
     }
     unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
     unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
-    while(1) {
+    while(1) {/*
         VideoMemory[80*6*2] = Spinner[i++];
         VideoMemory[80*6*2+1] = 0x0E;
         if(i >= 4) {
             i = 0;
-        }
+        }*/
     }
 }
 
@@ -113,10 +103,15 @@ extern "C" void APStartup(void) {
      * Create Task Management System
      * Create IO Redirecting table
      */
-    
-    
+    unsigned long i = 0;
+    Kernel::LocalAPIC::SendActivatedSignal();
+    for(i = 0; i < 100000000*Kernel::LocalAPIC::GetActivatedCoreCount(); i++) {
+        __asm__ ("nop");
+    }
+    int MyAPICID = Kernel::LocalAPIC::GetCurrentAPICID();
+    Kernel::printf("0x%X : I'M STILL ALIVE YOU BASTARDS!\n" , MyAPICID);
     while(1) {
-        
+        ;
     }
 }
 
