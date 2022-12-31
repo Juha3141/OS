@@ -16,11 +16,10 @@
 #define TASK_STATUS_WORKING           0x01
 #define TASK_STATUS_PAUSED            0x02
 
-#define TASK_STACK_SIZE               2*1024
+#define TASK_STACK_SIZE               8*1024*1024
 
-#define TASK_QUANTUMN                 5
+#define TASK_QUANTUMN                 1     // One ms = Approx. 50ms
 #define TASK_PRIORITY_COUNT           10
-#define TASK_MIN_TASKCOUNT            15
 
 namespace Kernel {
     struct TaskRegisters {
