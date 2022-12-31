@@ -81,7 +81,7 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size) {
 	// Load the NodeManager from the local address
 	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if(Size == 0) {
-		Kernel::printf("Allocation Error #0 : Zero allocated size");
+		Kernel::printf("Allocation Error #0 : Zero allocated size\n");
 		return 0x00;
 	}
 	struct Node *Node = (struct Node *)NodeManager->SearchReasonableNode(Size); // Search available node
