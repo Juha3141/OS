@@ -8,13 +8,13 @@ MAINKERNELTEMPRORYFOLDER = $(TEMPRORYFOLDER)/MainKernel
 CC = x86_64-elf-g++
 OBJCOPY = objcopy
 
-CCOPTIONS = -ffreestanding -fpack-struct=1 -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib
+CCOPTIONS = -Os -ffreestanding -fpack-struct=1 -W -Wall -I $(HEADERSFOLDER)/ -masm=intel -nostdlib
 #  -fomit-frame-pointer -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
 ELF = $(TEMPRORYFOLDER)/MainKernel.elf
 MAINSOURCES = Main.obj TextScreen.obj MemoryManagement.obj DescriptorTables.obj KernelSystemStructure.obj \
-ExceptionHandlers.obj PIT.obj Mouse.obj IO.obj APIC.obj ACPI.obj TaskManagement.obj \
+ExceptionHandlers.obj PIT.obj Mouse.obj IO.obj APIC.obj ACPI.obj MPFloatingTable.obj TaskManagement.obj \
 Graphics/Graphic.obj Graphics/VESABIOSExtensions.obj
 
 EXCLUDE_OPTIMIZATION = Keyboard.opt.obj
