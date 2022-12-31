@@ -10,9 +10,10 @@
 SECTION .text
 
 ; Interrupt handler : 
-global _ZN6Kernel3PIT16InterruptHandlerEv           ; Kernel::PIT::InterruptHandler
-global _ZN6Kernel8Keyboard16InterruptHandlerEv      ; Kernel::Keyboard::InterruptHandler 
-global _ZN6Kernel5Mouse16InterruptHandlerEv         ; Kernel::Mouse::InterruptHandler
+global _ZN6Kernel3PIT16InterruptHandlerEv               ; Kernel::PIT::InterruptHandler
+global _ZN6Kernel8Keyboard16InterruptHandlerEv          ; Kernel::Keyboard::InterruptHandler 
+global _ZN6Kernel5Mouse16InterruptHandlerEv             ; Kernel::Mouse::InterruptHandler
+global _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv   ; Kernel::APIC::Timer::InterruptHandler
 
 global DividedByZero
 global Debug
@@ -47,9 +48,10 @@ global VMMCommunicationException
 global SecurityException
 
 ; Functions being called by Interrupt handler(the actual handlers) : 
-extern _ZN6Kernel3PIT20MainInterruptHandlerEv       ; Kernel::PIT::MainInterruptHandler
-extern _ZN6Kernel8Keyboard20MainInterruptHandlerEv  ; Kernel::Keyboard::MainInterruptHandler
-extern _ZN6Kernel5Mouse20MainInterruptHandlerEv     ; Kernel::Mouse::MainInterruptHandler
+extern _ZN6Kernel3PIT20MainInterruptHandlerEv               ; Kernel::PIT::MainInterruptHandler
+extern _ZN6Kernel8Keyboard20MainInterruptHandlerEv          ; Kernel::Keyboard::MainInterruptHandler
+extern _ZN6Kernel5Mouse20MainInterruptHandlerEv             ; Kernel::Mouse::MainInterruptHandler
+extern _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv   ; Kernel::APIC::Timer::MainInterruptHandler
 
 extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
@@ -558,3 +560,15 @@ _ZN6Kernel5Mouse16InterruptHandlerEv:
     
     pop rbp                     ; Load stack base from the stack
     iretq                       ; Return from the interrupt
+
+_ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
+    push rbp
+    mov rbp , rsp
+    SAVE_REGISTERS_TO_STACK
+
+    call _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv
+
+    LOAD_REGISTERS_FROM_STACK
+
+    pop rbp
+    iretq
