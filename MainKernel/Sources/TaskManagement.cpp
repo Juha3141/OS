@@ -78,9 +78,9 @@ void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
     TotalTaskCount = 0;
     PriorityQueueManagerArray = (TaskManagement::PriorityQueueManager *)Kernel::MemoryManagement::Allocate(TASK_PRIORITY_COUNT*sizeof(PriorityQueueManager));
     for(i = 0; i < TASK_PRIORITY_COUNT; i++) {
-        PriorityQueueManagerArray[i].Initialize(TASK_MIN_TASKCOUNT+(i*3) , TASK_QUANTUMN);
+        PriorityQueueManagerArray[i].Initialize(255 , (TASK_PRIORITY_COUNT-i)*2);
         PriorityQueueManagerArray[i].DebugPriority = i;
-        Kernel::printf("Max task demanded to Priority %d : %d task(Q : %d)\n" , i , TASK_MIN_TASKCOUNT+i , TASK_QUANTUMN);
+        //Kernel::printf("Max task demanded to Priority %d : %d task(Q : %d)\n" , i , 255 , TASK_QUANTUMN);
     }
     MainTask = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
     MainTask->ID = this->CurrentMaxAllocatedID++;
