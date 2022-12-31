@@ -26,8 +26,9 @@
 #define LAPIC_LVT_LINT0_REGISTER                            0x350
 #define LAPIC_LVT_LINT1_REGISTER                            0x360
 #define LAPIC_LVT_ERROR_REGISTER                            0x370
-#define LAPIC_INITAL_COUNT_REGISTER                         0x380
-#define LAPIC_CURRNET_COUNT_REGISTER                        0x390
+#define LAPIC_INITIAL_COUNT_REGISTER                        0x380
+#define LAPIC_CURRENT_COUNT_REGISTER                        0x390
+#define LAPIC_DIVIDE_CONFIG_REGISTER                        0x3E0
 
 #define LAPIC_ICR_PHYSICAL_DESTINATION_MODE                 0b000000000000
 #define LAPIC_ICR_SENT_STATUS_PENDING                       0b1000000000000
@@ -43,6 +44,20 @@
 
 #define LAPIC_ICR_LEVEL_ASSERT                              0b100000000000000
 #define LAPIC_ICR_LEVEL_DEASSERT                            0b000000000000000
+                                                            
+#define LAPIC_TIMER_DELIBERY_STATE_PENDING                  0b0000001000000000000
+#define LAPIC_TIMER_MASK_INTERRUPT                          0b0010000000000000000
+#define LAPIC_TIMER_MODE_SINGLE_PULSE                       0b0000000000000000000
+#define LAPIC_TIMER_MODE_PERIODIC_PULSE                     0b0100000000000000000
+
+#define LAPIC_TIMER_DELAY_MS                                1000
+
+#define IOAPIC_REGISTER_SELECTOR                            0x00
+#define IOAPIC_REGISTER_WINDOW                              0x10
+
+#define IOAPIC_REGISTER_APICID                              0x00
+#define IOAPIC_REGISTER_IOAPIC_VERSION                      0x01
+#define IOAPIC_REGISTER_IO_REDIRECTION_TABLE                0x10 // 0x10 ~ 0x3F
 
 namespace Kernel {
     namespace LocalAPIC {
@@ -61,14 +76,34 @@ namespace Kernel {
         void WriteRegister_L(unsigned int RegisterAddress , unsigned long Data);
         
         unsigned int ReadRegister(unsigned int RegisterAddress);
-        unsigned int ReadRegister_L(unsigned int RegisterAddress);
+        unsigned long ReadRegister_L(unsigned int RegisterAddress);
 
         void EnableLocalAPIC(void);
         bool CheckBSP(void);
         void ActiveAPCores(void);
+
+        void SendActivatedSignal(void);
+        unsigned int GetActivatedCoreCount(void);
+        unsigned int GetCurrentAPICID(void);
+
+        void SendEOI(void);
+
+        namespace Timer {
+            void Initialize(void);
+            void SetInitialValue(unsigned int Value);
+            void Enable(void);
+            void Disable(void);
+            unsigned int GetTickCount(void);
+            void InterruptHandler(void);
+            void MainInterruptHandler(void);
+            
+        };
     }
     namespace IOAPIC {
-        ;
+        void WriteRegister(unsigned char RegisterAddress , unsigned int Data);
+        unsigned int ReadRegister(unsigned char RegisterAddress);
+
+        
     }
 }
 
