@@ -7,6 +7,7 @@
 #include <MemoryManagement.hpp>
 #include <ACPI.hpp>
 #include <APIC.hpp>
+#include <MPFloatingTable.hpp>
 #include <PIT.hpp>
 #include <Keyboard.hpp>
 #include <Mouse.hpp>
