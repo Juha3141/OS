@@ -5,7 +5,7 @@
 #define RSDP_ADDRESS_2 0x40E
 
 namespace Kernel {
-    struct CPUProcessorsInformation {
+    struct CPUInformation {
         int CoreCount;
         unsigned int *LocalAPICProcessorID;
         unsigned int *LocalAPICID;
@@ -15,6 +15,7 @@ namespace Kernel {
         unsigned long LocalAPICAddress;
 
         bool ACPIUsed;
+        bool MPUsed;
     };
     namespace ACPI {
         struct RSDP_10 {
@@ -89,9 +90,9 @@ namespace Kernel {
         unsigned long GetMADTAddress(void);
         bool SaveCoresInformation(void);
         bool CheckRSDPChecksum(unsigned long Address);
-
-        CPUProcessorsInformation *GetCoresInformation(void);
     }
+    struct CPUInformation *GetCoresInformation(void);
+    void WriteCoresInformation(CPUInformation *NewCoreInformation);
 }
 
 #endif
