@@ -1,7 +1,9 @@
 #include <ACPI.hpp>
 #include <Kernel.hpp>
 
-static struct Kernel::CPUProcessorsInformation *CoreInformation;
+static struct Kernel::CPUInformation *CoreInformation;
+
+#define DEBUG
 
 bool Kernel::ACPI::SaveCoresInformation(void) {
     int i = 0;
@@ -13,22 +15,30 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     unsigned long MADTAddress = GetMADTAddress();
     APICSDTHeader *MADTHeader = (APICSDTHeader *)MADTAddress;
     unsigned char *MADT = (unsigned char *)(MADTAddress+sizeof(APICSDTHeader));
-    if(MADTAddress == 0) {
-        CoreInformation->ACPIUsed = 0;
-        return 0;
+    // MADT : Describes every interrupt controller in the system, this includes LocalAPIC and I/O APIC.
+    // We're going to read the information of Local APIC and I/O APIC, and the number of Local APIC corresponds to 
+    // number of the cores, so we're also going to find the number of cores by those informations.
+    if(MADTAddress == 0) {  // If MADT was not found, use MP table.
+        CoreInformation->ACPIUsed = 0;  // Didn't use ACPI to get the information
+        return false;
     }
-    MADT += 8;
-    CoreInformation = (struct Kernel::CPUProcessorsInformation *)SystemStructure::Allocate(sizeof(struct Kernel::CPUProcessorsInformation));
+    MADT += 8;  // 
+    // Allocate space to store core informations.
+    CoreInformation = (struct Kernel::CPUInformation *)SystemStructure::Allocate(sizeof(struct Kernel::CPUInformation));
     
+    // Get the address of Local APIC registers from MSR.
+    // MSR 0x1B : APIC_BASE
+    // Contains 32bits of Local APIC base and flags.
     __asm__ ("mov rcx , 27");
     __asm__ ("rdmsr");
-    __asm__ ("mov %0 , eax":"=r"(EAX));
-    __asm__ ("mov %0 , edx":"=r"(EDX));
+
+    __asm__ ("mov %0 , eax":"=r"(EAX)); // EAX : Lower 32 bits
+    __asm__ ("mov %0 , edx":"=r"(EDX)); // EDX : Higher 32 bits
+    
     CoreInformation->LocalAPICAddress = (EDX << 31)|EAX;
+    // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
-#ifdef DEBUG
     Kernel::printf("Local APIC Address : 0x%X\n" , CoreInformation->LocalAPICAddress);
-#endif
     while(1) {
         if(MADT[i] == 0) {
             CoreCount++;
@@ -43,29 +53,35 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
-    while(1) {
-        if(MADT[i] == 0) {
+    while(i < (MADTHeader->Length-sizeof(APICSDTHeader)-8)) {
+        if(MADT[i] == 0) {      // Entry Type 0 : Processor Local APIC
+            /* Process Local APIC Entry : 
+             * Offset 2(Size : 1) : ACPI Processor ID
+             * Offset 3(Size : 1) : APIC ID
+             * Offset 4(Size : 4) : Flags(0 = Processor Enable , 1 = Online Capable(Available for activation))
+             */
+            // Offset 2 : MADT[i+2]
             CoreInformation->LocalAPICProcessorID[j] = (unsigned int)((unsigned char)MADT[i+2]);
+            // Offset 3 : MADT[i+3]
             CoreInformation->LocalAPICID[j] = (unsigned int)((unsigned char)MADT[i+3]);
             j++;
         }
-        else if(MADT[i] == 1) {
-            CoreInformation->IOAPICAddress = ((MADT[i+4])|(MADT[i+5] << 8)|(MADT[i+6] << 16)|(MADT[i+7] << 24));
+        else if(MADT[i] == 1) { // Entry Type 1 : I/O APIC 
+            CoreInformation->IOAPICAddress = (unsigned int)(((unsigned int)(MADT[i+4]))|((unsigned int)(MADT[i+5] << 8))|((unsigned int)(MADT[i+6] << 16))|((unsigned int)(MADT[i+7] << 24)));
         }
         i += MADT[i+1];
-        if(i >= (MADTHeader->Length-sizeof(APICSDTHeader)-8)) {
-            break;
-        }
     }
+    Kernel::printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
     CoreInformation->CoreCount = CoreCount;
-#ifdef DEBUG
-    Kernel::printf("Core Count : %d\n" , CoreCount);
-#endif
-    return 1;
+    return true;
 }
 
-Kernel::CPUProcessorsInformation *Kernel::ACPI::GetCoresInformation(void) {
+Kernel::CPUInformation *Kernel::GetCoresInformation(void) {
     return CoreInformation;
+}
+
+void Kernel::WriteCoresInformation(Kernel::CPUInformation *NewCoreInformation) {
+    CoreInformation = NewCoreInformation;
 }
 
 unsigned long Kernel::ACPI::GetRSDPAddress(void) {
@@ -103,7 +119,7 @@ unsigned long Kernel::ACPI::GetMADTAddress(void) {
     NextAddress = (unsigned int *)(((unsigned long)RSDT)+sizeof(APICSDTHeader));
     NextAddressX = (unsigned long *)(((unsigned long)RSDT)+sizeof(APICSDTHeader));
     for(i = 0; i < EntriesCount; i++) {
-        if(memcmp(RSDT->Header.Signature , "APIC" , 4) == 0) {
+        if(memcmp(RSDT->Header.Signature , "APIC" , 4) == 0) {  // MADT Signature : APIC
             return (unsigned long)RSDT;
         }
         RSDT = (struct RSDT *)((RSDP->Revision == 2) ? NextAddressX[i] : NextAddress[i]);
