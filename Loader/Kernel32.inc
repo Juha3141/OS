@@ -150,13 +150,13 @@ memcpy:
     push eax
     push ecx
 
-    mov edi , dword[ebp+16]
-    mov esi , dword[ebp+12]
-    mov ecx , dword[ebp+8]
+    mov edi , dword[ebp+16]   ; Destintion
+    mov esi , dword[ebp+12]   ; Source
+    mov ecx , dword[ebp+8]    ; Size
     
     .Loop:
-        mov al , byte[edi]
-        mov byte[esi] , al
+        mov al , byte[esi]
+        mov byte[edi] , al
         
         add esi , 1
         add edi , 1
@@ -287,6 +287,9 @@ ProtectMode:
     popad
     mov esp , ebp
     pop ebp
+
+    xor eax , eax
+    mov al , byte[RMA_Successed]
 
     ret 
 
