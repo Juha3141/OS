@@ -15,6 +15,7 @@ void Kernel::MemoryManagement::Initialize(void) {
 	int j;
 	unsigned long TotalUsableMemory = 0;
 	Kernel::MemoryManagement::NodeManager *NodeManager;
+	QuerySystemAddressMap *E820 = (QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS;
 	// Location of the E820, if you are curious, check line 36 of the Kernel16.asm
 	NodeManager = (Kernel::MemoryManagement::NodeManager*)MEMORYMANAGEMENT_MEMORY_STARTADDRESS; // Allocate system structure
 	Kernel::printf("Node Manager Location : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
@@ -26,7 +27,15 @@ void Kernel::MemoryManagement::Initialize(void) {
 	 * If you find some weird code that seems like a problem of compiler, just code it to assembly language.
 	 * Remember... assembly language is the way to solve everything..
 	*/
-	// Testing the memory allocation & deallocation
+	// Get the unusable memory
+	// To-do : Mask unusable memory
+	while(1) {
+		if(E820[i].Type == 0x00) {
+			break;
+		}
+		Kernel::printf("0x%X~0x%X : 0x%X\n" , E820[i].Address , E820[i].Address+E820[i].Length , E820[i].Type);
+		i += 1;
+	}
 	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
 	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS+sizeof(Kernel::MemoryManagement::NodeManager) , TotalUsableMemory);		// Initialize the node manager
 	return;
