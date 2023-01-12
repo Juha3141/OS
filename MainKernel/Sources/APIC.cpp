@@ -1,5 +1,6 @@
 #include <APIC.hpp>
 #include <PIT.hpp>
+#include <TaskManagement.hpp>
 
 void Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
     struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
@@ -112,6 +113,7 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
     // Since it's confirmed that we're running in BSP core, by simply getting the current APIC ID, we can get the BSP core APIC ID.
     BSPAPICID = GetCurrentAPICID();
     
+    __asm__ ("cli");
     // Level Trigger : For INIT IPI
     // Level Trigger , Delivery Mode : INIT , Sending Level : Assert , Using Abbreviation , For every core
     WriteRegister(LAPIC_ERROR_STATUS_REGISTER , 0x00);
@@ -137,6 +139,8 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
         }
     }
     
+    __asm__ ("sti");
+
     while(1) { // Wait until activated core count is equal to number of cores
         if(Kernel::LocalAPIC::GetActivatedCoreCount() >= Kernel::GetCoresInformation()->CoreCount-1) {
             Kernel::printf("All AP Cores are activated\n");
@@ -159,9 +163,8 @@ void Kernel::LocalAPIC::Timer::Initialize(void) {
     Kernel::printf("Initializing Timer\n");
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , 0xFFFFFFFF); // Initial value of the counter
     WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b1011);
-    Kernel::PIT::DelayMilliseconds(LAPIC_TIMER_DELAY_MS);
     WriteRegister(LAPIC_LVT_TIMER_REGISTER , LAPIC_TIMER_MASK_INTERRUPT);
-    InitialLocalAPICTickCount = 0xFFFFFFFF-ReadRegister(LAPIC_CURRENT_COUNT_REGISTER);
+    InitialLocalAPICTickCount = 10000;
     WriteRegister(LAPIC_LVT_TIMER_REGISTER , (0b10 << 16)|41); // LVT Timer Register, determins how interrupt occur.
     WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b1011);
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , InitialLocalAPICTickCount); // Initial value of the counter
@@ -185,9 +188,11 @@ unsigned int Kernel::LocalAPIC::Timer::GetTickCount(void) {
 }
 
 void Kernel::LocalAPIC::Timer::MainInterruptHandler(void) {
-    Kernel::printf("APIC timer interrupt has occured\n");
+    Kernel::PIC::SendEOI(41);
     Kernel::LocalAPIC::SendEOI();
+    Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
 }
 
 /// I/O APIC ///
 
+//void Kernel::IOAPIC::
