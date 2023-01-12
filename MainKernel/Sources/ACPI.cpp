@@ -72,6 +72,7 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
         i += MADT[i+1];
     }
     Kernel::printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
+    Kernel::printf("Core count : %d\n" , CoreCount);
     CoreInformation->CoreCount = CoreCount;
     return true;
 }
