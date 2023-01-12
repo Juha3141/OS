@@ -7,7 +7,8 @@ IsAPStarted: db 0x01
 RunningAPCoreCount: dw 0x00
 
 StartAP:
-    mov byte[IsAPStarted] , 0xFF
+    mov al , 0xFF
+    lock xchg byte[IsAPStarted] , al
 
     cli                 ; Disable interrupt to switch to PMode
     lgdt [GDTR]         ; Load GDT
