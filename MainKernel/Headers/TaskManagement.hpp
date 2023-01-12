@@ -14,11 +14,11 @@
 #define TASK_FLAGS_SEPERATED_MEMORY_AREA    0x10
 
 #define TASK_STATUS_WORKING           0x01
-#define TASK_STATUS_PAUSED            0x02
+#define TASK_STATUS_WAITING           0x02
+#define TASK_STATUS_SLEEPING          0x04
+#define TASK_STATUS_INVALID           0x08
 
-#define TASK_STACK_SIZE               8*1024*1024
-
-#define TASK_QUANTUMN                 1     // One ms = Approx. 50ms
+#define TASK_MAX_DEMANDED_TIME        100
 #define TASK_PRIORITY_COUNT           10
 
 namespace Kernel {
@@ -27,7 +27,7 @@ namespace Kernel {
         unsigned long RBX;
         unsigned long RCX;
         unsigned long RDX;
-        
+
         unsigned long RSI;
         unsigned long RDI;
 
@@ -60,68 +60,39 @@ namespace Kernel {
             unsigned long ID;
             unsigned long Flags;
             unsigned long Priority;
-            
+            unsigned long StackSize;
+
             struct TaskRegisters Registers;
             unsigned long CR3;
-            
-            char Name[32];
 
+            char Name[32];
             struct Task *NextTask;
-            struct Task *PreviousTask;
         };
+
         class PriorityQueue {
             friend class SchedulingManager;
-            friend class PriorityQueueManager;
             friend class PriorityQueue;
             public:
-                void Initialize(int MaxTaskCount , int Time);
-                bool AddTask(struct Task *Task);
-                bool RemoveTask(unsigned long TaskID);
+                void Initialize(int Time);
+                void AddTask(struct Task *Task);
+                void RemoveTask(unsigned long TaskID);
 
                 struct Task *GetCurrentTask(void);
                 void SwitchToNextTask(void);
-                
-                bool IsPriorityQueueEmpty(void);
-                bool IsPriorityQueueFull(void);
-                
-                int RunningTime;
 
-                unsigned long NextQueue;
+                int RunningTime;
             private:
                 struct Task *StartTask;
                 struct Task *CurrentTask;
+
+                struct Task *NextTaskLinkerToAllocate;
                 int TaskCount = 0;
-
-                int MaxTaskCount = 0;
-        };
-        class PriorityQueueManager {
-            friend class SchedulingManager;
-            friend class PriorityQueue;
-            friend class PriorityQueueManager;
-            public:
-                void Initialize(int MaxTaskCount , int Time);
-                bool AddTask(struct Task *Task);
-                bool RemoveTask(unsigned long ID);
-                
-                struct Task *GetCurrentTask(void);
-                void SwitchToNextTask(void);
-                
-                PriorityQueue *StartPriorityQueue;
-                PriorityQueue *CurrentPriorityQueue;
-            private:
-                int DebugPriority; // For debug
-                
-                int CommonMaxTaskCount;
-                int CommonDemandedTime;
-                int PriorityQueueCount;
-
-                int TotalTaskCount = 0;
         };
         class SchedulingManager {
             friend class PriorityQueue;
             public:
                 void Initialize(void);
-                bool AddTaskToPriorityQueue(struct Task *Task);
+                void AddTaskToPriorityQueue(struct Task *Task);
                 struct Task *SwitchTask(void);
 
                 bool IsTaskDone(void) {
@@ -140,8 +111,7 @@ namespace Kernel {
                 struct Task *CurrentlyRunningTask;
                 int CurrentMaxAllocatedID = 0x00;
             private:
-                //PriorityQueue *PriorityQueues; // Change to PriorityQueueManager
-                PriorityQueueManager *PriorityQueueManagerArray;
+                PriorityQueue *PriorityQueues;
                 int TotalTaskCount;
                 int CurrentPriority = 0;
 
@@ -149,13 +119,15 @@ namespace Kernel {
         };
 
         void Initialize(void);
-        unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , const char *TaskName);
+        unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , unsigned long StackSize , const char *TaskName);
         void SwitchTask(void);
         void SwitchTaskInTimerInterrupt(void);
         struct Task *GetCurrentlyRunningTask(void);
         unsigned long GetCurrentlyRunningTaskID(void);
-        
-        extern "C" void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContextToChange);
+        // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_
+        void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContextToChange);
+        // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE
+        void SwitchContext(struct Kernel::TaskRegisters *ContextToChange);
     }
 }
 
