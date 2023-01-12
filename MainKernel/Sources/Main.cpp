@@ -2,6 +2,7 @@
 #include <Kernel.hpp>
 #include <Queue.hpp>
 #include <TaskManagement.hpp>
+#include <ResourceAccessManagement.hpp>
 
 #include <Graphics/Graphic.hpp>
 
@@ -10,6 +11,8 @@ void HelloWorld(void);
 void PrivilagedOnes(void);
 
 int ActivatedAPCount = 0;
+Kernel::SpinLock::Resource SpinLock1;
+Kernel::SpinLock::Resource SpinLock2;
 
 extern "C" void Main(void) {
     __asm__ ("cli");
@@ -17,12 +20,11 @@ extern "C" void Main(void) {
     Kernel::TextScreen80x25::Initialize();
     Kernel::DescriptorTables::Initialize();
     Kernel::MemoryManagement::Initialize();
-    Kernel::PIT::Initialize();
+    //Kernel::PIT::Initialize();
     Kernel::Keyboard::Initialize();
     Kernel::Mouse::Initialize();
     
     Kernel::TaskManagement::Initialize();
-    
     if(Kernel::ACPI::SaveCoresInformation() == false) {
         Kernel::printf("Using MP Floating Table\n");
         if(Kernel::MPFloatingTable::SaveCoresInformation() == false) {
@@ -33,47 +35,58 @@ extern "C" void Main(void) {
             }
         }
     }
+    /*
     
-    Kernel::LocalAPIC::EnableLocalAPIC();
+    SpinLock1.Initialize();
+    SpinLock2.Initialize();
     Kernel::LocalAPIC::ActiveAPCores();
     
-    Kernel::LocalAPIC::Timer::Initialize();
     //Graphics::Initialize();
-
+    */
+    Kernel::LocalAPIC::Timer::Initialize();
     Kernel::printf("Enabling Interrupt.\n");
     Kernel::printf("Kernel is initialized.\n");
     __asm__ ("sti");
     
-    
-    while(1) { // Temporarly disable code
-        ;
-    }
-
     int i = 0;
-    unsigned long ID[320];
     for(i = 0; i < 80; i++) {
-        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 9 , "Test1");
-    }
-    for(; i < 160; i++) {
-        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 9 , "Test1");
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 9 , 1024 , "Test1");
     }
     for(i = 0; i < 80; i++) {
-        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 3 , "Test1");
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 8 , 1024 , "Test1");
     }
-    for(; i < 160; i++) {
-        ID[i] = Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 3 , "Test1");
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 7 , 1024 , "Test1");
     }
-    for(i = 0; i < 10; i++) {
-        Kernel::TaskManagement::CreateTask((unsigned long)PrivilagedOnes , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 0 , "Privilaged Ones");
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 6 , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 5 , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 4 , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 3 , 8*1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 2 , 8*1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 1 , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        Kernel::TaskManagement::CreateTask((unsigned long)PrivilagedOnes , TASK_FLAGS_WORKING|TASK_FLAGS_PRIVILAGE_KERNEL , 0 , 8*1024 , "Privilaged Ones");
     }
     unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
     unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
-    while(1) {/*
-        VideoMemory[80*6*2] = Spinner[i++];
-        VideoMemory[80*6*2+1] = 0x0E;
+    while(1) {
+        VideoMemory[80*11*2] = Spinner[i++];
+        VideoMemory[80*11*2+1] = 0x0E;
         if(i >= 4) {
             i = 0;
-        }*/
+        }
     }
 }
 
@@ -99,19 +112,10 @@ extern "C" void APStartup(void) {
     /* To do : Seperate AP & BSP , 
      * Create TSS for AP
      * Create Memory Management System
-     * Create Synchronization System(Spinlock)
-     * Create Task Management System
      * Create IO Redirecting table
      */
-    unsigned long i = 0;
-    Kernel::LocalAPIC::SendActivatedSignal();
-    for(i = 0; i < 100000000*Kernel::LocalAPIC::GetActivatedCoreCount(); i++) {
-        __asm__ ("nop");
-    }
-    int MyAPICID = Kernel::LocalAPIC::GetCurrentAPICID();
-    Kernel::printf("0x%X : I'M STILL ALIVE YOU BASTARDS!\n" , MyAPICID);
     while(1) {
-        ;
+        __asm__ ("hlt");
     }
 }
 
