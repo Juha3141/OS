@@ -12,6 +12,7 @@ DAP:                ; DAP Area(Disk Address Packet)
     dd 0x00
 
 DriveNumberLocation: equ 0x7C00+0x1F
+FoundKernelMessage: db "Found Kernel" , 0x00
 ErrorMessage: db "Error ["
 ErrorCode: dd 0x00
            db "]" , 0x00
