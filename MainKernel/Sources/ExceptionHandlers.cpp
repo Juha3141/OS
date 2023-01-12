@@ -36,7 +36,12 @@ void Kernel::PIC::SendEOI(int InterruptNumber) {
 }
 
 void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long ErrorCode) {
-    static char ExceptionNames[29][32] = {
+    unsigned long CR0;
+    unsigned long CR1;
+    unsigned long CR2;
+    unsigned long CR3;
+    unsigned long CR4;
+    char ExceptionNames[29][32] = {
         "Divided by Zero" , "Debug" , "Non-Maskable Interrupt" , 
         "Breakpoint" , "Overflow" , "Bound Range Exceeded" , 
         "Invalid Opcode" , "Device not Available" , "Double Fault" , 
@@ -48,15 +53,24 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Hypervisor Injection Exception" , "VMM Communication Exception" , 
         "Security Exception" , 
     };
-    __asm__ ("cli");/*
-    Kernel::ClearScreen(0x00 , 0x04);*/
+    struct Kernel::STACK_STRUCTURE *IST = (struct Kernel::STACK_STRUCTURE *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::STACK_STRUCTURE));
+    __asm__ ("cli");
     Kernel::PrintString("[Exception occurred]\n");
-    Graphics::VBE::DrawText(10 , 10 , 0xFF0000 , 0x00 , "[Exception occurred]");
+    __asm__ ("mov %0 , cr0":"=r"(CR0));
+    __asm__ ("mov %0 , cr1":"=r"(CR1));
+    __asm__ ("mov %0 , cr2":"=r"(CR2));
+    __asm__ ("mov %0 , cr3":"=r"(CR3));
+    __asm__ ("mov %0 , cr4":"=r"(CR4));
     Kernel::printf("Vector Number : %d(%s)\n" , ExceptionNumber , ExceptionNames[ExceptionNumber]);
-    Graphics::VBE::DrawText(10 , 10+16 , 0xFF0000 , 0x00 , "Vector Number : %d\n" , ExceptionNumber);
     Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
-    Graphics::VBE::DrawText(10 , 10+(16*2) , 0xFF0000 , 0x00 , "IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
+    Kernel::printf("Dumping Registers : \n");
+    Kernel::printf("RAX=0x%X RBX=0x%X RCX=0x%X RDX=0x%X\n" , IST->RAX , IST->RBX , IST->RCX , IST->RDX);
+    Kernel::printf("RDI=0x%X RSI=0x%X R8=0x%X R9=0x%X\n" , IST->RDI , IST->RSI , IST->R8 , IST->R9);
+    Kernel::printf("R10=0x%X R11=0x%X R12=0x%X R13=0x%X\n" , IST->R10 , IST->R11 , IST->R12 , IST->R13);
+    Kernel::printf("R14=0x%X R15=0x%X RBP=0x%X RSP=0x%X\n" , IST->R14 , IST->R15 , IST->RBP , IST->RSP);
+    Kernel::printf("RIP=0x%X RFlags=0x%X CS=0x%X DS=0x%X\n" , IST->RIP , IST->RFlags , IST->CS , IST->DS);
+    Kernel::printf("ES=0x%X FS=0x%X GS=0x%X SS=0x%X\n" , IST->ES , IST->FS , IST->GS , IST->SS);
     while(1) {
-        ;
+        __asm__ ("hlt");
     }
 }
