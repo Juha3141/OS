@@ -2,11 +2,14 @@
 
 SECTION .text
 
-global SwitchContext
+global _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_ ; void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContetToChange);
+global _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE    ; void SwitchContext(struct Kernel::TaskRegisters *ContextToChange);
 
-SwitchContext:
+_ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_:
     ; RDI : CurrentRegisters
     ; RSI : NextRegisters
+
+    ;Saving the context
     mov qword[rdi] , rax
     mov qword[rdi+8] , rbx
     mov qword[rdi+16] , rcx
@@ -52,6 +55,8 @@ SwitchContext:
     mov rax , cr3
     mov qword[rdi+192] , rax    ; CR3
 
+    ; Loading the context
+
     mov rbx , qword[rsi+8]
     mov rcx , qword[rsi+16]
     mov rdx , qword[rsi+24]
@@ -88,5 +93,47 @@ SwitchContext:
     mov rbp , qword[rsi+120]
     mov rsi , qword[rsi+32]
     mov rax , qword[rsi]
+
+    iretq
+
+_ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE:
+    mov rbx , qword[rdi+8]
+    mov rcx , qword[rdi+16]
+    mov rdx , qword[rdi+24]
+    
+    mov r8 , qword[rdi+48]
+    mov r9 , qword[rdi+56]
+    mov r10 , qword[rdi+64]
+    mov r11 , qword[rdi+72]
+    mov r12 , qword[rdi+80]
+    mov r13 , qword[rdi+88]
+    mov r14 , qword[rdi+96]
+    mov r15 , qword[rdi+104]
+    
+    mov rdi , qword[rdi+40]
+
+;    mov rax , qword[rdi+144]
+;    mov ds , rax
+;    mov rax , qword[rdi+152]
+;    mov es , rax
+;    mov rax , qword[rdi+160]
+;    mov fs , rax
+;    mov rax , qword[rdi+168]
+;    mov gs , rax
+
+;    mov rax , qword[rdi+192]
+;    mov cr3 , rax
+
+    push qword[rdi+176]
+    push qword[rdi+112]
+    push qword[rdi+184]
+    push qword[rdi+136]
+    push qword[rdi+128]
+    
+    mov rbp , qword[rdi+120]
+    mov rdi , qword[rdi+32]
+    mov rax , qword[rdi]
+
+    jmp $
 
     iretq
