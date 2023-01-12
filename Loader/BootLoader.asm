@@ -18,7 +18,7 @@ KernelLoaderFileName: db "KERN~DDP.LDR" , 0x00  ; Name of the Kernel Loader     
                                                 ; Note : If you're in windows, change KernelLoaderFileName to "KERNEL~1.LDR", 
                                                 ; or if you're in linux, change it to "KERN~DDP.LDR".
 KernelLoaderLocation: dd 0x00                   ; Location of the Kernel Loader                    0x12
-KernelLoaderSectorSize: db 0x05                 ; Size of the Kernel Loader(Static)                0x16
+KernelLoaderSectorSize: db 0x03                 ; Size of the Kernel Loader(Static)                0x16
 StaticKernelLoaderStartAddress: dd 0x8400       ; Start of the Kernel Loader                       0x18
 DriveNumber: db 0x00                            ; Save number of the driver that is booted         0x1B
                                                 ; (for the situation that is using EDX register)
