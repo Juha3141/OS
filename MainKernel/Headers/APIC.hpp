@@ -30,6 +30,8 @@
 #define LAPIC_CURRENT_COUNT_REGISTER                        0x390
 #define LAPIC_DIVIDE_CONFIG_REGISTER                        0x3E0
 
+// Interrup Command Register 
+
 #define LAPIC_ICR_PHYSICAL_DESTINATION_MODE                 0b000000000000
 #define LAPIC_ICR_SENT_STATUS_PENDING                       0b1000000000000
 #define LAPIC_ICR_LEVEL_TRIGGER                             0b100000000000000
@@ -37,6 +39,8 @@
 #define LAPIC_ICR_IPI_INIT                                  0b10100000000
 #define LAPIC_ICR_IPI_STARTUP                               0b11000000000
 
+// For Logical Destination Mode
+// Destination Shorthand
 #define LAPIC_ICR_NOT_USING_ABBREVIATION                    0b00000000000000000000
 #define LAPIC_ICR_SENDING_JUST_FOR_ME                       0b01000000000000000000
 #define LAPIC_ICR_SENDING_FOR_EVERYONE_INCLUDING_ME         0b10000000000000000000
@@ -50,7 +54,7 @@
 #define LAPIC_TIMER_MODE_SINGLE_PULSE                       0b0000000000000000000
 #define LAPIC_TIMER_MODE_PERIODIC_PULSE                     0b0100000000000000000
 
-#define LAPIC_TIMER_DELAY_MS                                1000
+#define LAPIC_TIMER_DELAY_MS                                50
 
 #define IOAPIC_REGISTER_SELECTOR                            0x00
 #define IOAPIC_REGISTER_WINDOW                              0x10
