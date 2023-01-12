@@ -1,4 +1,5 @@
 #include <TaskManagement.hpp>
+#include <ResourceAccessManagement.hpp>
 
 static Kernel::TaskManagement::SchedulingManager *TaskSchedulingManager;
 
@@ -10,7 +11,7 @@ void Kernel::TaskManagement::Initialize(void) {
     TaskSchedulingManager->Initialize();
 } 
 
-static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigned long StartAddress) {
+static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigned long StartAddress , unsigned long StackSize) {
     memset(&(Task->Registers) , 0 , sizeof(struct Kernel::TaskRegisters));
     switch(Task->Flags & 0x02) {
         case TASK_FLAGS_PRIVILAGE_KERNEL:
@@ -46,57 +47,62 @@ static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigne
             Task->Registers.SS = USER_DS;
             break;
     }
-    Task->Registers.RSP = (unsigned long)Kernel::MemoryManagement::Allocate(TASK_STACK_SIZE)+TASK_STACK_SIZE-8;
+    Task->Registers.RSP = (unsigned long)Kernel::MemoryManagement::Allocate(StackSize)+StackSize-8;
     Task->Registers.RBP = Task->Registers.RSP;
+    //*((unsigned long *)Task->Registers.RBP) = /*Return Address*/;
     Task->Registers.RFlags = 0x202;
     Task->Registers.RIP = StartAddress;
     // Temprory
     __asm__ ("mov %0 , cr3":"=r"(Task->Registers.CR3));
 }
 
-unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , const char *TaskName) {
+unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , unsigned long StackSize , const char *TaskName) {
     struct Task *Task;
-    __asm__ ("cli");
+
+    EnterCriticalSection();
+    
     Task = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
     Task->ID = TaskSchedulingManager->CurrentMaxAllocatedID++;
     Task->Flags = Flags;
     Task->Priority = Priority;
 
-    SetTaskRegisters(Task , StartAddress);
+    SetTaskRegisters(Task , StartAddress , StackSize);
     strcpy(Task->Name , TaskName);
 
-    // Kernel::printf("Adding task to queue : %d\n" , Task->Priority);
     TaskSchedulingManager->AddTaskToPriorityQueue(Task);
-    // Kernel::printf("Task added to the queue\n");
-    __asm__ ("sti");
+
+    ExitCriticalSection();
+
     return Task->ID;
 }
 
 void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
     int i;
+    int DemandingTime;
+    int RunningTimePerPriority = TASK_MAX_DEMANDED_TIME;
     struct Task *MainTask;
     TotalTaskCount = 0;
-    PriorityQueueManagerArray = (TaskManagement::PriorityQueueManager *)Kernel::MemoryManagement::Allocate(TASK_PRIORITY_COUNT*sizeof(PriorityQueueManager));
-    for(i = 0; i < TASK_PRIORITY_COUNT; i++) {
-        PriorityQueueManagerArray[i].Initialize(255 , (TASK_PRIORITY_COUNT-i)*2);
-        PriorityQueueManagerArray[i].DebugPriority = i;
-        //Kernel::printf("Max task demanded to Priority %d : %d task(Q : %d)\n" , i , 255 , TASK_QUANTUMN);
+    PriorityQueues = (TaskManagement::PriorityQueue *)Kernel::MemoryManagement::Allocate(TASK_PRIORITY_COUNT*sizeof(PriorityQueue));
+    for(i = 0; i < TASK_PRIORITY_COUNT-1; i++) {
+        DemandingTime = 100/(TASK_PRIORITY_COUNT-i);
+        PriorityQueues[i].Initialize(DemandingTime);
+        Kernel::printf("Time Demanded to Priority %d : %d cycle\n" , i , DemandingTime);
     }
     MainTask = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
     MainTask->ID = this->CurrentMaxAllocatedID++;
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL|TASK_FLAGS_WORKING;
     MainTask->Priority = 0;
 
-    SetTaskRegisters(MainTask , 0x00);
+    SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
     strcpy(MainTask->Name , "MAINTASK");
 
-    PriorityQueueManagerArray[0].AddTask(MainTask);
+    PriorityQueues[0].AddTask(MainTask);
     CurrentlyRunningTask = MainTask;
     Kernel::printf("Main Task ID : %d\n" , MainTask->ID);
 }
 
-bool Kernel::TaskManagement::SchedulingManager::AddTaskToPriorityQueue(struct Task *Task) {
-    return PriorityQueueManagerArray[Task->Priority].AddTask(Task);
+void Kernel::TaskManagement::SchedulingManager::AddTaskToPriorityQueue(struct Task *Task) {
+    PriorityQueues[Task->Priority].AddTask(Task);
 }
 
 struct Kernel::TaskManagement::Task *Kernel::TaskManagement::SchedulingManager::SwitchTask(void) {
@@ -104,17 +110,15 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::SchedulingManager::
     if(CurrentPriority >= TASK_PRIORITY_COUNT) {
         CurrentPriority = 0;
     }
-    if(PriorityQueueManagerArray[CurrentPriority].TotalTaskCount != 0) { // Check if the queue is all empty
-        // Kernel::printf("Switching to next task : %d Queue" , CurrentPriority);
-        PriorityQueueManagerArray[CurrentPriority].SwitchToNextTask();
-        Task = PriorityQueueManagerArray[CurrentPriority].GetCurrentTask();
+    if(PriorityQueues[CurrentPriority].TaskCount != 0) {
+        PriorityQueues[CurrentPriority].SwitchToNextTask();
+        Task = PriorityQueues[CurrentPriority].GetCurrentTask();
         this->CurrentlyRunningTask = Task;
-        
-        TaskSchedulingManager->SetExpirationDate(PriorityQueueManagerArray[CurrentPriority].CommonDemandedTime);
+
+        TaskSchedulingManager->SetExpirationDate(PriorityQueues[CurrentPriority].RunningTime);
         CurrentPriority++;
     }
     else {
-        // Kernel::printf("No task in %d queue, skipping\n" , CurrentPriority);
         CurrentPriority++;
         return this->SwitchTask();
     }
@@ -130,7 +134,6 @@ void Kernel::TaskManagement::SwitchTask(void) {
         return;
     }
     CurrentTask = TaskSchedulingManager->SwitchTask();
-    
     SwitchContext(&(PreviousTask->Registers) , &(CurrentTask->Registers));
 }
 
@@ -138,25 +141,20 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     struct Kernel::TaskManagement::Task *PreviousTask;
     struct Kernel::TaskManagement::Task *CurrentTask;
     struct Kernel::STACK_STRUCTURE *IST = (struct Kernel::STACK_STRUCTURE *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::STACK_STRUCTURE));
-    // Kernel::printf("Switching Task : \n");
     PreviousTask = TaskSchedulingManager->CurrentlyRunningTask;
-    // Kernel::printf("PreviousTask   : 0x%X\n" , PreviousTask->ID);
-    if(TaskSchedulingManager->IsTaskDone() == false) { // If the demanded time is not ended, expire.
+    if(TaskSchedulingManager->IsTaskDone() == false) {
         TaskSchedulingManager->SlowlyExpirate();
-        // Kernel::printf("Yet.\n");
         return;
     }
-    CurrentTask = TaskSchedulingManager->SwitchTask(); // Time expired
-    // Kernel::printf("CurrentTask    : 0x%X\n" , CurrentTask->ID);
-
+    CurrentTask = TaskSchedulingManager->SwitchTask();
     PreviousTask->Registers.RAX = IST->RAX;
     PreviousTask->Registers.RBX = IST->RBX;
     PreviousTask->Registers.RCX = IST->RCX;
     PreviousTask->Registers.RDX = IST->RDX;
-    
+
     PreviousTask->Registers.RDI = IST->RDI;
     PreviousTask->Registers.RSI = IST->RSI;
-    
+
     PreviousTask->Registers.R8 = IST->R8;
     PreviousTask->Registers.R9 = IST->R9;
     PreviousTask->Registers.R10 = IST->R10;
@@ -169,7 +167,7 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     PreviousTask->Registers.RIP = IST->RIP;
     PreviousTask->Registers.RBP = IST->RBP;
     PreviousTask->Registers.RSP = IST->RSP;
-    
+
     PreviousTask->Registers.CS = IST->CS;
     PreviousTask->Registers.DS = IST->DS;
     PreviousTask->Registers.ES = IST->ES;
@@ -179,14 +177,18 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
 
     PreviousTask->Registers.RFlags = IST->RFlags;
     
+    if(PreviousTask->ID == CurrentTask->ID) {
+        return;
+    }
+
     IST->RAX = CurrentTask->Registers.RAX;
     IST->RBX = CurrentTask->Registers.RBX;
     IST->RCX = CurrentTask->Registers.RCX;
     IST->RDX = CurrentTask->Registers.RDX;
-    
+
     IST->RDI = CurrentTask->Registers.RDI;
     IST->RSI = CurrentTask->Registers.RSI;
-    
+
     IST->R8 = CurrentTask->Registers.R8;
     IST->R9 = CurrentTask->Registers.R9;
     IST->R10 = CurrentTask->Registers.R10;
@@ -203,7 +205,7 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     IST->SS = CurrentTask->Registers.SS;
 
     IST->RFlags = CurrentTask->Registers.RFlags;
-    
+
     IST->RIP = CurrentTask->Registers.RIP;
     IST->RBP = CurrentTask->Registers.RBP;
     IST->RSP = CurrentTask->Registers.RSP;
@@ -217,149 +219,40 @@ unsigned long Kernel::TaskManagement::GetCurrentlyRunningTaskID(void) {
     return TaskSchedulingManager->CurrentlyRunningTask->ID;
 }
 
-/////// PriorityQueueManager ////////
-
-void Kernel::TaskManagement::PriorityQueueManager::Initialize(int MaxTaskCount , int Time) {
-    PriorityQueueCount = 1;
-    CommonMaxTaskCount = MaxTaskCount;
-    CommonDemandedTime = Time;
-    StartPriorityQueue = (PriorityQueue *)Kernel::MemoryManagement::Allocate(sizeof(PriorityQueue));
-    StartPriorityQueue->Initialize(CommonMaxTaskCount , CommonDemandedTime);
-    CurrentPriorityQueue = StartPriorityQueue;
-    StartPriorityQueue->NextQueue = (unsigned long)StartPriorityQueue;
-
-    TotalTaskCount = 0;
-}
-
-bool Kernel::TaskManagement::PriorityQueueManager::AddTask(struct Task *Task) {
-    PriorityQueue *NewPriorityQueue;
-    // Kernel::printf("Q%d - 0x%X TaskCount : %d\n" , DebugPriority , CurrentPriorityQueue , CurrentPriorityQueue->TaskCount);  
-    if(CurrentPriorityQueue->AddTask(Task) == false) {
-        // Kernel::printf("====== Creating New Queue(DebugPriority : %d) ======\n" , DebugPriority);
-        NewPriorityQueue = (PriorityQueue *)Kernel::MemoryManagement::Allocate(sizeof(PriorityQueue));
-        // Kernel::printf("Initializing : ");
-        NewPriorityQueue->Initialize(CommonMaxTaskCount , CommonDemandedTime);
-        NewPriorityQueue->AddTask(Task);
-        // Kernel::printf("Done\n");
-        // Kernel::printf("Linking      : \n");
-        // Kernel::printf("$$$$$$$$$$$ Before $$$$$$$$$$$\n");
-        // Kernel::printf("CurrentPriorityQueue->NextQueue : 0x%X\n" , CurrentPriorityQueue->NextQueue);
-        // Kernel::printf("NewPriorityQueue                : 0x%X\n" , NewPriorityQueue);
-        // Kernel::printf("StartPriorityQueue              : 0x%X\n" , StartPriorityQueue);
-        // ERROR , why????
-        CurrentPriorityQueue->NextQueue = (unsigned long)NewPriorityQueue;
-        NewPriorityQueue->NextQueue = (unsigned long)StartPriorityQueue;
-        
-        CurrentPriorityQueue = NewPriorityQueue;
-        // Kernel::printf("Adding %d to new queue\n" , Task->ID);
-        // 
-        // Kernel::printf("$$$$$$$$$$$ After  $$$$$$$$$$$\n");
-        // Kernel::printf("CurrentPriorityQueue->NextQueue : 0x%X\n" , CurrentPriorityQueue->NextQueue);
-        // Kernel::printf("NewPriorityQueue                : 0x%X\n" , NewPriorityQueue);
-        // Kernel::printf("StartPriorityQueue              : 0x%X\n" , StartPriorityQueue);
-        
-    }
-    TotalTaskCount++;
-    return true;
-}
-
-bool Kernel::TaskManagement::PriorityQueueManager::RemoveTask(unsigned long ID) {
-    PriorityQueue *QueuePointer;
-    QueuePointer = StartPriorityQueue;
-    while(1) {
-        if(StartPriorityQueue->RemoveTask(ID) == true) {
-            return true;
-        }
-        if(StartPriorityQueue->NextQueue == 0x00) {
-            break;
-        }
-        StartPriorityQueue = (PriorityQueue *)StartPriorityQueue->NextQueue;
-    }
-    return false;
-}
-
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::PriorityQueueManager::GetCurrentTask(void) {
-    return CurrentPriorityQueue->GetCurrentTask();
-}
-
-///////////////////////////////////////////
-// THIS FUNCTION IS CAUSING THE ERROR!!! //
-/////////////////////////////////////////// 
-void Kernel::TaskManagement::PriorityQueueManager::SwitchToNextTask(void) {
-    Task *PreviousTask;
-    // Kernel::printf("Current Task ID : 0x%X\n" , CurrentPriorityQueue->CurrentTask->ID);
-    // Kernel::printf("Q%d(CPQ : 0x%X) : Switching : %d --> " , DebugPriority , CurrentPriorityQueue , CurrentPriorityQueue->CurrentTask->ID);
-    PreviousTask = CurrentPriorityQueue->CurrentTask;
-    CurrentPriorityQueue->SwitchToNextTask(); // error, not returning to its original position
-    // Kernel::printf("%d\n" , CurrentPriorityQueue->CurrentTask->ID);
-    // Kernel::printf("New Task ID     : 0x%X\n" , CurrentPriorityQueue->CurrentTask->ID);
-    if(CurrentPriorityQueue->CurrentTask == CurrentPriorityQueue->StartTask) {
-        // Kernel::printf("We hit the end, heading to the start\n");
-        // Kernel::printf("<DebugPriority : %d>\n" , DebugPriority);
-        // Kernel::printf("CurrentPriorityQueue   : 0x%X\n" , CurrentPriorityQueue);
-        // Another issue, the system doesn't change the queue
-        CurrentPriorityQueue = (PriorityQueue*)CurrentPriorityQueue->NextQueue;
-        // Kernel::printf("NextPriorityQueue      : 0x%X\n" , CurrentPriorityQueue);
-        // Kernel::printf("Next NextPriorityQueue : 0x%X\n" , CurrentPriorityQueue->NextQueue);
-    }
-}
-
 ////////// PriorityQueue ////////////
 
-void Kernel::TaskManagement::PriorityQueue::Initialize(int MaxTaskCount , int Time) {
+void Kernel::TaskManagement::PriorityQueue::Initialize(int Time) {
     RunningTime = Time;
-    this->TaskCount = 0;
-    this->MaxTaskCount = MaxTaskCount;
 }
 
-bool Kernel::TaskManagement::PriorityQueue::AddTask(struct Task *Task) {
-    struct Task *TaskPointer;
-    if((TaskCount != 0) && (MaxTaskCount != 0) && (TaskCount >= MaxTaskCount)) {
-        return false;
-    }
+void Kernel::TaskManagement::PriorityQueue::AddTask(struct Task *Task) {
     if(TaskCount == 0) {
         StartTask = Task;
         StartTask->NextTask = StartTask;
-        StartTask->PreviousTask = 0x00;
         TaskCount++;
         CurrentTask = StartTask;
-        return true;
+        NextTaskLinkerToAllocate = StartTask;
+        return;
     }
-    TaskPointer = StartTask;
-    while(TaskPointer->NextTask != StartTask) {
-        TaskPointer = TaskPointer->NextTask;
-    }
-    TaskPointer->NextTask = Task;
-    TaskPointer->NextTask->NextTask = StartTask;
-    TaskPointer->NextTask->PreviousTask = TaskPointer;
+    NextTaskLinkerToAllocate->NextTask = Task;
+    NextTaskLinkerToAllocate->NextTask->NextTask = StartTask;
+    NextTaskLinkerToAllocate = NextTaskLinkerToAllocate->NextTask;
     TaskCount++;
-    return true;
+    return;
 }
 
-bool Kernel::TaskManagement::PriorityQueue::RemoveTask(unsigned long TaskID) {
+void Kernel::TaskManagement::PriorityQueue::RemoveTask(unsigned long TaskID) {
     struct Task *TaskPointer = StartTask;
     if(TaskCount == 0) {
-        return false;
+        return;
     }
     while(1) {
         if(TaskPointer->ID == TaskID) {
             break;
         }
         TaskPointer = TaskPointer->NextTask;
-        if(TaskPointer == StartTask) {
-            return false;
-        }
-    }
-    if(TaskPointer->PreviousTask == 0) {
-        TaskPointer->NextTask->PreviousTask = 0x00;
-        StartTask = TaskPointer->NextTask;
-    }
-    else {
-        TaskPointer->NextTask->PreviousTask = TaskPointer->PreviousTask;
-        TaskPointer->PreviousTask->NextTask = TaskPointer->NextTask;
     }
     TaskCount -= 1;
-    return true;
 }
 
 struct Kernel::TaskManagement::Task *Kernel::TaskManagement::PriorityQueue::GetCurrentTask(void) {
@@ -368,18 +261,4 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::PriorityQueue::GetC
 
 void Kernel::TaskManagement::PriorityQueue::SwitchToNextTask(void) {
     CurrentTask = CurrentTask->NextTask;
-}
-
-bool Kernel::TaskManagement::PriorityQueue::IsPriorityQueueEmpty(void) {
-    if(TaskCount == 0) {
-        return true;
-    }
-    return false;
-}
-
-bool Kernel::TaskManagement::PriorityQueue::IsPriorityQueueFull(void) {
-    if((IsPriorityQueueEmpty() == false) && (TaskCount >= MaxTaskCount)) {
-        return true;
-    }
-    return false;
 }
