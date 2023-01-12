@@ -25,7 +25,7 @@ LongModeEntry:
     mov rax , 0x00
     mov ax , word[0x8000+2+1]
 
-    imul rax , 128*1024
+    imul rax , 128*1024 ; Demanded stack size for each core
     sub rbp , rax
     sub rsp , rax
 
