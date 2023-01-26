@@ -174,7 +174,7 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset 
     // Base     : Total 64 bits
     // (There is no limit field in IDT entry, because the base address is a location of handler, not a data)
     // Selector : Total 16 bitss
-    // IST      : 5 reserved bits, and 3 IST bit
+    // IST      : 6 reserved bits, and 2 IST bit
     // Type     : Total 4 bits
     // Flags    : Total 4 bits
     this->IDTEntry[Offset].BaseLow = BaseAddress & 0xFFFF;
