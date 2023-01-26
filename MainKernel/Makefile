@@ -15,8 +15,7 @@ LINKERSCRIPT = Linker.ld
 ELF = $(TEMPRORYFOLDER)/MainKernel.elf
 MAINSOURCES = Main.obj TextScreen.obj MemoryManagement.obj DescriptorTables.obj KernelSystemStructure.obj \
 ExceptionHandlers.obj PIT.obj Mouse.obj IO.obj APIC.obj ACPI.obj MPFloatingTable.obj TaskManagement.obj \
-ResourceAccessManagement.obj \
-Graphics/Graphic.obj Graphics/VESABIOSExtensions.obj
+ResourceAccessManagement.obj Paging.obj
 
 EXCLUDE_OPTIMIZATION = Keyboard.opt.obj
 
