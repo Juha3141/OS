@@ -4,7 +4,7 @@
 #define TEXTSCREEN_80x25_VIDEOMEMORY 0xB8000
 #define TEXTSCREEN_80x25_WIDTH       80
 #define TEXTSCREEN_80x25_HEIGHT      25
-#define TEXTSCREEN_TABSIZE           5
+#define TEXTSCREEN_TABSIZE           4
 
 namespace Kernel {
     namespace TextScreen80x25 {
