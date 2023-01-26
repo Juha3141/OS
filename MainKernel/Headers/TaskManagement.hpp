@@ -23,13 +23,18 @@
 
 namespace Kernel {
     struct TaskRegisters {
+        unsigned long DS;
+        unsigned long ES;
+        unsigned long FS;
+        unsigned long GS;
+        
         unsigned long RAX;
         unsigned long RBX;
         unsigned long RCX;
         unsigned long RDX;
 
-        unsigned long RSI;
         unsigned long RDI;
+        unsigned long RSI;
 
         unsigned long R8;
         unsigned long R9;
@@ -40,20 +45,12 @@ namespace Kernel {
         unsigned long R14;
         unsigned long R15;
 
-        unsigned long RSP;
         unsigned long RBP;
-
         unsigned long RIP;
-
         unsigned long CS;
-        unsigned long DS;
-        unsigned long ES;
-        unsigned long FS;
-        unsigned long GS;
-        unsigned long SS;
-
         unsigned long RFlags;
-        unsigned long CR3;
+        unsigned long RSP;
+        unsigned long SS;
     };
     namespace TaskManagement {
         struct Task {
@@ -66,6 +63,7 @@ namespace Kernel {
             unsigned long CR3;
 
             char Name[32];
+            unsigned long Age;
             struct Task *NextTask;
         };
 
@@ -120,10 +118,12 @@ namespace Kernel {
 
         void Initialize(void);
         unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , unsigned long StackSize , const char *TaskName);
+        unsigned long TerminateTask(unsigned long TaskID);
         void SwitchTask(void);
         void SwitchTaskInTimerInterrupt(void);
         struct Task *GetCurrentlyRunningTask(void);
         unsigned long GetCurrentlyRunningTaskID(void);
+        
         // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_
         void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContextToChange);
         // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE

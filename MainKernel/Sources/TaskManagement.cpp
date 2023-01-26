@@ -52,8 +52,6 @@ static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigne
     //*((unsigned long *)Task->Registers.RBP) = /*Return Address*/;
     Task->Registers.RFlags = 0x202;
     Task->Registers.RIP = StartAddress;
-    // Temprory
-    __asm__ ("mov %0 , cr3":"=r"(Task->Registers.CR3));
 }
 
 unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Priority , unsigned long StackSize , const char *TaskName) {
@@ -65,6 +63,7 @@ unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , un
     Task->ID = TaskSchedulingManager->CurrentMaxAllocatedID++;
     Task->Flags = Flags;
     Task->Priority = Priority;
+    Task->Age = 0;
 
     SetTaskRegisters(Task , StartAddress , StackSize);
     strcpy(Task->Name , TaskName);
@@ -86,12 +85,13 @@ void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
     for(i = 0; i < TASK_PRIORITY_COUNT-1; i++) {
         DemandingTime = 100/(TASK_PRIORITY_COUNT-i);
         PriorityQueues[i].Initialize(DemandingTime);
-        Kernel::printf("Time Demanded to Priority %d : %d cycle\n" , i , DemandingTime);
+        //Kernel::printf("Time Demanded to Priority %d : %d cycle\n" , i , DemandingTime);
     }
     MainTask = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
     MainTask->ID = this->CurrentMaxAllocatedID++;
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL|TASK_FLAGS_WORKING;
     MainTask->Priority = 0;
+    MainTask->Age = 0;
 
     SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
     strcpy(MainTask->Name , "MAINTASK");
@@ -140,13 +140,15 @@ void Kernel::TaskManagement::SwitchTask(void) {
 void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     struct Kernel::TaskManagement::Task *PreviousTask;
     struct Kernel::TaskManagement::Task *CurrentTask;
-    struct Kernel::STACK_STRUCTURE *IST = (struct Kernel::STACK_STRUCTURE *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::STACK_STRUCTURE));
+    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::TaskRegisters));
     PreviousTask = TaskSchedulingManager->CurrentlyRunningTask;
     if(TaskSchedulingManager->IsTaskDone() == false) {
         TaskSchedulingManager->SlowlyExpirate();
         return;
     }
     CurrentTask = TaskSchedulingManager->SwitchTask();
+
+    //memcpy(&(PreviousTask->Registers) , IST , sizeof(struct Kernel::TaskRegisters));
     PreviousTask->Registers.RAX = IST->RAX;
     PreviousTask->Registers.RBX = IST->RBX;
     PreviousTask->Registers.RCX = IST->RCX;
@@ -209,6 +211,8 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     IST->RIP = CurrentTask->Registers.RIP;
     IST->RBP = CurrentTask->Registers.RBP;
     IST->RSP = CurrentTask->Registers.RSP;
+    //memcpy(IST , &(CurrentTask->Registers) , sizeof(struct Kernel::TaskRegisters));
+    
 }
 
 struct Kernel::TaskManagement::Task *Kernel::TaskManagement::GetCurrentlyRunningTask(void) {
