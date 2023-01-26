@@ -3,7 +3,7 @@ HEADERSFOLDER = Headers
 TEMPRORYFOLDER = ../Temprory
 ESSENTIALLIBRARYFOLDER = EssentialLibrary
 ISOFOLDER = ../iso
-MAINKERNELTEMPRORYFOLDER = $(TEMPRORYFOLDER)/MainKernel
+MAINKERNELTEMPRORYFOLDER = $(TEMPRORYFOLDER)/Kernel
 
 CC = x86_64-elf-g++
 OBJCOPY = objcopy
@@ -12,7 +12,7 @@ CCOPTIONS = -g -Os -ffreestanding -fpack-struct=1 -W -Wall -I $(HEADERSFOLDER)/ 
 #  -fomit-frame-pointer -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
-ELF = $(TEMPRORYFOLDER)/MainKernel.elf
+ELF = $(TEMPRORYFOLDER)/Kernel.elf
 MAINSOURCES = Main.obj TextScreen.obj MemoryManagement.obj DescriptorTables.obj KernelSystemStructure.obj \
 ExceptionHandlers.obj PIT.obj Mouse.obj IO.obj APIC.obj ACPI.obj MPFloatingTable.obj TaskManagement.obj \
 ResourceAccessManagement.obj Paging.obj
@@ -29,7 +29,7 @@ prepare:
 	make -C $(ESSENTIALLIBRARYFOLDER) clean all
 
 all: prepare asm $(MAINSOURCES) $(EXCLUDE_OPTIMIZATION)
-	cd $(MAINKERNELTEMPRORYFOLDER); bash -c "ld -T ../../MainKernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj SwitchContext.obj MutualExclusion.obj $(MAINSOURCES) $(EXCLUDE_OPTIMIZATION) -L ../ -lEssentialLibrary"
+	cd $(MAINKERNELTEMPRORYFOLDER); bash -c "ld -T ../../Kernel/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj SwitchContext.obj MutualExclusion.obj $(MAINSOURCES) $(EXCLUDE_OPTIMIZATION) -L ../ -lEssentialLibrary"
 	$(OBJCOPY) -O binary $(ELF) $(TARGET)
 
 asm:
