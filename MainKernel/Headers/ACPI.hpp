@@ -18,21 +18,21 @@ namespace Kernel {
         bool MPUsed;
     };
     namespace ACPI {
-        struct RSDP_10 {
+        struct RSDP {
             char Signature[8];
             unsigned char Checksum;
             char OEMID[6];
             unsigned char Revision;
             unsigned int RSDTAddress;
         };
-        struct RSDP_20 {
-            struct RSDP_10 FirstPath;
+        struct ExtendedRSDP {
+            struct RSDP RSDP;
             unsigned int Length;
             unsigned long XSDTAddress;
             unsigned char ExtendedChecksum;
             unsigned char Reserved[3];
         };
-        struct APICSDTHeader {
+        struct SDTHeader {
             char Signature[4];
             unsigned int Length;
             unsigned char Revision;
@@ -44,7 +44,7 @@ namespace Kernel {
             unsigned int CreatorRevision;
         };
         struct FADT {
-            struct APICSDTHeader Header;
+            struct SDTHeader Header; // All Descriptor Tables need header table.
             unsigned int FirmwareControl;
             unsigned int Dsdt;
             unsigned char Reserved;
@@ -83,11 +83,21 @@ namespace Kernel {
             unsigned char Century;
         };
         struct RSDT {
-            struct APICSDTHeader Header;
+            struct SDTHeader Header;
         };
+        
+        struct ACPIEntry {
+            struct RSDP *RSDP;
+            struct ExtendedRSDP *RSDP20;
+            struct RSDT *RSDT;
+            unsigned long RSDTEntryCount;
+        };
+        
+        bool Initialize(void);
 
         unsigned long GetRSDPAddress(void);
-        unsigned long GetMADTAddress(void);
+
+        unsigned long GetDescriptorTable(const char Signature[4]);
         bool SaveCoresInformation(void);
         bool CheckRSDPChecksum(unsigned long Address);
     }
