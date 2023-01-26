@@ -1,6 +1,5 @@
 #include <ExceptionHandlers.hpp>
 #include <Kernel.hpp>
-#include <Graphics/Graphic.hpp>
 
 // Function usage : Mask the specified interrupt
 // Master : controlls
@@ -53,7 +52,7 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Hypervisor Injection Exception" , "VMM Communication Exception" , 
         "Security Exception" , 
     };
-    struct Kernel::STACK_STRUCTURE *IST = (struct Kernel::STACK_STRUCTURE *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::STACK_STRUCTURE));
+    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::TaskRegisters));
     __asm__ ("cli");
     Kernel::PrintString("[Exception occurred]\n");
     __asm__ ("mov %0 , cr0":"=r"(CR0));
@@ -62,7 +61,7 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
     __asm__ ("mov %0 , cr3":"=r"(CR3));
     __asm__ ("mov %0 , cr4":"=r"(CR4));
     Kernel::printf("Vector Number : %d(%s)\n" , ExceptionNumber , ExceptionNames[ExceptionNumber]);
-    Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct STACK_STRUCTURE)));
+    Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct Kernel::TaskRegisters)));
     Kernel::printf("Dumping Registers : \n");
     Kernel::printf("RAX=0x%X RBX=0x%X RCX=0x%X RDX=0x%X\n" , IST->RAX , IST->RBX , IST->RCX , IST->RDX);
     Kernel::printf("RDI=0x%X RSI=0x%X R8=0x%X R9=0x%X\n" , IST->RDI , IST->RSI , IST->R8 , IST->R9);
