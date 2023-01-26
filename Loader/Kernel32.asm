@@ -139,15 +139,11 @@ Start:                                          ; Location : 0x8C00+7+2+512 = 0x
             add ebx , 14
             
             loop .L2
-        
-        mov edi , 0x100000
-        cmp dword[edi] , 0x00
-        mov dword[ErrorCode] , 0xEEEEEEEE
-        je Error
 
         .L3:
-            cmp word[LeftSectorCountToRead] , 0x00
-            je LoadAPLoader                      ; Done
+            mov ax , word[LeftSectorCountToRead]
+            test ax , ax
+            jz LoadAPLoader                      ; Done
 
             mov dx , word[LeftSectorCountToRead]
 
@@ -174,10 +170,12 @@ Start:                                          ; Location : 0x8C00+7+2+512 = 0x
             push 0x500
             push edx
             call memcpy
-
-            jmp $
         
     LoadAPLoader:
+        mov edi , 0x100000
+        cmp dword[edi] , 0x00
+        mov dword[ErrorCode] , 0xEEEEEEEE
+        je Error
         
         mov esi , DAP
         mov byte[RMA_AH] , 0x42
