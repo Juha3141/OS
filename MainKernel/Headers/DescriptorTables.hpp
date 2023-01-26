@@ -223,7 +223,7 @@ namespace Kernel {
         };
         void Initialize(void);
     }
-    struct STACK_STRUCTURE {
+    struct InterruptStackTable {
         unsigned long GS;
         unsigned long FS;
         unsigned long ES;
@@ -242,6 +242,9 @@ namespace Kernel {
         unsigned long RCX;
         unsigned long RBX;
         unsigned long RAX;
+        // Now I get it! If interrupt occurrs, system puts those values to stack
+        // and after interrupt, by iretq instruction, all pushed instructions are put back to 
+        // Original registers! Now I get it!!
         unsigned long RBP;
         unsigned long RIP;
         unsigned long CS;
