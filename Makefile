@@ -1,6 +1,6 @@
 BOOTLOADERFOLDER = BootLoader
 LOADERSFOLDER = Loader
-MAINKERNELFOLDER = Kernel
+KERNEL32FOLDER = Kernel32
 KERNEL64FOLDER = Kernel64
 TEMPRORYFOLDER = Temprory
 VMWAREFOLDER = VMWare
@@ -12,9 +12,9 @@ BASH = bash
 QEMU = qemu-system-x86_64
 TARGET = OS.iso 
 
-windows: prepare BuildLoaders BuildMainKernel
+windows: prepare BuildLoaders BuildKernel32
 
-all: prepare BuildLoaders BuildMainKernel $(TARGET)
+all: prepare BuildLoaders BuildKernel32 BuildKernel64 $(TARGET)
 
 prepare:
 	mkdir $(TEMPRORYFOLDER)
@@ -22,8 +22,11 @@ prepare:
 BuildLoaders:
 	make -C $(LOADERSFOLDER) all
 
-BuildMainKernel:
-	make -C $(MAINKERNELFOLDER) all
+BuildKernel32:
+	make -C $(KERNEL32FOLDER) all
+
+BuildKernel64:
+	make -C $(KERNEL64FOLDER) all
 
 $(TARGET):
 	wine $(OSCDIMG)/oscdimg.exe -b$(TEMPRORYFOLDER)/BootLoader.bin $(ISOFOLDER)/ $(TARGET) -m
@@ -33,7 +36,8 @@ clean:
 	rm -rf $(ISOFOLDER)/BRAIN
 	rm -rf $(TARGET)
 	make -C $(LOADERSFOLDER) clean
-	make -C $(MAINKERNELFOLDER) clean
+	make -C $(KERNEL32FOLDER) clean
+	make -C $(KERNEL64FOLDER) clean
 
 run: virtualbox
 

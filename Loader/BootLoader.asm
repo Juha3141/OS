@@ -18,9 +18,11 @@ KernelLoaderFileName: db "KERN~DDP.LDR" , 0x00  ; Name of the Kernel Loader     
                                                 ; Note : If you're in windows, change KernelLoaderFileName to "KERNEL~1.LDR", 
                                                 ; or if you're in linux, change it to "KERN~DDP.LDR".
 KernelLoaderLocation: dd 0x00                   ; Location of the Kernel Loader                    0x12
-KernelLoaderSectorSize: db 0x03                 ; Size of the Kernel Loader(Static)                0x16
-StaticKernelLoaderStartAddress: dd 0x8400       ; Start of the Kernel Loader                       0x18
-DriveNumber: db 0x00                            ; Save number of the driver that is booted         0x1B
+KernelLoaderSectorSize: db 0x04                 ; Size of the Kernel Loader(Static)                0x16
+StaticKernelLoaderStartAddress: dd 0x8400       ; Address of the Kernel Loader                     0x18
+StaticAPLoaderStartAddress: dd 0x8000           ; Address of the AP Loader                         0x1B
+
+DriveNumber: db 0x00                            ; Save number of the driver that is booted         0x1F
                                                 ; (for the situation that is using EDX register)
 
 DAP:                ; DAP Area(Disk Address Packet)                                           0x1C
@@ -107,6 +109,21 @@ Start:
             jne .Loop
 
         .FoundFile:
+            ; Load AP Loader
+            xor ebx , ebx
+            mov ah , 0x42
+            mov si , DAP
+            mov byte[si+2] , 1
+            mov ecx , dword[StaticAPLoaderStartAddress]
+            mov dword[si+4] , ecx
+            mov ecx , dword[KernelLoaderLocation]
+            movzx ebx , byte[KernelLoaderSectorSize]
+            add ecx , ebx
+            sub ecx , 1
+            mov dword[si+8] , ecx
+            mov dword[si+12] , 0x00
+            int 0x13
+
             mov bl , byte[KernelLoaderSectorSize]
             mov ah , 0x42
             mov si , DAP
