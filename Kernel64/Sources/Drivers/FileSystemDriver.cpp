@@ -7,7 +7,6 @@ struct Kernel::Drivers::DriverSystemManager<Kernel::FileSystem::Standard> *FileS
 void Kernel::FileSystem::Initialize(void) {
     FileSystemManager = (struct Drivers::DriverSystemManager<FileSystem::Standard> *)Kernel::MemoryManagement::Allocate(sizeof(struct Drivers::DriverSystemManager<FileSystem::Standard>));
     FileSystemManager->Initialize();
-    Kernel::printf("FileSystemManager : 0x%X\n" , FileSystemManager);
 }
 
 Kernel::FileSystem::Standard *Kernel::FileSystem::AssignSystem(
@@ -61,12 +60,10 @@ Kernel::FileSystem::Standard *Kernel::FileSystem::Search(const char *FileSystemS
     return 0x0; // can't find storage
 }
 
-Kernel::FileSystem::Standard *Kernel::FileSystem::DetectFileSystem(Drivers::StorageSystem::Standard *StorageSystem) {
+Kernel::FileSystem::Standard *Kernel::FileSystem::DetectFileSystem(Drivers::StorageSystem::Storage *Storage) {
     int i;
     for(i = 0; i < FileSystemManager->SystemCount; i++) {
-        Kernel::printf("FileSystemManager->SystemList[i].System : 0x%X\n" , FileSystemManager->SystemList[i].System);
-        Kernel::printf("FileSystemManager->SystemList[i].System->Check : 0x%X\n" , FileSystemManager->SystemList[i].System->Check);
-        if(FileSystemManager->SystemList[i].System->Check(StorageSystem) == true) {
+        if(FileSystemManager->SystemList[i].System->Check(Storage) == true) {
             return FileSystemManager->SystemList[i].System;
         }
     }

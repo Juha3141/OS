@@ -29,4 +29,8 @@ extern int ToInteger(const char *String);
 extern int vsprintf(char *String , const char *Formt , va_list ap);
 extern int sprintf(char *String , const char *Format , ...);
 
+extern unsigned long atoi(const char *Buffer);
+extern unsigned long atol(const char *Buffer);
+extern char *itoa(unsigned long Value , char *Buffer , int Radix);
+
 #endif

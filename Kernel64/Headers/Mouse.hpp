@@ -33,7 +33,7 @@ namespace Kernel {
         bool GetMouseDataQueue(struct MouseData *Data);
         void InterruptHandler(void);
         void MainInterruptHandler(void);
-    };
-};
+    }
+}
 
 #endif

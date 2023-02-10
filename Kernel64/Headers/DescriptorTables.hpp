@@ -252,6 +252,6 @@ namespace Kernel {
         unsigned long RSP;
         unsigned long SS;
     };
-};
+}
 
 #endif

@@ -20,6 +20,8 @@
 namespace IO {
     unsigned char Read(unsigned short Port);
     void Write(unsigned short Port , unsigned char Data);
+    unsigned short ReadWord(unsigned short Port);
+    void WriteWord(unsigned short Port , unsigned short Data);
 }
 
 #endif

@@ -16,7 +16,7 @@ namespace Kernel {
             private:
                 unsigned long Locked;
         };
-    };
+    }
     namespace MutEx {
         class Resource {
             public:
@@ -27,6 +27,6 @@ namespace Kernel {
                 int Locked;
         };
     }
-};
+}
 
 #endif

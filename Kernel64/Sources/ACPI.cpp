@@ -23,10 +23,10 @@ bool Kernel::ACPI::Initialize(void) { // Gather information, and write it to ACP
     }
     UniversalACPIEntry->RSDTEntryCount = (UniversalACPIEntry->RSDT->Header.Length-sizeof(SDTHeader))
                                          /((UniversalACPIEntry->RSDP->Revision == 2) ? sizeof(unsigned long) : sizeof(unsigned int));
-    Kernel::printf("RSDP Address         : 0x%X\n" , UniversalACPIEntry->RSDP);
+    /*Kernel::printf("RSDP Address         : 0x%X\n" , UniversalACPIEntry->RSDP);
     Kernel::printf("RSDT Address         : 0x%X\n" , UniversalACPIEntry->RSDT);
     Kernel::printf("RSDT Entries Count   : 0x%X\n" , UniversalACPIEntry->RSDTEntryCount);
-    return true;
+    */return true;
 }
 
 bool Kernel::ACPI::SaveCoresInformation(void) {
@@ -62,7 +62,7 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     CoreInformation->LocalAPICAddress = (EDX << 31)|EAX;
     // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
-    Kernel::printf("Local APIC Address : 0x%X\n" , CoreInformation->LocalAPICAddress);
+    //Kernel::printf("Local APIC Address : 0x%X\n" , CoreInformation->LocalAPICAddress);
     while(1) {
         if(MADT[i] == 0) {
             CoreCount++;
@@ -75,9 +75,9 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     }
     CoreInformation->LocalAPICID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
     CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
-    Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
+    /*Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
-    while(i < (MADTHeader->Length-sizeof(SDTHeader)-8)) {
+    */while(i < (MADTHeader->Length-sizeof(SDTHeader)-8)) {
         if(MADT[i] == 0) {      // Entry Type 0 : Processor Local APIC
             /* Process Local APIC Entry : 
              * Offset 2(Size : 1) : ACPI Processor ID
@@ -95,9 +95,9 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
         }
         i += MADT[i+1];
     }
-    Kernel::printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
+    /*Kernel::printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
     Kernel::printf("Core count : %d\n" , CoreCount);
-    CoreInformation->CoreCount = CoreCount;
+    */CoreInformation->CoreCount = CoreCount;
     Kernel::MemoryManagement::ProtectMemory(CoreInformation->LocalAPICAddress , 0x100000);
     Kernel::MemoryManagement::ProtectMemory(CoreInformation->IOAPICAddress , 0x100000);
     return true;

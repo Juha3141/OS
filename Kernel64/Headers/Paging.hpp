@@ -47,7 +47,7 @@ namespace Kernel {
         PageDirectoryEntry , 
         PageTableEntry;
         void SetEntry(struct Kernel::Paging::Entry *PageEntry , unsigned long BaseAddress , unsigned short Flags);
-    };
-};
+    }
+}
 
 #endif

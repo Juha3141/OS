@@ -86,24 +86,24 @@ namespace Kernel {
             };
             bool Register(void);
             
-            bool Check(Drivers::StorageSystem::Standard *Storage); // true : The storage has this file system, false : The storage has different file system.
+            bool Check(Drivers::StorageSystem::Storage *Storage); // true : The storage has this file system, false : The storage has different file system.
 
-            FileSystem::FileInfo *OpenFile(Drivers::StorageSystem::Standard *Storage , const char *FileName);
-            int CloseFile(Drivers::StorageSystem::Standard *Storage , FileSystem::FileInfo *FileInfo);
-            int RemoveFile(Drivers::StorageSystem::Standard *Storage , FileSystem::FileInfo *FileInfo);
+            FileSystem::FileInfo *OpenFile(Drivers::StorageSystem::Storage *Storage , const char *FileName);
+            int CloseFile(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
+            int RemoveFile(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
             
-            int WriteFile(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-            int ReadFile(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-            int SetFileOffset(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
+            int WriteFile(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
+            int ReadFile(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
+            int SetFileOffset(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
 
-            int ReadDirectory(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
-            int GetFileCountInDirectory(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo);
+            int ReadDirectory(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
+            int GetFileCountInDirectory(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo);
             
-            int WriteDirectoryData(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo);
+            int WriteDirectoryData(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo);
 
-            bool GetFileRecord(Drivers::StorageSystem::Standard *Storage , unsigned long DirectoryAddress , const char *FileName , struct DirectoryRecord *DirectoryRecord);
-            unsigned int GetRootDirectorySector(Drivers::StorageSystem::Standard *StorageSystem);
-        };
+            bool GetFileRecord(Drivers::StorageSystem::Storage *Storage , unsigned long DirectoryAddress , const char *FileName , struct DirectoryRecord *DirectoryRecord);
+            unsigned int GetRootDirectorySector(Drivers::StorageSystem::Storage *StorageSystem);
+        }
     }
 }
 

@@ -40,7 +40,7 @@ namespace Kernel {
         extern "C" void SecurityException(void);
 
         void ProcessExceptions(int ExceptionNumber , unsigned long ErrorCode);
-    };
+    }
 
     namespace PIC {
         void Mask(int InterruptNumber);
@@ -48,6 +48,6 @@ namespace Kernel {
 
         void SendEOI(int InterruptNumber);
     }
-};
+}
 
 #endif

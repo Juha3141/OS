@@ -10,10 +10,12 @@
 SECTION .text
 
 ; Interrupt handler : 
-global _ZN6Kernel3PIT16InterruptHandlerEv               ; Kernel::PIT::InterruptHandler
-global _ZN6Kernel8Keyboard16InterruptHandlerEv          ; Kernel::Keyboard::InterruptHandler 
-global _ZN6Kernel5Mouse16InterruptHandlerEv             ; Kernel::Mouse::InterruptHandler
-global _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv   ; Kernel::APIC::Timer::InterruptHandler
+global _ZN6Kernel3PIT16InterruptHandlerEv                   ; Kernel::PIT::InterruptHandler
+global _ZN6Kernel8Keyboard16InterruptHandlerEv              ; Kernel::Keyboard::InterruptHandler 
+global _ZN6Kernel5Mouse16InterruptHandlerEv                 ; Kernel::Mouse::InterruptHandler
+global _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv       ; Kernel::APIC::Timer::InterruptHandler
+global _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev    ; Kernel::Drivers::PATA::InterruptHandler_IRQ14
+global _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev    ; Kernel::Drivers::PATA::InterruptHandler_IRQ15
 
 global DividedByZero
 global Debug
@@ -52,6 +54,7 @@ extern _ZN6Kernel3PIT20MainInterruptHandlerEv               ; Kernel::PIT::MainI
 extern _ZN6Kernel8Keyboard20MainInterruptHandlerEv          ; Kernel::Keyboard::MainInterruptHandler
 extern _ZN6Kernel5Mouse20MainInterruptHandlerEv             ; Kernel::Mouse::MainInterruptHandler
 extern _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv   ; Kernel::APIC::Timer::MainInterruptHandler
+extern _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb      ; Kernel::Drivers::PATA::MainInterruptHandler
 
 extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
@@ -465,6 +468,32 @@ _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK
 
     call _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv
+
+    LOAD_REGISTERS_FROM_STACK
+
+    pop rbp
+    iretq
+
+_ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev:
+    push rbp
+    mov rbp , rsp
+    SAVE_REGISTERS_TO_STACK
+
+    mov rdi , 1
+    call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
+
+    LOAD_REGISTERS_FROM_STACK
+
+    pop rbp
+    iretq
+
+_ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev:
+    push rbp
+    mov rbp , rsp
+    SAVE_REGISTERS_TO_STACK
+
+    mov rdi , 0
+    call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
 

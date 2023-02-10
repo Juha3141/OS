@@ -27,21 +27,22 @@ namespace Kernel {
             unsigned long FileSize;
             unsigned long FileOffset;
 
-            unsigned int StorageSystemID;
+            unsigned int StorageDriverID;
+            unsigned int StorageID;
             unsigned int FileSystemID;
         };
-        typedef bool (*StandardCheckFunction)(Drivers::StorageSystem::Standard *Storage); // true : The storage has this file system, false : The storage has different file system.
+        typedef bool (*StandardCheckFunction)(Drivers::StorageSystem::Storage *Storage); // true : The storage has this file system, false : The storage has different file system.
         
-        typedef FileSystem::FileInfo * (*StandardOpenFileFunction)(Drivers::StorageSystem::Standard *Storage , const char *FileName);
-        typedef int (*StandardCloseFileFunction)(Drivers::StorageSystem::Standard *Storage , FileSystem::FileInfo *FileInfo);
-        typedef int (*StandardRemoveFileFunction)(Drivers::StorageSystem::Standard *Storage , FileSystem::FileInfo *FileInfo);
+        typedef FileSystem::FileInfo * (*StandardOpenFileFunction)(Drivers::StorageSystem::Storage *Storage , const char *FileName);
+        typedef int (*StandardCloseFileFunction)(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
+        typedef int (*StandardRemoveFileFunction)(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
         
-        typedef int (*StandardWriteFileFunction)(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        typedef int (*StandardReadFileFunction)(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        typedef int (*StandardSetFileOffsetFunction)(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
+        typedef int (*StandardWriteFileFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
+        typedef int (*StandardReadFileFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
+        typedef int (*StandardSetFileOffsetFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
         
-        typedef int (*StandardReadDirectoryFunction)(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
-        typedef int (*StandardGetFileCountInDirectoryFunction)(Drivers::StorageSystem::Standard *Storage , struct FileSystem::FileInfo *FileInfo);
+        typedef int (*StandardReadDirectoryFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
+        typedef int (*StandardGetFileCountInDirectoryFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo);
         struct Standard {
             char FileSystemString[32];
 
@@ -57,8 +58,6 @@ namespace Kernel {
             
             StandardReadDirectoryFunction ReadDirectory;
             StandardGetFileCountInDirectoryFunction GetFileCountInDirectory;
-            
-            Drivers::StorageSystem::Standard *StorageSystem;
         };
         void Initialize(void);
         FileSystem::Standard *AssignSystem(
@@ -78,8 +77,8 @@ namespace Kernel {
         bool Register(FileSystem::Standard *FileSystem , const char *FileSystemString);
         FileSystem::Standard *Search(unsigned long ID);
         FileSystem::Standard *Search(const char *FileSystemString);
-        FileSystem::Standard *DetectFileSystem(Drivers::StorageSystem::Standard *StorageSystem);
-    };
-};
+        FileSystem::Standard *DetectFileSystem(Drivers::StorageSystem::Storage *Storage);
+    }
+}
 
 #endif

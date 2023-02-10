@@ -17,8 +17,8 @@ MAINSOURCES = Main.obj TextScreen.obj MemoryManagement.obj DescriptorTables.obj 
 ExceptionHandlers.obj PIT.obj Mouse.obj IO.obj APIC.obj ACPI.obj MPFloatingTable.obj TaskManagement.obj \
 ResourceAccessManagement.obj Paging.obj \
 Drivers/DeviceDriver.obj Drivers/StorageDriver.obj Drivers/FileSystemDriver.obj FileSystem/VirtualFileSystem.obj \
-Drivers/BootRAMDisk.obj \
-FileSystem/ISO9660.obj
+Drivers/BootRAMDisk.obj Drivers/PATA.obj Drivers/PATA_CD.obj \
+FileSystem/MBR.obj FileSystem/GPT.obj FileSystem/ISO9660.obj
 
 EXCLUDE_OPTIMIZATION = Keyboard.opt.obj
 

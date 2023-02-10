@@ -74,10 +74,10 @@ namespace Kernel {
                 unsigned char DestinationLocalAPICID;
                 unsigned char DestinationLocalAPICINTIN;
             };
-        };
+        }
         unsigned long FindMPFloatingTable(void);
         bool SaveCoresInformation(void);
-    };
+    }
 }
 
 #endif

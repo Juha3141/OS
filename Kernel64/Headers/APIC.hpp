@@ -101,7 +101,7 @@ namespace Kernel {
             void InterruptHandler(void);
             void MainInterruptHandler(void);
             
-        };
+        }
     }
     namespace IOAPIC {
         void WriteRegister(unsigned char RegisterAddress , unsigned int Data);

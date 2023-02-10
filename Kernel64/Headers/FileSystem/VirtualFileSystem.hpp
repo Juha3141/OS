@@ -17,7 +17,7 @@ namespace Kernel {
         int ReadDirectory(FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
         int GetFileCountInDirectory(FileInfo *FileInfo);
         
-    };
-};
+    }
+}
 
 #endif
