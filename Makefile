@@ -10,7 +10,7 @@ OSCDIMG = "/home/juha/Oscdimg"
 BASH = bash
 
 QEMU = qemu-system-x86_64
-TARGET = OS.iso 
+TARGET = OS.iso
 
 windows: prepare BuildLoaders BuildKernel32
 
@@ -42,10 +42,10 @@ clean:
 run: virtualbox
 
 qemurun:
-	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot c
+	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d
 
 debugrun: 
-	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot c -s -S -serial stdio
+	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d -s -S -serial stdio
 
 virtualbox:
 	vboxmanage startvm "OS" -E VBOX_GUI_DBG_AUTO_SHOW=true -E VBOX_GUI_DBG_ENABLED=truesw
