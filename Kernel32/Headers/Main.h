@@ -6,7 +6,7 @@
 #define BOOTLOADER_ADDRESS 0x7C00
 #define KERNEL64_ADDRESS 0x100000
 #define APLOADER_ADDRESS 0x8000
-#define TEMPORARY_SAFE_ADDRESS 0xA000
+#define TEMPORARY_SAFE_ADDRESS 0xC000
 #define PML4_ADDRESS 0x10000
 #define BYTES_PER_SECTOR 2048
 #define TEMPAREA_ADDRESS 0x500
@@ -53,7 +53,7 @@ typedef struct {
     unsigned char DirectoryRecordSize;
 	unsigned char KernelLoaderFileName[13];
 	unsigned int KernelLoaderLocation;
-	unsigned char KernelLoaderSectorSize;
+	unsigned int KernelLoaderSectorSize;
 	unsigned int StaticKernelLoaderStartAddress;
     unsigned int StaticAPLoaderStartAddress;
 	// Most importtant thing

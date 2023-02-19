@@ -6,7 +6,17 @@
 #define KERNEL32
 #include "../../Kernel64/Headers/Drivers/BootRAMDisk.hpp"
 
+struct QuerySystemAddressMap {
+	unsigned int AddressLow;
+    unsigned int AddressHigh;
+    unsigned int LengthLow;
+	unsigned int LengthHigh;
+	unsigned int TypeLow;
+    unsigned int TypeHigh;
+};
+
 void CreatePML4Entry(unsigned int Address);
+unsigned int ManualProbe(unsigned int Address);
 
 void Main(void) {
 	unsigned int DirectoryRecordLocation = 0x500+(2048*2);
@@ -17,8 +27,9 @@ void Main(void) {
 	unsigned int KernelSize;
 
 	unsigned int VolumeSpaceSize;
-
+	
 	unsigned int *RAMDiskSignature = (unsigned int *)BOOTRAMDISK_ADDRESS;
+	unsigned int Address = KERNEL64_ADDRESS;
 	
 	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADER_ADDRESS;
 	struct PVD *PVD = (struct PVD *)0x500;
@@ -31,7 +42,7 @@ void Main(void) {
 			break;
 		}
 		if(strncmp((unsigned char *)(DirectoryRecordLocation+sizeof(struct DirectoryRecord)) , "KERNEL.KRN" , DirectoryRecordSector->FileIdentifierLength) == 0) {
-			BIOSINT_printf("Found Kernel , Location : %d\r\n" , DirectoryRecordSector->LocationL);
+			BIOSINT_printf("Found Kernel , Location : %d , DataLength : %d\r\n" , DirectoryRecordSector->LocationL , DirectoryRecordSector->DataLengthL);
 			KernelSectorLocation = DirectoryRecordSector->LocationL;
 			KernelSize = DirectoryRecordSector->DataLengthL;
 			KernelSectorSize = (KernelSize/BYTES_PER_SECTOR)+((KernelSize%BYTES_PER_SECTOR == 0) ? 0 : 1);
@@ -43,6 +54,24 @@ void Main(void) {
 	// 			   2. Load AP Loader to proper location
 	//             3. Copy disk to RAM disk location
 	memcpy((unsigned int *)TEMPORARY_SAFE_ADDRESS , (unsigned int *)APLOADER_ADDRESS , BYTES_PER_SECTOR*1);
+	*((unsigned long *)0x400000) = 0xCAFEBABE;
+	BIOSINT_printf("Clearing Kernel Area ... ");
+	for(; Address < 0x1720000+(0x100000*16); Address += 4) {
+		*((unsigned int *)Address) = 0x00;
+		if(*((unsigned int *)Address) != 0x00) {
+			BIOSINT_printf("Error\r\n");
+			while(1) {
+				;
+			}
+		}
+	}
+	if(*((unsigned long *)0x400000) == 0xCAFEBABE) {
+		BIOSINT_printf("Error\r\n");
+		while(1) {
+			;
+		}
+	}
+	BIOSINT_printf("Done\r\n");
 	BIOSINT_printf("Loading Kernel ... ");
 	LoadSectorToMemory(KERNEL64_ADDRESS , KernelSectorLocation , KernelSectorSize);
 	BIOSINT_printf("Done\r\n");
@@ -104,7 +133,7 @@ void CreatePML4Entry(unsigned int Address) {
 
 void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber , unsigned int SectorSize) {
 	int i;
-	const int OneLoadSize = 14;
+	const short OneLoadSize = 14;
 	const unsigned int LoadAddress = 0x500;
 	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADER_ADDRESS;
 	if(SectorSize < OneLoadSize) {
