@@ -7,7 +7,6 @@ static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigne
 
 void Kernel::TaskManagement::Initialize(void) {
     TaskSchedulingManager = (SchedulingManager *)Kernel::SystemStructure::Allocate(sizeof(SchedulingManager));
-    Kernel::printf("Address : 0x%X\n" , TaskSchedulingManager);
     TaskSchedulingManager->Initialize();
 } 
 
@@ -81,6 +80,8 @@ void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
     int RunningTimePerPriority = TASK_MAX_DEMANDED_TIME;
     struct Task *MainTask;
     TotalTaskCount = 0;
+    CurrentMaxAllocatedID = 0x00;
+    CurrentPriority = 0x00;
     PriorityQueues = (TaskManagement::PriorityQueue *)Kernel::MemoryManagement::Allocate(TASK_PRIORITY_COUNT*sizeof(PriorityQueue));
     for(i = 0; i < TASK_PRIORITY_COUNT-1; i++) {
         DemandingTime = 100/(TASK_PRIORITY_COUNT-i);
@@ -95,10 +96,8 @@ void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
 
     SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
     strcpy(MainTask->Name , "MAINTASK");
-
     PriorityQueues[0].AddTask(MainTask);
     CurrentlyRunningTask = MainTask;
-    Kernel::printf("Main Task ID : %d\n" , MainTask->ID);
 }
 
 void Kernel::TaskManagement::SchedulingManager::AddTaskToPriorityQueue(struct Task *Task) {
@@ -227,6 +226,7 @@ unsigned long Kernel::TaskManagement::GetCurrentlyRunningTaskID(void) {
 
 void Kernel::TaskManagement::PriorityQueue::Initialize(int Time) {
     RunningTime = Time;
+    TaskCount = 0;
 }
 
 void Kernel::TaskManagement::PriorityQueue::AddTask(struct Task *Task) {
@@ -263,6 +263,9 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::PriorityQueue::GetC
     return CurrentTask;
 }
 
-void Kernel::TaskManagement::PriorityQueue::SwitchToNextTask(void) {
+void Kernel::TaskManagement::PriorityQueue::SwitchToNextTask(void) {/*
+    Kernel::printf("CurrentTask : 0x%X\n" , CurrentTask);
+    Kernel::printf("CurrentTask->NextTask : 0x%X\n" , CurrentTask->NextTask);
+    Kernel::printf("TaskCount : %d\n" , TaskCount);*/
     CurrentTask = CurrentTask->NextTask;
 }

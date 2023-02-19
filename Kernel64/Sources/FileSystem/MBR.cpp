@@ -12,4 +12,5 @@ bool MBR::Identifier::DetectMBR(void) {
 
 StorageSystem::Partition *MBR::Identifier::GetPartition(void) {
     // later
+    return 0x00;
 }

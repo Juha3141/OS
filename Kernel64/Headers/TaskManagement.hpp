@@ -84,7 +84,7 @@ namespace Kernel {
                 struct Task *CurrentTask;
 
                 struct Task *NextTaskLinkerToAllocate;
-                int TaskCount = 0;
+                int TaskCount;
         };
         class SchedulingManager {
             friend class PriorityQueue;
@@ -107,11 +107,11 @@ namespace Kernel {
                 }
 
                 struct Task *CurrentlyRunningTask;
-                int CurrentMaxAllocatedID = 0x00;
+                int CurrentMaxAllocatedID;
             private:
                 PriorityQueue *PriorityQueues;
                 int TotalTaskCount;
-                int CurrentPriority = 0;
+                int CurrentPriority;
 
                 int ExpirationDate;
         };

@@ -16,6 +16,8 @@
 
 #include <Drivers/PATA.hpp>
 
+
+
 void Kernel::DescriptorTables::Initialize(void) {
     unsigned int ID;
     // Allocate space for each descriptor respectively
