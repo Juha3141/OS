@@ -36,7 +36,7 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     unsigned int EAX;
     unsigned int EDX;
     unsigned long TableAddress;
-    struct Kernel::CPUInformation *CoreInformation = (struct Kernel::CPUInformation *)Kernel::MemoryManagement::Allocate(sizeof(struct Kernel::CPUInformation));
+    struct Kernel::CoreInformation *CoreInformation = (struct Kernel::CoreInformation *)Kernel::MemoryManagement::Allocate(sizeof(struct Kernel::CoreInformation));
     struct MPFloatingPointer *MPFloatingPointer = (struct MPFloatingPointer *)FindMPFloatingTable();
     struct MPFloatingTableHeader *TableHeader = (struct MPFloatingTableHeader *)MPFloatingPointer->PhysicalAddressPointer;
     
@@ -120,6 +120,6 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
     Kernel::printf("Local APIC Address from MSR : 0x%X\n" , CoreInformation->LocalAPICAddress);
-    WriteCoresInformation(CoreInformation);
+    CoreInformation::SetInstance(CoreInformation);
     return true;
 }

@@ -68,10 +68,7 @@ namespace Kernel {
                 }
                 void InsertDataToQueue(unsigned char ScanCode);
                 char ProcessSpecialKeys(unsigned char ScanCode);
-
-                bool IsScanCodeQueueEmpty(void);
-                unsigned char GetScanCodeQueueData(void);
-                Queue<unsigned char>ScanCodeQueue;
+                Queue<int>ScanCodeQueue;
                 /* 
                  * <Special Key Table>
                  * CapsLock     - Flag : SpecialKeys[0]
@@ -93,8 +90,7 @@ namespace Kernel {
                 inline void ChangeFlags(unsigned char ScanCode);
         };
         void Initialize(void);
-        unsigned char GetASCIIData(void);
-        char IsQueueEmpty(void);
+        int GetASCIIData(void);
         char IsSpecialKeyPressed(int SpecialKeyNumber);
         
         void InterruptHandler(void);

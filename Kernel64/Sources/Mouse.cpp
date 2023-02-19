@@ -6,7 +6,7 @@ void Kernel::Mouse::Initialize(void) {
     unsigned int ID;
     unsigned char Output;
     MouseDataManager = (Kernel::Mouse::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Mouse::DataManager));    // Allocate the system structure
-    MouseDataManager->Initialize();
+    MouseDataManager->Initialize();/*
 
     IO::Write(0x64 , 0xA8);             // Send Mouse Enable command to command port
     IO::Write(0x64 , 0xD4);             // Enable data transfer
@@ -33,9 +33,10 @@ void Kernel::Mouse::Initialize(void) {
     }
     IO::Write(0x60 , Output);           // Write command port data
     
+    Kernel::PIC::Unmask(44);            // Unmask IRQ 12(Mouse Interrupt)
+    */
     Kernel::PIC::Unmask(32+2);          // Unmask IRQ 2(Slave PIC)
     Kernel::PIC::Unmask(32+9);          // Unmask IRQ 9(Slave PIC)
-    Kernel::PIC::Unmask(44);            // Unmask IRQ 12(Mouse Interrupt)
 }
 
 void Kernel::Mouse::MainInterruptHandler(void) {

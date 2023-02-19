@@ -52,7 +52,7 @@ unsigned char ScanCodeInterpreter[4][0x80] = { // normal , shift , capslock , ca
 void Kernel::Keyboard::Initialize(void) {
     unsigned int ID;
     KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager));    // Allocate the system structure
-    KeyboardDataManager->Initialize();
+    KeyboardDataManager->Initialize();/*
     IO::Write(0x64 , 0xAE); // Send the enable command to status register port
     while(1) {              // If Input buffer state bit in the status register port is 1,
                             // the keyboard yet did not take the data from the buffer.
@@ -61,8 +61,9 @@ void Kernel::Keyboard::Initialize(void) {
         }
     }
     IO::Write(0x60 , 0xF4); // Send the enable command to input buffer port
+    */
     Kernel::PIC::Unmask(33);        // Unmask the keyboard interrupt
-    Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
+    // Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
 }
 
 // Description : Handler of the keyboard interrupt
@@ -100,31 +101,13 @@ void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
     this->ScanCodeQueue.Enqueue(ScanCodeInterpreter[Mode][ScanCode]);   // Put the data interpreted by the keyboard map
 }
 
-
-bool Kernel::Keyboard::DataManager::IsScanCodeQueueEmpty(void) {
-    bool Value;
-    // To-do : Create MutEx
-    Value = ScanCodeQueue.IsEmpty();    // Is main queue is empty?
-    return Value;
-}
-
-
-unsigned char Kernel::Keyboard::DataManager::GetScanCodeQueueData(void) { 
-    // To-do : Create MutEx
-    unsigned char Data;
-    Data = ScanCodeQueue.Dequeue();    // Return the data from main queue
-    return Data;
-}
-
-unsigned char Kernel::Keyboard::GetASCIIData(void) {
-    unsigned char Data;
+int Kernel::Keyboard::GetASCIIData(void) {
+    int Data;
     while(1) {
-        if(KeyboardDataManager->IsScanCodeQueueEmpty() != 1) {
-            break;
+        if(KeyboardDataManager->ScanCodeQueue.Dequeue(&(Data)) == true) {
+            return Data;
         }
     }
-    Data = KeyboardDataManager->GetScanCodeQueueData();
-    return Data;
 }
 
 // Description : To-do
@@ -196,10 +179,6 @@ char Kernel::Keyboard::DataManager::ProcessSpecialKeys(unsigned char ScanCode) {
     }
     SpecialKeys[i] = ((ScanCode < 0x80) ? 1 : 0);           // Set the flag, depending on the status of the key(pressed(<0x80)/released(>0x80))
     return 1;                                               // Job well done.
-}
-
-char Kernel::Keyboard::IsQueueEmpty(void) {
-    return KeyboardDataManager->ScanCodeQueue.IsEmpty();
 }
 
 char Kernel::Keyboard::IsSpecialKeyPressed(int SpecialKeyNumber) {

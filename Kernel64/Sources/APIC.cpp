@@ -3,33 +3,33 @@
 #include <TaskManagement.hpp>
 
 void Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned int *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
 
 void Kernel::LocalAPIC::WriteRegister_L(unsigned int RegisterAddress , unsigned long Data) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned long *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
     
 unsigned int Kernel::LocalAPIC::ReadRegister(unsigned int RegisterAddress) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     return *((unsigned int *)(CoreInformation->LocalAPICAddress+RegisterAddress));
 }
 
 unsigned long Kernel::LocalAPIC::ReadRegister_L(unsigned int RegisterAddress) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     return *((unsigned long *)(CoreInformation->LocalAPICAddress+RegisterAddress));
 }
 
 void Kernel::IOAPIC::WriteRegister(unsigned char RegisterAddress , unsigned int Data) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned char *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_SELECTOR)) = RegisterAddress;
     *((unsigned int *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_WINDOW)) = Data;
 }
 
 unsigned int Kernel::IOAPIC::ReadRegister(unsigned char RegisterAddress) {
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned char *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_SELECTOR)) = RegisterAddress;
     return *((unsigned int *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_WINDOW));
 }
@@ -39,7 +39,7 @@ unsigned int Kernel::IOAPIC::ReadRegister(unsigned char RegisterAddress) {
 void Kernel::LocalAPIC::EnableLocalAPIC(void) {
     unsigned int EAX;
     unsigned int EDX;
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     
     // Disable all interrupts
     IO::Write(0x21 , 0xFF);
@@ -104,7 +104,7 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
     // Wow so I made two running core counter
     unsigned long LocalAPICBootLoaderLocation = 0x8000; // Pre-saved APIC boot loader location
     unsigned short *RunningCoreCount = (unsigned short *)(LocalAPICBootLoaderLocation+2+1);
-    struct CPUInformation *CoreInformation = Kernel::GetCoresInformation();
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     if(CheckBSP() == 0) {
         Kernel::printf("The current core is AP core!\n");
         return;
@@ -142,7 +142,7 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
     __asm__ ("sti");
 
     while(1) { // Wait until activated core count is equal to number of cores
-        if(Kernel::LocalAPIC::GetActivatedCoreCount() >= Kernel::GetCoresInformation()->CoreCount-1) {
+        if(Kernel::LocalAPIC::GetActivatedCoreCount() >= CoreInformation::GetInstance()->CoreCount-1) {
             Kernel::printf("All AP Cores are activated\n");
             break;
         }
