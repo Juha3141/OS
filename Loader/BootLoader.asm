@@ -18,7 +18,7 @@ KernelLoaderFileName: db "KERN~DDP.LDR" , 0x00  ; Name of the Kernel Loader     
                                                 ; Note : If you're in windows, change KernelLoaderFileName to "KERNEL~1.LDR", 
                                                 ; or if you're in linux, change it to "KERN~DDP.LDR".
 KernelLoaderLocation: dd 0x00                   ; Location of the Kernel Loader                    0x12
-KernelLoaderSectorSize: db 0x04                 ; Size of the Kernel Loader(Static)                0x16
+KernelLoaderSectorSize: dd 0x00                 ; Size of the Kernel Loader(Static)                0x16
 StaticKernelLoaderStartAddress: dd 0x8400       ; Address of the Kernel Loader                     0x18
 StaticAPLoaderStartAddress: dd 0x8000           ; Address of the AP Loader                         0x1B
 
@@ -60,6 +60,7 @@ Start:
                                 ; #16 sector)
         mov dword[si+12] , 0x00 ; Empty(Originally start of the sector field was 8 byte long, but
                                 ; in real mode, we can't do that, so we just empty the field)
+        mov dl , byte[DriveNumber]
         int 0x13 ; Saves PVD to Address 0x500 (PVD provides the sector address of root directory)
         
         cmp dword[0x501] , 0x30304443 ; Check if it's ISO9660 (CD001 - signature)
@@ -75,6 +76,7 @@ Start:
         mov dword[si+4] , 0x500+2048  ; Right after PVD Area
         mov dword[si+8] , ecx         ; The location of Directory Sector is saved in ecx register
         mov dword[si+12] , 0x00
+        mov dl , byte[DriveNumber]
 
         int 0x13
 
@@ -86,6 +88,7 @@ Start:
         mov dword[si+4] , 0x500+2048+2048 ; Right after Path Table Area
         mov dword[si+8] , ecx
         mov dword[si+12] , 0x00
+        mov dl , byte[DriveNumber]
 
         int 0x13
     
@@ -98,7 +101,9 @@ Start:
                                     ; which is the length of the Directory Record
             mov di , si
             mov ecx , dword[si+2]
-            mov dword[KernelLoaderLocation] , ecx
+            mov dword[KernelLoaderLocation] , ecx   ; LocationL 
+            mov ecx , dword[si+2+4+4]
+            mov dword[KernelLoaderSectorSize] , ecx ; DataLengthL
             add di , 0x21
 
             push di
@@ -109,19 +114,30 @@ Start:
             jne .Loop
 
         .FoundFile:
+            xor edx , edx
+            mov eax , dword[KernelLoaderSectorSize]
+            mov ebx , 2048
+            div ebx
+            test edx , edx
+            jz .L2
+            
+            inc eax
+        .L2:
+            mov dword[KernelLoaderSectorSize] , eax
+            mov edi , dword[StaticAPLoaderStartAddress]
             ; Load AP Loader
-            xor ebx , ebx
+            
             mov ah , 0x42
             mov si , DAP
-            mov byte[si+2] , 1
+            mov dword[si+2] , 1
             mov ecx , dword[StaticAPLoaderStartAddress]
             mov dword[si+4] , ecx
             mov ecx , dword[KernelLoaderLocation]
-            movzx ebx , byte[KernelLoaderSectorSize]
-            add ecx , ebx
+            add ecx , dword[KernelLoaderSectorSize]
             sub ecx , 1
             mov dword[si+8] , ecx
             mov dword[si+12] , 0x00
+            mov dl , byte[DriveNumber]
             int 0x13
 
             mov bl , byte[KernelLoaderSectorSize]
@@ -133,9 +149,10 @@ Start:
             mov ecx , dword[KernelLoaderLocation]
             mov dword[si+8] , ecx
             mov dword[si+12] , 0x00
+            mov dl , byte[DriveNumber]
             int 0x13
             
-            jmp 0x8400
+            jmp dword[StaticKernelLoaderStartAddress]
 
 HandleError:                 ; Handling all error
 	mov ax , 0xB800
