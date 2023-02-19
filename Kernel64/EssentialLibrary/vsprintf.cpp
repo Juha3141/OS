@@ -132,7 +132,7 @@ void vsprintf(char *Destination , const char *Format , va_list ap) {
 					case 'd':
 					case 'i': {
 						int Value = va_arg(ap , int);
-						char *Buffer = {0 , };
+						char Buffer[128] = {0 , };
 						itoa(Value , Buffer , 10);
 						ReverseString(Buffer);
 						strcpy(Destination+j , Buffer);
