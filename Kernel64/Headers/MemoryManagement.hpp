@@ -10,7 +10,7 @@
 #define _MEMORYMANAGEMENT_H_
 
 #define MEMORYMANAGEMENT_MEMORY_STARTADDRESS 0x1720000
-#define MEMORYMANAGEMENT_E820_ADDRESS        0xA000
+#define MEMORYMANAGEMENT_E820_ADDRESS        0xE000
 #define MEMORYMANAGEMENT_E820_USABLE         0x01
 #define MEMORYMANAGEMENT_E820_RESERVED       0x02
 #define MEMORYMANAGEMENT_E820_ACPI_RECLAIMED 0x03
@@ -30,7 +30,8 @@ namespace Kernel {
         struct QuerySystemAddressMap {
             unsigned long Address;
             unsigned long Length;
-            unsigned long Type;
+            unsigned int Type;
+            unsigned int Unknown;
         };
         enum ALIGNMENT {
             NO_ALIGN = 0 , 

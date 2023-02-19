@@ -33,7 +33,7 @@ void Kernel::MemoryManagement::Initialize(void) {
 		if(E820[E820EntryCount].Type == 0x00) {
 			break;
 		}
-		//Kernel::printf("%X~%X %d\n" , E820[E820EntryCount].Address , E820[E820EntryCount].Address+E820[E820EntryCount].Length , E820[E820EntryCount].Type);
+		// Kernel::printf("%X~%X %d\n" , E820[E820EntryCount].Address , E820[E820EntryCount].Address+E820[E820EntryCount].Length , E820[E820EntryCount].Type);
 		E820EntryCount += 1;
 	}
 	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
@@ -267,7 +267,6 @@ void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddres
 			memcpy(&(UnusableMemories[UnusableMemoryEntryCount]) , &(E820[i]) , sizeof(QuerySystemAddressMap));
 			UnusableMemoryEntryCount++;
 		}
-		//Kernel::printf("0x%X~0x%X : %d\n" , E820[i].Address , E820[i].Address+E820[i].Length , E820[i].Type);
 	}
 }
 
@@ -402,9 +401,6 @@ struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::NodeManager::Ad
 	Kernel::printf("Memory Violation Detected , Violated : %d\n" , ViolatedMemoryCount);
 	Kernel::printf("Location : 0x%X~0x%X\n" , StartAddress , EndAddress);
 	Kernel::printf("Violated : 0x%X~0x%X\n" , Node , ((unsigned long)Node)+Node->Size);
-	while(1) {
-		;
-	}
 	return Node;
 }
 
