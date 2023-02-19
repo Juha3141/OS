@@ -1,11 +1,13 @@
 #ifndef _ACPI_HPP_
 #define _ACPI_HPP_
 
+#include <KernelSystemStructure.hpp>
+
 #define RSDP_ADDRESS_1 0xE0000
 #define RSDP_ADDRESS_2 0x40E
 
 namespace Kernel {
-    struct CPUInformation {
+    struct CoreInformation {
         int CoreCount;
         unsigned int *LocalAPICProcessorID;
         unsigned int *LocalAPICID;
@@ -16,6 +18,18 @@ namespace Kernel {
 
         bool ACPIUsed;
         bool MPUsed;
+
+        static struct CoreInformation *GetInstance(void) {
+            struct CoreInformation *Instance;
+            if(Instance == 0x00) {
+                Instance = (struct CoreInformation *)Kernel::SystemStructure::Allocate(sizeof(struct CoreInformation));
+            }
+            return Instance;
+        }
+        static void SetInstance(struct CoreInformation *NewInstance) {
+            struct CoreInformation *OldInstance = CoreInformation::GetInstance();
+            OldInstance = NewInstance;
+        }
     };
     namespace ACPI {
         struct RSDP {
@@ -91,11 +105,19 @@ namespace Kernel {
             struct ExtendedRSDP *RSDP20;
             struct RSDT *RSDT;
             unsigned long RSDTEntryCount;
+            
+            bool FailedInitialization;
+            
+            static struct ACPIEntry *GetInstance(void) {
+                static class ACPIEntry *Instance = 0x00;
+                if(Instance == 0x00) {
+                    Instance = (struct ACPIEntry *)Kernel::SystemStructure::Allocate(sizeof(struct ACPIEntry));
+                }
+                return Instance;
+            }
         };
         
         bool Initialize(void);
-
-        unsigned long GetRSDPAddress(void);
 
         unsigned long GetDescriptorTable(const char Signature[4]);
         bool SaveCoresInformation(void);

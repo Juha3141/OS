@@ -1,17 +1,20 @@
 #include <ACPI.hpp>
 #include <Kernel.hpp>
 
-static struct Kernel::CPUInformation *CoreInformation;
-static struct Kernel::ACPI::ACPIEntry *UniversalACPIEntry;
-
 #define DEBUG
 
-bool Kernel::ACPI::Initialize(void) { // Gather information, and write it to ACPI Entry structure
-    UniversalACPIEntry = (struct ACPIEntry *)Kernel::SystemStructure::Allocate(sizeof(struct ACPIEntry));
-    UniversalACPIEntry->RSDP = (struct RSDP *)GetRSDPAddress();
+bool Kernel::ACPI::Initialize(void) { // Gather information, and write it to ACPI Entry structures
+    struct ACPIEntry *UniversalACPIEntry = ACPIEntry::GetInstance();
     UniversalACPIEntry->RSDT = (struct RSDT *)UniversalACPIEntry->RSDP->RSDTAddress;
-    if(UniversalACPIEntry->RSDP == 0) {
-        return false;
+    if(CheckRSDPChecksum(RSDP_ADDRESS_1) == true) {
+        UniversalACPIEntry->RSDP = (RSDP *)RSDP_ADDRESS_1;
+    }
+    else if(CheckRSDPChecksum(RSDP_ADDRESS_2) == true) {
+        UniversalACPIEntry->RSDP = (RSDP *)RSDP_ADDRESS_2;
+    }
+    else {
+        UniversalACPIEntry->FailedInitialization = true;
+        return false; // no acpi
     }
     if(UniversalACPIEntry->RSDP->Revision == 2) { // If revision is two, use XSDT.
         UniversalACPIEntry->RSDP20 = (struct ExtendedRSDP *)((CheckRSDPChecksum(RSDP_ADDRESS_1) == 1) ? RSDP_ADDRESS_1 : RSDP_ADDRESS_2);
@@ -39,6 +42,10 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     unsigned long MADTAddress = GetDescriptorTable("APIC");
     SDTHeader *MADTHeader = (SDTHeader *)MADTAddress;
     unsigned char *MADT = (unsigned char *)(MADTAddress+sizeof(SDTHeader));
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
+    if(ACPI::ACPIEntry::GetInstance()->FailedInitialization == true) {
+        return false;
+    }
     // MADT : Describes every interrupt controller in the system, this includes LocalAPIC and I/O APIC.
     // We're going to read the information of Local APIC and I/O APIC, and the number of Local APIC corresponds to 
     // number of the cores, so we're also going to find the number of cores by those informations.
@@ -48,7 +55,6 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     }
     MADT += 8;  // 
     // Allocate space to store core informations.
-    CoreInformation = (struct Kernel::CPUInformation *)SystemStructure::Allocate(sizeof(struct Kernel::CPUInformation));
     
     // Get the address of Local APIC registers from MSR.
     // MSR 0x1B : APIC_BASE
@@ -103,28 +109,14 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     return true;
 }
 
-Kernel::CPUInformation *Kernel::GetCoresInformation(void) {
-    return CoreInformation;
-}
-
-void Kernel::WriteCoresInformation(Kernel::CPUInformation *NewCoreInformation) {
-    CoreInformation = NewCoreInformation;
-}
-
-unsigned long Kernel::ACPI::GetRSDPAddress(void) {
-    if(CheckRSDPChecksum(RSDP_ADDRESS_1) == 1) {
-        return RSDP_ADDRESS_1;
-    }
-    if(CheckRSDPChecksum(RSDP_ADDRESS_2) == 1) {
-        return RSDP_ADDRESS_2;
-    }
-    return 0;
-}
-
 unsigned long Kernel::ACPI::GetDescriptorTable(const char Signature[4]) {
     int i = 0;
     unsigned int *NextAddress;
     unsigned long *NextAddressX; // Next Address for XSDT(Extended SDT)
+    struct ACPIEntry *UniversalACPIEntry = ACPIEntry::GetInstance();
+    if(UniversalACPIEntry->FailedInitialization == true) {
+        return 0x00;
+    }
     int RSDPRevision = UniversalACPIEntry->RSDP->Revision;
     struct RSDT *RSDT = UniversalACPIEntry->RSDT;
     NextAddress = (unsigned int *)(((unsigned long)RSDT)+sizeof(SDTHeader));
@@ -135,17 +127,17 @@ unsigned long Kernel::ACPI::GetDescriptorTable(const char Signature[4]) {
         }
         RSDT = (struct RSDT *)((RSDPRevision == 2) ? NextAddressX[i] : NextAddress[i]);
     }
-    return 0;
+    return 0x00;
 }
 
-bool Kernel::ACPI::CheckRSDPChecksum(unsigned long Address) {
+bool Kernel::ACPI::CheckRSDPChecksum(unsigned long Address) { // error
     int i;
     unsigned char *RSDP = (unsigned char *)Address;
     unsigned char ChecksumString[8] = {'R' , 'S' , 'D' , ' ' , 'P' , 'T' , 'R' , ' '};
     for(i = 0; i < 8; i++) {
         if(RSDP[i] != ChecksumString[i]) {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
