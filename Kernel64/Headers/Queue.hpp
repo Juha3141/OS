@@ -20,7 +20,7 @@ template <typename T> class Queue {
         //                   The Offset increases when the data is returned.
         // TotalLength     : The length of the queue
         void Initialize(unsigned int QueueSize) {   // Initializes Queue
-            CurrentOffset = 0;                      // Initialize variables
+            CurrentOffset = 0;
             SelectingOffset = 0;
             TotalLength = QueueSize;
             QueueList = (T *)Kernel::MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
@@ -29,31 +29,31 @@ template <typename T> class Queue {
             Kernel::MemoryManagement::Free(QueueList);  // 
         }
         bool Enqueue(T Data) {                          // Put data to queue
+            // Kernel::printf("Enqueue\n");
+            // Kernel::printf("Data : 0x%X\n" , Data);
             QueueList[CurrentOffset] = Data;            // Stores data
-            CurrentOffset += 1;
-            if(CurrentOffset > TotalLength) {           // Going circular, if we reach the end, 
-                CurrentOffset = 0;                      // return back to the beginning
-            }
+            CurrentOffset = (CurrentOffset+1)%TotalLength;
+            // Kernel::printf("CurrentOffset : %d\n" , CurrentOffset);
             return true;
         }
-        T Dequeue(void) {                               // Remove data from queue
-            T Data = QueueList[SelectingOffset];        // Returns data
-            SelectingOffset += 1;
-            if(SelectingOffset > TotalLength) {         // Going circular, if we reach the end, 
-                SelectingOffset = 0;                    // return back to the beginning
+        bool Dequeue(T *Data) {                               // Remove data from queue
+            int i;
+            if(IsEmpty() == true) {
+                return false;
             }
-            return Data;
+            // Kernel::printf("Dequeue\n");
+            // Kernel::printf("CurrentOffset : %d\n" , CurrentOffset);
+            // Kernel::printf("SelectingOffset : %d\n" , SelectingOffset);
+            *Data = QueueList[SelectingOffset];
+            SelectingOffset = (SelectingOffset+1)%TotalLength;
+            // Kernel::printf("NewSelectingOffset : %d\n" , SelectingOffset);
+            // Kernel::printf("Data : 0x%X\n" , *Data);
+            return true;
         }
         bool IsEmpty(void) {
-            if(CurrentOffset == SelectingOffset) {      // If the CurrentOffset and SelectingOffset are same, 
+            if(CurrentOffset == SelectingOffset) {      // If the CurrentOffset and SelectingOffset are same,
                 return true;                            // which means all the data were returned, 
             }                                           // It is empty.
-            return false;
-        }
-        bool IsFull(void) {
-            if(CurrentOffset == TotalLength) {          // If the CurrentOffset and TotalLength are same, 
-                return true;                            // which means all the data filled the array 
-            }                                           // It is full.
             return false;
         }
     private:
@@ -63,7 +63,7 @@ template <typename T> class Queue {
         int TotalLength;
 };
 
-template<typename T>class StructureQueue : public Queue<T> {
+template <typename T> class StructureQueue {
     public:
         void Initialize(unsigned int QueueSize) {   // Initializes Queue
             CurrentOffset = 0;                      // Initialize variables
@@ -72,14 +72,14 @@ template<typename T>class StructureQueue : public Queue<T> {
             QueueList = (T *)Kernel::MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
         }
         void DeleteQueue(void) {
-            Kernel::MemoryManagement::Free(QueueList);  // 
+            Kernel::MemoryManagement::Free(QueueList);
         }
         bool Enqueue(T Data) {                          // Put data to queue
             memcpy(&(QueueList[CurrentOffset]) , &(Data) , sizeof(T));
             CurrentOffset += 1;
-            if(CurrentOffset > TotalLength) {           // Going circular, if we reach the end, 
-                CurrentOffset = 0;                      // return back to the beginning
-            }
+            CurrentOffset = (CurrentOffset+1)%TotalLength;
+            // Going circular, if we reach the end, 
+            // return back to the beginning
             return true;
         }
         bool Dequeue(T *Data) {                         // Remove data from queue
@@ -88,21 +88,15 @@ template<typename T>class StructureQueue : public Queue<T> {
             }
             memcpy(Data , &(QueueList[SelectingOffset]) , sizeof(T));        // Returns data
             SelectingOffset += 1;
-            if(SelectingOffset > TotalLength) {         // Going circular, if we reach the end, 
-                SelectingOffset = 0;                    // return back to the beginning
-            }
+            SelectingOffset = (SelectingOffset+1)%TotalLength;  
+            // Going circular, if we reach the end, 
+            // return back to the beginning
             return true;
         }
         bool IsEmpty(void) {
             if(CurrentOffset == SelectingOffset) {      // If the CurrentOffset and SelectingOffset are same, 
                 return true;                            // which means all the data were returned, 
             }                                           // It is empty.
-            return false;
-        }
-        bool IsFull(void) {
-            if(CurrentOffset == TotalLength) {          // If the CurrentOffset and TotalLength are same, 
-                return true;                            // which means all the data filled the array 
-            }                                           // It is full.
             return false;
         }
     private:
