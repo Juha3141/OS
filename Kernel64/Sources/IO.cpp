@@ -27,3 +27,17 @@ void IO::WriteWord(unsigned short Port , unsigned short Data) {
     __asm__ ("mov ax , %0"::"r"(Data));
     __asm__ ("out dx , ax");
 }
+
+unsigned int IO::ReadDWord(unsigned short Port) {
+    unsigned int Data;
+    __asm__ ("mov dx , %0"::"r"(Port));
+    __asm__ ("in eax , dx");
+    __asm__ ("mov %0 , eax":"=r"(Data));
+    return Data;
+}
+
+void IO::WriteDWord(unsigned short Port , unsigned int Data) {
+    __asm__ ("mov dx , %0"::"r"(Port));
+    __asm__ ("mov eax , %0"::"r"(Data));
+    __asm__ ("out dx , eax");
+}

@@ -13,7 +13,7 @@
 #define PATA_PORT_ERROR          0x01
 #define PATA_PORT_FEATURES       0x01
 #define PATA_PORT_SECTOR_COUNT   0x02
-#define PATA_PORT_SECTOR_NUMBER  0x03
+#define PATA_PORT_LBALOW         0x03
 #define PATA_PORT_LBAMIDDLE      0x04
 #define PATA_PORT_LBAHIGH        0x05
 #define PATA_PORT_DRIVE_SELECT   0x06
@@ -37,6 +37,16 @@
 #define PATA_DIGITAL_OUTPUT_INTERRUPT_ENABLE 0b010
 #define PATA_DIGITAL_OUTPUT_SOFTWARE_RESET   0b100
 
+
+#define PATA_STATUS_ERROR 0b00000001
+#define PATA_STATUS_INDEX 0b00000010
+#define PATA_STATUS_CORR  0b00000100
+#define PATA_STATUS_DRQ   0b00001000
+#define PATA_STATUS_SRV   0b00010000
+#define PATA_STATUS_DF    0b00100000
+#define PATA_STATUS_READY 0b01000000
+#define PATA_STATUS_BUSY  0b10000000
+
 namespace Kernel {
     namespace Drivers {
         namespace PATA {
@@ -48,7 +58,7 @@ namespace Kernel {
                 unsigned short Firmware[4];
                 unsigned short Model[20];
                 unsigned short Reserved3[13];
-                unsigned short TotalSectors;
+                unsigned int TotalSectors;
                 unsigned short Reserved4[196];
             };
             void Register(void);

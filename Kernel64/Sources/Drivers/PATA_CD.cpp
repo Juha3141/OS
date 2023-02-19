@@ -59,11 +59,9 @@ bool PATA_CD::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::Stora
     }
     if(Storage->Flags[0] == true) {
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xE0); // Primary
-        Kernel::printf("Reading Primary\n");
     }
     else {
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Secondary
-        Kernel::printf("Reading Secondary\n");
     }
     IO::WriteWord(BasePort+PATA_PORT_COMMAND_IO , 0xA1); // IDENTIFY
     do {
@@ -83,46 +81,67 @@ bool PATA_CD::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::Stora
     }
     Geometry->Model[j++] = 0x00;
     Kernel::printf("Model Number : %s\n" , Geometry->Model);
-    GetCDROMSize(Storage);
-    Geometry->BytesPerSector = 2048;
-    Geometry->BytesPerTrack = 0;
-    Geometry->CylindersCount = 0;
-    Geometry->TracksPerCylinder = 0;
+    if(GetCDROMSize(Storage , Geometry) == false) {
+        return false;
+    }
     return true;
 }
 
-unsigned long PATA_CD::GetCDROMSize(StorageSystem::Storage *Storage) {
+bool PATA_CD::GetCDROMSize(StorageSystem::Storage *Storage , StorageSystem::StorageGeometry *Geometry) {
     int i;
-    unsigned char Command[12];
+    unsigned char Command[12] = {0x25 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00};
     unsigned char Status;
     unsigned int TotalBlock;
     unsigned int BlockSize;
     unsigned short BasePort = Storage->Ports[0];
     unsigned short DeviceControlPort = Storage->Ports[1];
+    unsigned char ReceivedData[8];
     if(Storage->Flags[0] == true) {
-        IO::WriteWord(BasePort+PATA_PORT_DRIVE_SELECT , 0xE0);
+        IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xE0); // Primary
     }
     else {
-        IO::WriteWord(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0);
+        IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Secondary
     }
-    IO::WriteWord(BasePort+PATA_PORT_COMMAND_IO , 0xA0);
-    memset(Command , 0 , sizeof(Command));
-    Command[0] = 0x25;
-    for(i = 0; i < sizeof(Command); i++) {
-        IO::WriteWord(BasePort+PATA_PORT_DATA , Command[i]);
+    IO::Write(BasePort+PATA_PORT_FEATURES , 0);
+    IO::Write(BasePort+PATA_PORT_LBAMIDDLE , 0x08);
+    IO::Write(BasePort+PATA_PORT_LBAHIGH , 0x08);
+    IO::Write(BasePort+PATA_PORT_COMMAND_IO , 0xA0);
+    do {
+        Status = IO::Read(BasePort+PATA_PORT_COMMAND_IO);
+        if((Status & PATA_STATUS_ERROR) == PATA_STATUS_ERROR) {
+            return false;
+        }
+        if(Status == 0x00) {
+            return false;
+        }
+        if((Status & PATA_STATUS_DRQ) == PATA_STATUS_DRQ) {
+            break;
+        }
+    }while((Status & PATA_STATUS_BUSY) == PATA_STATUS_BUSY);
+    for(i = 0; i < 6; i++) {
+        IO::WriteWord(BasePort+PATA_PORT_DATA , ((unsigned short *)(&(Command)))[i]);
     }
-    
-    Status = IO::Read(BasePort+PATA_PORT_COMMAND_IO);
-
-    TotalBlock = IO::ReadWord(BasePort+PATA_PORT_DATA) << 16;
-    TotalBlock |= IO::ReadWord(BasePort+PATA_PORT_DATA);
-    BlockSize = IO::ReadWord(BasePort+PATA_PORT_DATA) << 16;
-    BlockSize |= IO::ReadWord(BasePort+PATA_PORT_DATA);
-    
-    IO::Write(BasePort+PATA_PORT_COMMAND_IO , Status);
-    
-    Kernel::printf("Total Block Count : %d\n" , TotalBlock);
-    Kernel::printf("Block Size        : %d\n" , BlockSize);
+    do {
+        Status = IO::Read(BasePort+PATA_PORT_COMMAND_IO);
+        if((Status & PATA_STATUS_ERROR) == PATA_STATUS_ERROR) {
+            return false;
+        }
+        if(Status == 0x00) {
+            return false;
+        }
+        if((Status & PATA_STATUS_DRQ) == PATA_STATUS_DRQ) {
+            break;
+        }
+    }while((Status & PATA_STATUS_BUSY) == PATA_STATUS_BUSY);
+    for(i = 0; i < 4; i++) {
+        ((unsigned short *)(&(ReceivedData)))[i] = IO::ReadWord(BasePort+PATA_PORT_DATA);
+    }
+    Geometry->TotalSectorCount = (ReceivedData[0] << 24)|(ReceivedData[1] << 16)|(ReceivedData[2] << 8)|ReceivedData[3];
+    Geometry->TotalSectorCount++;
+    Geometry->BytesPerSector = (ReceivedData[4] << 24)|(ReceivedData[5] << 16)|(ReceivedData[6] << 8)|ReceivedData[7];
+    Kernel::printf("Total sector count : %d\n" , Geometry->TotalSectorCount);
+    Kernel::printf("Bytes per sector   : %d\n" , Geometry->BytesPerSector);
+    // ok good now you need to clean this code up
     return TotalBlock;
 }
 // thies code needs to be fixed, and also, storage system manager should be fixed, because one driver can't handle many storage systems.

@@ -22,7 +22,7 @@ namespace Kernel {
             unsigned long ReadSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
             unsigned long WriteSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
 
-            unsigned long GetCDROMSize(StorageSystem::Storage *Storage);
+            bool GetCDROMSize(StorageSystem::Storage *Storage , StorageSystem::StorageGeometry *Geometry);
         }
     }
 }
