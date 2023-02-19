@@ -22,6 +22,8 @@ namespace IO {
     void Write(unsigned short Port , unsigned char Data);
     unsigned short ReadWord(unsigned short Port);
     void WriteWord(unsigned short Port , unsigned short Data);
+    unsigned int ReadDWord(unsigned short Port);
+    void WriteDWord(unsigned short Port , unsigned int Data);
 }
 
 #endif
