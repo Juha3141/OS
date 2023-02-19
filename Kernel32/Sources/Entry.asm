@@ -13,8 +13,8 @@ PreMain:
     mov gs , ax
     mov ss , ax
 
-    mov esp , 0x9FF8
-    mov ebp , 0x9FF8
+    mov esp , 0xDFF8
+    mov ebp , 0xDFF8
 
     call Main
 
