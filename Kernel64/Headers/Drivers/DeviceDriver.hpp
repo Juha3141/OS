@@ -11,46 +11,13 @@
 
 namespace Kernel {
     namespace Drivers {
-        template <typename T> class DriverSystemManager { // structure that manages driver
+        class DriverSystemManager { // structure that manages driver
             public:
-                void Initialize(void){
-                    int i;
-                    SystemList = (struct SystemListStruct *)Kernel::MemoryManagement::Allocate(DRIVERSYSTEM_MAXCOUNT*sizeof(SystemListStruct));
-                    SystemCount = 0;
-                    for(i = 0; i < DRIVERSYSTEM_MAXCOUNT; i++) {
-                        SystemList[i].Using = false;
-                    }
-                }
-                unsigned long Register(T *System) {
-                    int i;
-                    if(SystemCount >= DRIVERSYSTEM_MAXCOUNT) {
-                        return DRIVERSYSTEM_INVALIDID;
-                    }
-                    for(i = 0; i < DRIVERSYSTEM_MAXCOUNT; i++) {
-                        if(SystemList[i].Using == false) {
-                            SystemList[i].Using = true;
-                            break;
-                        }
-                    }
-                    if(i >= DRIVERSYSTEM_MAXCOUNT) {
-                        return DRIVERSYSTEM_INVALIDID;
-                    }
-                    SystemList[i].System = System;
-                    SystemCount++;
-                    return i;
-                }
-                T *GetSystem(unsigned long ID) {
-                    return SystemList[ID].System;
-                }
-                T *Deregister(unsigned long ID) {
-                    SystemList[ID].Using = false;
-                    SystemCount--;
-                    return SystemList[ID].System;
-                }
-                struct SystemListStruct {
-                    T *System;
-                    bool Using = false;
-                }*SystemList;
+                void Initialize(void);
+                unsigned long Register(unsigned long System);
+                unsigned long GetSystem(unsigned long ID);
+                unsigned long Deregister(unsigned long ID);
+                unsigned long *SystemList;
                 unsigned long SystemCount;
         };
     }
