@@ -2,10 +2,10 @@
 #include <Drivers/FileSystemDriver.hpp>
 #include <Drivers/StorageDriver.hpp>
 
-struct Kernel::Drivers::DriverSystemManager<Kernel::FileSystem::Standard> *FileSystemManager;
+struct Kernel::Drivers::DriverSystemManager *FileSystemManager;
 
 void Kernel::FileSystem::Initialize(void) {
-    FileSystemManager = (struct Drivers::DriverSystemManager<FileSystem::Standard> *)Kernel::MemoryManagement::Allocate(sizeof(struct Drivers::DriverSystemManager<FileSystem::Standard>));
+    FileSystemManager = (struct Drivers::DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct Drivers::DriverSystemManager));
     FileSystemManager->Initialize();
 }
 
@@ -18,7 +18,6 @@ StandardRemoveFileFunction RemoveFile ,
 
 StandardWriteFileFunction WriteFile , 
 StandardReadFileFunction ReadFile , 
-StandardSetFileOffsetFunction SetFileOffset , 
 
 StandardReadDirectoryFunction ReadDirectory , 
 StandardGetFileCountInDirectoryFunction GetFileCountInDirectory) {
@@ -31,7 +30,6 @@ StandardGetFileCountInDirectoryFunction GetFileCountInDirectory) {
 
     FileSystem->WriteFile = WriteFile;
     FileSystem->ReadFile = ReadFile;
-    FileSystem->SetFileOffset = SetFileOffset;
 
     FileSystem->ReadDirectory = ReadDirectory;
     FileSystem->GetFileCountInDirectory = GetFileCountInDirectory;
@@ -40,21 +38,21 @@ StandardGetFileCountInDirectoryFunction GetFileCountInDirectory) {
 
 bool Kernel::FileSystem::Register(Kernel::FileSystem::Standard *FileSystem , const char *FileSystemString) {
     strcpy(FileSystem->FileSystemString , FileSystemString);
-    if(FileSystemManager->Register(FileSystem) == false) {
+    if(FileSystemManager->Register((unsigned long)FileSystem) == false) {
         return false;
     }
     return true;
 }
 
 Kernel::FileSystem::Standard *Kernel::FileSystem::Search(unsigned long ID) {
-    return FileSystemManager->GetSystem(ID);
+    return (Kernel::FileSystem::Standard *)FileSystemManager->GetSystem(ID);
 }
 
 Kernel::FileSystem::Standard *Kernel::FileSystem::Search(const char *FileSystemString) {
     int i;
     for(i = 0; i < FileSystemManager->SystemCount; i++) {
-        if(memcmp(FileSystemManager->SystemList[i].System->FileSystemString , FileSystemString , strlen(FileSystemString)) == 0) {
-            return FileSystemManager->SystemList[i].System;
+        if(memcmp(((Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i])->FileSystemString , FileSystemString , strlen(FileSystemString)) == 0) {
+            return (Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i];
         }
     }
     return 0x0; // can't find storage
@@ -63,8 +61,8 @@ Kernel::FileSystem::Standard *Kernel::FileSystem::Search(const char *FileSystemS
 Kernel::FileSystem::Standard *Kernel::FileSystem::DetectFileSystem(Drivers::StorageSystem::Storage *Storage) {
     int i;
     for(i = 0; i < FileSystemManager->SystemCount; i++) {
-        if(FileSystemManager->SystemList[i].System->Check(Storage) == true) {
-            return FileSystemManager->SystemList[i].System;
+        if(((Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i])->Check(Storage) == true) {
+            return (Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i];
         }
     }
     return 0x00;

@@ -39,7 +39,6 @@ namespace Kernel {
         
         typedef int (*StandardWriteFileFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
         typedef int (*StandardReadFileFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        typedef int (*StandardSetFileOffsetFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
         
         typedef int (*StandardReadDirectoryFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
         typedef int (*StandardGetFileCountInDirectoryFunction)(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo);
@@ -54,7 +53,6 @@ namespace Kernel {
             
             StandardWriteFileFunction WriteFile;
             StandardReadFileFunction ReadFile;
-            StandardSetFileOffsetFunction SetFileOffset;
             
             StandardReadDirectoryFunction ReadDirectory;
             StandardGetFileCountInDirectoryFunction GetFileCountInDirectory;
@@ -69,7 +67,6 @@ namespace Kernel {
         
         StandardWriteFileFunction WriteFile , 
         StandardReadFileFunction ReadFile , 
-        StandardSetFileOffsetFunction SetFileOffset , 
 
         StandardReadDirectoryFunction ReadDirectory , 
         StandardGetFileCountInDirectoryFunction GetFileCountInDirectory);
