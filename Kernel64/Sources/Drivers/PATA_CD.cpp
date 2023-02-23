@@ -44,6 +44,7 @@ bool PATA_CD::PreInitialization(StorageSystem::Driver *Driver) {
 
 bool PATA_CD::Wait(unsigned short BasePort) {
     unsigned char Status;
+    int i = 0;
     do {
         Status = IO::Read(BasePort+PATA_PORT_COMMAND_IO);
         if((Status & PATA_STATUS_ERROR) == PATA_STATUS_ERROR) {
@@ -54,6 +55,10 @@ bool PATA_CD::Wait(unsigned short BasePort) {
         }
         if((Status & PATA_STATUS_DRQ) == PATA_STATUS_DRQ) {
             break;
+        }
+        i++;
+        if(i >= 4096) {
+            return false;
         }
     }while((Status & PATA_STATUS_BUSY) == PATA_STATUS_BUSY);
     return true;
@@ -93,15 +98,8 @@ bool PATA_CD::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::Stora
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Secondary
     }
     IO::WriteWord(BasePort+PATA_PORT_COMMAND_IO , 0xA1); // IDENTIFY
-    for(i = 0; i <= 4096; i++) {
-        Status = IO::ReadWord(BasePort+PATA_PORT_COMMAND_IO);
-        if((Status & 0x80) == 0) {
-            break;
-        }
-    }
-    if(i >= 4096) {
-        return false;
-    }
+    
+    PATA_CD::Wait(BasePort);
     for(i = 0; i < 256; i++) {
         Data[i] = IO::ReadWord(BasePort+PATA_PORT_DATA);
     }

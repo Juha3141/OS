@@ -5,7 +5,7 @@ using namespace Kernel::Drivers;
 
 void BootRAMDisk::Register(void) {
     StorageSystem::Driver *BootRAMDiskDriver
-     = StorageSystem::Assign(
+     = StorageSystem::AssignDriver(
         BootRAMDisk::PreInitialization , 
         BootRAMDisk::ReadSector , 
         BootRAMDisk::WriteSector , 
@@ -19,7 +19,7 @@ bool BootRAMDisk::PreInitialization(StorageSystem::Driver *Driver) {
     if(Signature[0] != BOOTRAMDISK_SIGNATURE) {
         return false;
     }
-    Storage = StorageSystem::Assign(0 , 0 , 0 , 0);
+    Storage = StorageSystem::AssignStorage(0 , 0 , 0 , 0);
     StorageSystem::RegisterStorage("ramdisk" , Storage);
     return true;
 }

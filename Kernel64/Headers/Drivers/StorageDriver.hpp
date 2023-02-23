@@ -22,12 +22,13 @@ namespace Kernel {
             struct Partition { // to - do : Detect file system & implement it
                 unsigned long StartAddressLBA;
                 unsigned long EndAddressLBA;
-                unsigned int Partitionype;
-                char *PartitionName;
+                unsigned int PartitionType;
+                bool IsBootable;
+
+                char PartitionName[72];
 
                 unsigned char PartitionTypeGUID[16];
                 unsigned char UniquePartitionGUID[16];
-                struct Partition *NextPartition;
             };
             struct StorageGeometry { // StorageGeometry
                 unsigned long CylindersCount;
@@ -62,7 +63,10 @@ namespace Kernel {
                 char FileSystemString[24];
                 struct FileSystem::Standard *FileSystem;
                 struct StorageSystem::Driver *Driver;
-                Partition *PartitionNode;
+                
+                Partition *Partitions;
+                int PartitionCount;
+                unsigned char PartitionScheme;
             };
             typedef bool (*StandardPreInitializationFunction)(Driver *Driver);
             typedef unsigned long (*StandardReadSectorFunction)(Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
@@ -75,7 +79,7 @@ namespace Kernel {
                 StandardGetGeometryFunction GetGeometryFunction;
                 
                 char DriverName[24]; // IDE, RAMDisk, USB, or etc..
-                DriverSystemManager<Storage> *StoragesManager;
+                DriverSystemManager *StoragesManager;
 
                 unsigned int ID;    // Storage Driver** ID
             };
@@ -84,7 +88,7 @@ namespace Kernel {
             // ReadSector & WriteSector
             // Etc..
             void Initialize(void);
-            StorageSystem::Driver *Assign(
+            StorageSystem::Driver *AssignDriver(
             StandardPreInitializationFunction PostInitialization , 
             StandardReadSectorFunction ReadSectorFunction , 
             StandardWriteSectorFunction WriteSectorFunction , 
@@ -95,7 +99,7 @@ namespace Kernel {
             StorageSystem::Driver *DeregisterStorageDriver(const char *DriverName);
             StorageSystem::Driver *DeregisterStorageDriver(unsigned long ID);
 
-            StorageSystem::Storage *Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount);
+            StorageSystem::Storage *AssignStorage(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount);
             bool RegisterStorage(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage);
             bool RegisterStorage(const char *DriverName , Storage *Storage);
             StorageSystem::Storage *SearchStorage(const char *DriverName , unsigned long StorageID);

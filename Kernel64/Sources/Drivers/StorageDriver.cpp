@@ -8,14 +8,14 @@
 using namespace Kernel;
 using namespace Kernel::Drivers;
 
-struct DriverSystemManager<Kernel::Drivers::StorageSystem::Driver> *StorageDriverManager;
+struct DriverSystemManager *StorageDriverManager;
 
 void StorageSystem::Initialize(void) {
-    StorageDriverManager = (struct DriverSystemManager<StorageSystem::Driver> *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager<StorageSystem::Driver>));
+    StorageDriverManager = (struct DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager));
     StorageDriverManager->Initialize();
 }
 
-Kernel::Drivers::StorageSystem::Driver *Kernel::Drivers::StorageSystem::Assign(
+Kernel::Drivers::StorageSystem::Driver *Kernel::Drivers::StorageSystem::AssignDriver(
 StandardPreInitializationFunction PreInitialization , 
 StandardReadSectorFunction ReadSectorFunction , 
 StandardWriteSectorFunction WriteSectorFunction , 
@@ -31,17 +31,17 @@ StandardGetGeometryFunction GetGeometryFunction) {
 bool StorageSystem::RegisterStorageDriver(StorageSystem::Driver *StorageDriver , const char *DriverName) {
     int i;
     unsigned long ID;
-    if((ID = StorageDriverManager->Register(StorageDriver)) == DRIVERSYSTEM_INVALIDID) {
+    if((ID = StorageDriverManager->Register((unsigned long)StorageDriver)) == DRIVERSYSTEM_INVALIDID) {
         Kernel::printf("Failed registering storage system.\n");
         return false;
     }
-    StorageDriver->StoragesManager = (struct DriverSystemManager<StorageSystem::Storage> *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager<StorageSystem::Storage>));
+    StorageDriver->StoragesManager = (struct DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager));
     StorageDriver->StoragesManager->Initialize();
     StorageDriver->ID = ID;
     strcpy(StorageDriver->DriverName , DriverName);
     if(StorageDriver->PreInitialization(StorageDriver) == false) { // Detect and register the storage system
         Kernel::printf("Pre-initialization failed\n");
-        return 0x00;
+        return false;
     }
     return true;
 }
@@ -52,32 +52,32 @@ StorageSystem::Driver *StorageSystem::SearchStorageDriver(const char *DriverName
         return 0;
     }
     for(i = 0; i < StorageDriverManager->SystemCount; i++) {
-        if(memcmp(StorageDriverManager->SystemList[i].System->DriverName , DriverName , strlen(DriverName)) == 0) {
-            return StorageDriverManager->SystemList[i].System;
+        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(DriverName)) == 0) {
+            return (StorageSystem::Driver *)StorageDriverManager->SystemList[i];
         }
     }
     return 0; // can't find storage
 }
 
 StorageSystem::Driver *StorageSystem::SearchStorageDriver(unsigned long ID) {
-    return StorageDriverManager->GetSystem(ID);
+    return (StorageSystem::Driver *)StorageDriverManager->GetSystem(ID);
 }
 
 StorageSystem::Driver *StorageSystem::DeregisterStorageDriver(const char *DriverName) {
     int i;
     for(i = 0; i < StorageDriverManager->SystemCount; i++) {
-        if(memcmp(StorageDriverManager->SystemList[i].System->DriverName , DriverName , strlen(DriverName)) == 0) {
-            return StorageDriverManager->Deregister(i);
+        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(DriverName)) == 0) {
+            return (StorageSystem::Driver *)StorageDriverManager->Deregister(i);
         }
     }
     return 0; // can't find storage
 }
 
 StorageSystem::Driver *StorageSystem::DeregisterStorageDriver(unsigned long ID) {
-    return StorageDriverManager->Deregister(ID);
+    return (StorageSystem::Driver *)StorageDriverManager->Deregister(ID);
 }
 
-StorageSystem::Storage *StorageSystem::Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
+StorageSystem::Storage *StorageSystem::AssignStorage(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
     StorageSystem::Storage *Storage;
     Storage = (StorageSystem::Storage *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Storage));
     if(PortsCount != 0x00) {
@@ -107,25 +107,33 @@ bool StorageSystem::RegisterStorage(StorageSystem::Driver *StorageDriver , Stora
         return false;
     }
     MBR::Identifier MBRIdentifier(StorageDriver , Storage);
-    Storage->ID = StorageDriver->StoragesManager->Register(Storage);
+    GPT::Identifier GPTIdentifier(StorageDriver , Storage);
+    Storage->Driver = StorageDriver;
+    Storage->ID = StorageDriver->StoragesManager->Register((unsigned long)Storage);
     if(Storage->ID == DRIVERSYSTEM_INVALIDID) {
         return false;
     }
-    Storage->Driver = StorageDriver;
-    /*
-    if(MBRIdentifier.DetectMBR() == true) {
-        PartitionNode = MBRIdentifier.GetPartition();
-        if(PartitionNode != 0x00) {
-            Storage->PartitionNode = PartitionNode;
-            while(PartitionNode != 0) {
-                PartitionNode = MBRIdentifier.GetPartition();
-                PartitionNode = PartitionNode->NextPartition;
-            }
-        }
-        Kernel::printf("Partition Count : %d\n" , MBRIdentifier.PartitionCount);
-    }*/
     if(StorageDriver->GetGeometryFunction(Storage , &(Storage->Geometry)) == false) {
+        Kernel::printf("Failed getting geometry\n");
         return false;
+    }
+    // errorrr
+    if(MBRIdentifier.Detect() == true) {
+        Storage->Partitions = MBRIdentifier.GetPartition();
+        Storage->PartitionCount = MBRIdentifier.PartitionCount;
+        Kernel::printf("Partition Count : %d\n" , MBRIdentifier.PartitionCount);
+        Storage->PartitionScheme = STORAGESYSTEM_MBR;
+    }
+    else {
+        if(GPTIdentifier.Detect() == true) {
+            Storage->Partitions = GPTIdentifier.GetPartition();
+            Storage->PartitionCount = GPTIdentifier.PartitionCount;
+            Kernel::printf("Partition Count : %d\n" , GPTIdentifier.PartitionCount);
+            Storage->PartitionScheme = STORAGESYSTEM_GPT;
+        }
+        else {
+            Storage->PartitionScheme = STORAGESYSTEM_ETC;
+        }
     }
     FileSystem = FileSystem::DetectFileSystem(Storage);
     if(FileSystem == 0x00) {
@@ -146,7 +154,7 @@ bool StorageSystem::RegisterStorage(const char *DriverName , StorageSystem::Stor
 
 StorageSystem::Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned long StorageID) {
     StorageSystem::Driver *StorageDriver = SearchStorageDriver(DriverName);
-    return StorageDriver->StoragesManager->GetSystem(StorageID);
+    return (StorageSystem::Storage *)StorageDriver->StoragesManager->GetSystem(StorageID);
 }
 
 bool StorageSystem::DeregisterStorage(const char *DriverName , unsigned long StorgeID) {
