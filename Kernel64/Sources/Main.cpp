@@ -40,18 +40,13 @@ extern "C" void Main(void) {
             }
         }
     }
-    Kernel::printf("APCI::SaveCoresInformation();\n");
     TaskManagement::Initialize();
-    Kernel::printf("TaskManagement::Initialize();\n");
     /*
     LocalAPIC::ActiveAPCores();
     */
-    LocalAPIC::Timer::Initialize();
-    Kernel::printf("LocalAPIC::Timer::Initialize();\n");
-    printf("Enabling Interrupt.\n");
-    printf("Kernel is initialized.\n");
+    //LocalAPIC::Timer::Initialize();
+    printf("Enabling Interrupt\n");
     __asm__ ("sti");
-    
     /*unsigned int i;
     unsigned char *Data = (unsigned char *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
     Kernel::printf("0x%X : " , Data);
@@ -105,6 +100,8 @@ extern "C" void Main(void) {
     Kernel::printf("Detecting PCI devices\n");
     Drivers::PCI::Detect();
     Kernel::printf("Done\n");
+
+    Kernel::printf("Kernel is initialized\n");
     /*
     char Buffer[6];
     FileSystem::FileInfo *FileInfo
