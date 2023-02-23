@@ -152,7 +152,7 @@ Start:
             mov dl , byte[DriveNumber]
             int 0x13
             
-            jmp dword[StaticKernelLoaderStartAddress]
+            jmp 0x8400
 
 HandleError:                 ; Handling all error
 	mov ax , 0xB800
