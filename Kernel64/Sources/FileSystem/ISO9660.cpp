@@ -13,7 +13,6 @@ bool ISO9660::Register(void) {
 
     ISO9660::WriteFile , 
     ISO9660::ReadFile , 
-    ISO9660::SetFileOffset , 
     
     ISO9660::ReadDirectory , 
     ISO9660::GetFileCountInDirectory);
@@ -101,10 +100,6 @@ int ISO9660::ReadFile(Drivers::StorageSystem::Storage *Storage , struct FileSyst
     return Size;
 }
 
-int ISO9660::SetFileOffset(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set) {
-    return 1;
-}
-
 int ISO9660::ReadDirectory(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList) {
     return 1;
 }
@@ -114,6 +109,7 @@ int ISO9660::GetFileCountInDirectory(Drivers::StorageSystem::Storage *Storage , 
 }
 
 bool ISO9660::GetFileRecord(Drivers::StorageSystem::Storage *Storage , unsigned long DirectoryAddress , const char *Name , struct DirectoryRecord *DirectoryRecord) {
+    int i;
     int Offset = 0;
     char *FileName;
     int FileNameLength;
@@ -125,6 +121,7 @@ bool ISO9660::GetFileRecord(Drivers::StorageSystem::Storage *Storage , unsigned 
     Storage->Driver->ReadSectorFunction(Storage , DirectoryAddress , 1 , Data);
     memcpy(Directory , Data , sizeof(PathTableEntry));
     Storage->Driver->ReadSectorFunction(Storage , Directory->Location , 1 , Data);
+    Kernel::printf("File Record Location : %d\n" , Directory->Location);
     while(1) {
         memcpy(DirectoryFileEntry , Data+Offset , sizeof(struct DirectoryRecord));
         if(DirectoryFileEntry->VolumeSequenceNumberL != 1) {

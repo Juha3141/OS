@@ -39,7 +39,8 @@ namespace Kernel {
                 unsigned char InterleaveGapSize;
                 unsigned short VolumeSequenceNumberL;
                 unsigned short VolumeSequenceNumberB;
-                unsigned char FileIdentifierLength;/*
+                unsigned char FileIdentifierLength;
+                /*
                 unsigned char *FileIdentifier;
                 unsigned char *Padding;
                 unsigned char *SystemUse;*/
@@ -94,7 +95,6 @@ namespace Kernel {
             
             int WriteFile(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
             int ReadFile(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Size , void *Buffer);
-            int SetFileOffset(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , unsigned long Offset , unsigned int Set);
 
             int ReadDirectory(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo , struct FileSystem::FileInfo *FileList);
             int GetFileCountInDirectory(Drivers::StorageSystem::Storage *Storage , struct FileSystem::FileInfo *FileInfo);
