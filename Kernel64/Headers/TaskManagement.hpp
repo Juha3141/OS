@@ -69,7 +69,6 @@ namespace Kernel {
 
         class PriorityQueue {
             friend class SchedulingManager;
-            friend class PriorityQueue;
             public:
                 void Initialize(int Time);
                 void AddTask(struct Task *Task);
