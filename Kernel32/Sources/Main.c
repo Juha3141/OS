@@ -54,9 +54,10 @@ void Main(void) {
 	// 			   2. Load AP Loader to proper location
 	//             3. Copy disk to RAM disk location
 	memcpy((unsigned int *)TEMPORARY_SAFE_ADDRESS , (unsigned int *)APLOADER_ADDRESS , BYTES_PER_SECTOR*1);
-	*((unsigned long *)0x400000) = 0xCAFEBABE;
+	*((unsigned int *)0x400000) = 0xCAFEBABE;
 	BIOSINT_printf("Clearing Kernel Area ... ");
-	for(; Address < 0x1720000+(0x100000*16); Address += 4) {
+	// Location of Kernel64 stack : 0x400000~0x500000
+	for(Address = KERNEL64_ADDRESS; Address < 0x500000; Address += 4) {
 		*((unsigned int *)Address) = 0x00;
 		if(*((unsigned int *)Address) != 0x00) {
 			BIOSINT_printf("Error\r\n");
@@ -65,7 +66,7 @@ void Main(void) {
 			}
 		}
 	}
-	if(*((unsigned long *)0x400000) == 0xCAFEBABE) {
+	if(*((unsigned int *)0x400000) == 0xCAFEBABE) {
 		BIOSINT_printf("Error\r\n");
 		while(1) {
 			;

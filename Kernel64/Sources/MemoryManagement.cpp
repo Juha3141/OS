@@ -103,6 +103,7 @@ static bool IsAligned8K(unsigned long Address) {
 
 void *Kernel::MemoryManagement::Allocate(unsigned long Size , Kernel::MemoryManagement::ALIGNMENT Alignment) {
 	int i;
+	unsigned long Address;
 	unsigned long TotalNodeSize = 0;	// TotalNodeSize : Size of the total node that is going to be used for allocation
 	// Load the NodeManager from the local address
 	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
@@ -143,6 +144,9 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size , Kernel::MemoryMana
 		NodeManager->WriteNodeData(UsableNode , 0 , Size , (((unsigned long)UsableNode)+(TotalNodeSize-Size)+sizeof(struct Node)));
 	}
 	// Return the actual available address : Node address + size of the node structure
+	for(Address = ((unsigned long)Node+sizeof(struct Node)); Address < ((unsigned long)Node+sizeof(struct Node))+Size; Address += 8) {
+		*((unsigned long *)Address) = 0x00;
+	}
 	return ((void *)((unsigned long)Node+sizeof(struct Node)));			// Actual address that is going to be used : 
 																		// Address after area of node
 }
