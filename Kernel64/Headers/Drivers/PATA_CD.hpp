@@ -23,6 +23,8 @@ namespace Kernel {
             unsigned long WriteSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
 
             bool GetCDROMSize(StorageSystem::Storage *Storage , StorageSystem::StorageGeometry *Geometry);
+            bool Wait(unsigned short BasePort);
+            bool SendCommand(unsigned short BasePort , unsigned char *Command);
         }
     }
 }

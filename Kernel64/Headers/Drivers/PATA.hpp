@@ -69,6 +69,7 @@ namespace Kernel {
 
             void SetPrimaryInterruptFlag(bool Flag);
             void SetSecondaryInterruptFlag(bool Flag);
+            bool Wait(unsigned short BasePort);
 
             void InterruptHandler_IRQ14(void);
             void InterruptHandler_IRQ15(void);
