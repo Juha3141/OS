@@ -39,7 +39,13 @@ L1:
 	xor ax , ax                 ; Set ES register to 0x00 - Location saving E820 Map is ES:DI
 	mov es , ax                 ; (ES can't be written directly)
 	mov di , 0xE000             ; 0x00:0xA000 is where all the memory maps are saved.
-	
+                                ; Clear entry space(To prevent some weird bugs)
+    mov cx , 0xC00              ; Maximum possible E820 entry : 128, 128*24 = 0xC00
+    xor ax , ax
+    rep stosb
+
+    mov di , 0xE000
+    
 	mov ebx , 0x00              ; Always set EBX to 0
 
 	CheckMemory:
