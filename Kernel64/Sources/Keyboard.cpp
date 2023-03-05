@@ -87,6 +87,7 @@ void Kernel::Keyboard::MainInterruptHandler(void) {
     }
 
     PIC::SendEOI(33);                   // Send EOI signal
+    LocalAPIC::SendEOI();
 }
 
 void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {

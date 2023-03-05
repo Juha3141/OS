@@ -11,7 +11,9 @@ void Kernel::PIT::MainInterruptHandler(void) {
     TickCount += 1;
 
     Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
+    
     PIC::SendEOI(32);
+    LocalAPIC::SendEOI();
 }
 
 unsigned long Kernel::PIT::GetTickCount(void) {
