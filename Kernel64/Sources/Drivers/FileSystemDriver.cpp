@@ -6,11 +6,14 @@ struct Kernel::Drivers::DriverSystemManager *FileSystemManager;
 
 void Kernel::FileSystem::Initialize(void) {
     FileSystemManager = (struct Drivers::DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct Drivers::DriverSystemManager));
+    Kernel::printf("FileSystemManager : 0x%X\n" , FileSystemManager);
     FileSystemManager->Initialize();
 }
 
 Kernel::FileSystem::Standard *Kernel::FileSystem::AssignSystem(
 StandardCheckFunction Check , 
+StandardCreateFileFunction CreateFile , 
+StandardCreateDirFunction CreateDir , 
 
 StandardOpenFileFunction OpenFile , 
 StandardCloseFileFunction CloseFile , 
