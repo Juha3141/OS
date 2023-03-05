@@ -55,11 +55,6 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
     struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::TaskRegisters));
     __asm__ ("cli");
     Kernel::PrintString("[Exception occurred]\n");
-    __asm__ ("mov %0 , cr0":"=r"(CR0));
-    __asm__ ("mov %0 , cr1":"=r"(CR1));
-    __asm__ ("mov %0 , cr2":"=r"(CR2));
-    __asm__ ("mov %0 , cr3":"=r"(CR3));
-    __asm__ ("mov %0 , cr4":"=r"(CR4));
     Kernel::printf("Vector Number : %d(%s)\n" , ExceptionNumber , ExceptionNames[ExceptionNumber]);
     Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct Kernel::TaskRegisters)));
     Kernel::printf("Dumping Registers : \n");

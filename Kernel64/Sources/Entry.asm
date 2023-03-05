@@ -6,6 +6,8 @@ global LongModeEntry
 extern Main
 extern APStartup
 
+extern ActivatedCoreCount
+
 LongModeEntry:
     mov ax , 0x10
     mov ds , ax
@@ -59,6 +61,7 @@ LongModeEntry:
     jmp $
 
 .AP:
+    lock inc dword[ActivatedCoreCount]
     call APStartup
 
     jmp $

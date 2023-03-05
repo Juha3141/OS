@@ -111,6 +111,8 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     // MSR 0x1B : APIC_BASE
     // Contains 32bits of Local APIC base and flags.
     __asm__ ("mov rcx , 27");
+    __asm__ ("xor rax , rax");
+    __asm__ ("xor rdx , rdx");
     __asm__ ("rdmsr");
 
     __asm__ ("mov %0 , eax":"=r"(EAX)); // EAX : Lower 32 bits
