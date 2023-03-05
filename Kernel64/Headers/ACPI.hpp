@@ -2,6 +2,7 @@
 #define _ACPI_HPP_
 
 #include <KernelSystemStructure.hpp>
+#include <EssentialLibrary.hpp>
 
 #define RSDP_ADDRESS_1 0xE0000
 #define RSDP_ADDRESS_2 0x40E
@@ -20,7 +21,7 @@ namespace Kernel {
         bool MPUsed;
 
         static struct CoreInformation *GetInstance(void) {
-            struct CoreInformation *Instance;
+            static struct CoreInformation *Instance;
             if(Instance == 0x00) {
                 Instance = (struct CoreInformation *)Kernel::SystemStructure::Allocate(sizeof(struct CoreInformation));
             }
@@ -28,7 +29,7 @@ namespace Kernel {
         }
         static void SetInstance(struct CoreInformation *NewInstance) {
             struct CoreInformation *OldInstance = CoreInformation::GetInstance();
-            OldInstance = NewInstance;
+            memcpy(OldInstance , NewInstance , sizeof(struct CoreInformation));
         }
     };
     namespace ACPI {
