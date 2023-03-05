@@ -41,9 +41,14 @@ namespace Kernel {
 
                 unsigned char Model[41];
                 unsigned char Manufacturer[24];
+
+                // Used when the storage is logical.
+                unsigned long StartingLBA;
+                unsigned long EndingLBA;
             };
             struct Driver;
             struct Storage {
+                // Common
                 unsigned short *Ports;
                 int PortsCount;
                 
@@ -63,8 +68,15 @@ namespace Kernel {
                 char FileSystemString[24];
                 struct FileSystem::Standard *FileSystem;
                 struct StorageSystem::Driver *Driver;
-                
-                Partition *Partitions;
+
+                // For Identifying whether it's physical or logical
+                unsigned char StorageType; // 0x00 : Physical , 0x01 : Logical
+
+                // For Logical Storage
+                Partition LogicalPartitionInfo;
+
+                // For Physical Storage
+                Storage **LogicalStorages;
                 int PartitionCount;
                 unsigned char PartitionScheme;
             };
@@ -89,7 +101,7 @@ namespace Kernel {
             // Etc..
             void Initialize(void);
             StorageSystem::Driver *AssignDriver(
-            StandardPreInitializationFunction PostInitialization , 
+            StandardPreInitializationFunction PreInitialization , 
             StandardReadSectorFunction ReadSectorFunction , 
             StandardWriteSectorFunction WriteSectorFunction , 
             StandardGetGeometryFunction GetGeometryFunction);
