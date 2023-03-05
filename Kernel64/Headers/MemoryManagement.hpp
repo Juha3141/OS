@@ -9,7 +9,7 @@
 #ifndef _MEMORYMANAGEMENT_H_
 #define _MEMORYMANAGEMENT_H_
 
-#define MEMORYMANAGEMENT_MEMORY_STARTADDRESS 0x1720000
+#define MEMORYMANAGEMENT_MEMORY_STARTADDRESS 0x2000000
 #define MEMORYMANAGEMENT_E820_ADDRESS        0xE000
 #define MEMORYMANAGEMENT_E820_USABLE         0x01
 #define MEMORYMANAGEMENT_E820_RESERVED       0x02
@@ -78,6 +78,8 @@ namespace Kernel {
 
         // Protect memory from being allocated by kernel.
         void ProtectMemory(unsigned long StartAddress , unsigned long MemorySize);
+
+        bool CheckNodeCorruption(void);
     }
 }
 
