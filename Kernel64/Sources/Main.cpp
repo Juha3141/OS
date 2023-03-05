@@ -6,13 +6,13 @@
 #include <Paging.hpp>
 
 #include <Drivers/DeviceDriver.hpp>
-#include <Drivers/BootRAMDisk.hpp>
+#include <Drivers/RAMDisk.hpp>
 #include <Drivers/PATA.hpp>
 #include <Drivers/PATA_CD.hpp>
 #include <Drivers/PCI.hpp>
 
 #include <FileSystem/ISO9660.hpp>
-#include <FileSystem/VirtualFileSystem.hpp>
+#include <FileSystem/FAT16.hpp>
 
 using namespace Kernel;
 using namespace Drivers;
@@ -29,115 +29,90 @@ extern "C" void Main(void) {
     if(ACPI::Initialize() == false) {
         printf("Failed gathering information from ACPI\n");
     }
-
     if(ACPI::SaveCoresInformation() == false) {
         printf("Using MP Floating Table\n");
         if(MPFloatingTable::SaveCoresInformation() == false) {
             printf("Failed gathering core information\n");
-            __asm__ ("cli");
-            while(1) {
-                __asm__ ("hlt");
-            }
+            // temporary info
+            struct CoreInformation *CoreInformation = (struct CoreInformation *)CoreInformation::GetInstance();
+            CoreInformation->LocalAPICAddress = 0xFEE00000;
+            CoreInformation->IOAPICAddress = 0xFEC00000;
+            CoreInformation->IOAPICID = 0x00;
+            CoreInformation->MPUsed = false;
+            CoreInformation->CoreCount = 1;
+            Kernel::printf("Using Standard Addresses\n");
         }
     }
+    
     TaskManagement::Initialize();
+    
     /*
+    LocalAPIC::Timer::Initialize();
+    LocalAPIC::EnableLocalAPIC();
+    IOAPIC::Initialize();
     LocalAPIC::ActiveAPCores();
     */
-    //LocalAPIC::Timer::Initialize();
-    printf("Enabling Interrupt\n");
+    
+    Kernel::printf("LocalAPIC Initialized\n");
     __asm__ ("sti");
-    /*unsigned int i;
-    unsigned char *Data = (unsigned char *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
-    Kernel::printf("0x%X : " , Data);
-    int j;
-    for(i = 0; i < 0x100000; i++) {
-        if(((i%16) == 0x00) && (i != 0x00)) {
-            if((j%16) == 0x00) {
-                Kernel::Keyboard::GetASCIIData();
-            }
-            Kernel::printf("\n");
-            Kernel::printf("0x%X : " , &(Data[i]));
-            j++;
-        }
-        if(Data[i] < 0x10) {
-            Kernel::printf("0");
-        }
-        Kernel::printf("%X " , (unsigned char)Data[i]);
-    }*/
-
-    /*
-    unsigned int i;
-    unsigned long *Data = (unsigned long *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
-    unsigned long Previous;
-    Kernel::printf("0x%X : \n" , Data);
-    __asm__ ("cli");
-    for(i = 0; i < 0x100000; i++) {
-        Previous = Data[i];
-        Data[i] = 0xCAFEBABEDEADBADA;
-        PIT::DelayMicroseconds(50);
-        if(Data[i] != 0xCAFEBABEDEADBADA) {
-            Kernel::printf("0x%X : 0x%X != 0x%X\n" , 0xCAFEBABEDEADBADA , Data[i]);
-        }
-        Data[i] = Previous;
-        if((unsigned long)&(Data[i])%0x1000 == 0) {
-            Kernel::printf("0x%X pass\n" , &(Data[i]));
-        }
-    }
-    Kernel::printf("Manual probing done.\n");
-    __asm__ ("sti");
-    */
-
+    Kernel:printf("Enabled interrupt\n");
     FileSystem::Initialize();
     Kernel::printf("File System Initialized\n");
     Drivers::StorageSystem::Initialize();
     Kernel::printf("Storage System Initialized\n");
     FileSystem::ISO9660::Register();
-    Kernel::printf("ISO9660 File system registered\n");
-    Drivers::BootRAMDisk::Register();
-    Kernel::printf("BootRAMDisk registered\n");
+    FileSystem::FAT16::Register();
+
     Drivers::PATA::Register();
+    Drivers::RAMDisk::Register();
     Kernel::printf("Detecting PCI devices\n");
     Drivers::PCI::Detect();
     Kernel::printf("Done\n");
 
-    Kernel::printf("Kernel is initialized\n");
-    /*
-    char Buffer[6];
-    FileSystem::FileInfo *FileInfo
-     = FileSystem::OpenFile("::ramdisk0::0/HELLO.TXT" , "hello");
-    if(FileInfo == 0x00) {
-        printf("File not found.\n");
+    unsigned char *Buffer = (unsigned char *)Kernel::MemoryManagement::Allocate(40960*512);
+    StorageSystem::Storage *ISORAMDisk = Drivers::RAMDisk::CreateRAMDisk(8192 , 2048 , 0x720000);
+    Kernel::printf("Registering RAM disk (16MB)\n");
+    FileSystem::FileInfo *VBRFile = FileSystem::ISO9660::OpenFile(ISORAMDisk , "RDIMG.IMG");
+    if(VBRFile == 0x00) {
+        Kernel::printf("File not found.\n");
         while(1) {
             ;
         }
     }
-    FileSystem::ReadFile(FileInfo , 6 , Buffer);
-    printf("%s" , Buffer);
-    FileSystem::ReadFile(FileInfo , 5 , Buffer);
-    printf("%s\n" , Buffer);
-    FileSystem::FileInfo *FileInfo2
-     = FileSystem::OpenFile("::idehd0::0/HELLO.TXT" , "");
-    FileSystem::FileInfo *FileInfo3
-     = FileSystem::OpenFile("::idecd0::0/TEST.TXT" , "");*/
-
+    FileSystem::ISO9660::ReadFile(ISORAMDisk , VBRFile , 16*1024*1024 , Buffer);
+    StorageSystem::Storage *SysRAMDisk = Drivers::RAMDisk::CreateRAMDisk(40960 , 512 , (unsigned long)Buffer); // 8MBs of System RAM Disk, Formatted by FAT12
+    
+    Kernel::printf("rdimg.img Buffer : 0x%X\n" , Buffer);
+    struct FileSystem::FAT16::VBR VBR;
+    unsigned int TotalSector;
+    unsigned int RootDirectorySector;
+    FileSystem::FAT16::GetVBR(SysRAMDisk , &(VBR));
+    Kernel::printf("Done\n");
     /*
-    int i;
-    unsigned short Base = ATA_PRIMARY_BASE;
-    unsigned short Control = ATA_DEVICECONTROL_PRIMARY_BASE;
-    for(i = 0; i < 2; i++) {
-        printf("Current port : 0x%X , 0x%X\n" , Base , Control);
-        if(Drivers::ATA::ReadInformation(Base , Control , true) == false) {
-            printf("Failed at 0x%X , 0x%X\n" , Base , Control);
-            break;
-        }
-        if(Drivers::ATA::ReadInformation(Base , Control , false) == false) {
-            printf("Failed at 0x%X , 0x%X\n" , Base , Control);
-            break;
-        }
-        Base = ATA_SECONDARY_BASE;
-        Control = ATA_DEVICECONTROL_SECONDARY_BASE;
-    }*/
+    Kernel::printf("FAT Area       : %d\n" , FileSystem::FAT16::GetFATAreaLocation(&(VBR)));
+    Kernel::printf("Root Directory : %d\n" , FileSystem::FAT16::GetRootDirectoryLocation(&(VBR)));
+    Kernel::printf("Sectors per cluster : %d\n" , VBR.SectorsPerCluster);
+    TotalSector = (VBR.TotalSector16 == 0) ? VBR.TotalSector32 : VBR.TotalSector16;
+    Kernel::printf("TotalSector    : %d\n" , TotalSector);
+    RootDirectorySector = ((VBR.RootDirectoryEntryCount*32)+(VBR.BytesPerSector-1))/VBR.BytesPerSector;
+    Kernel::printf("Root Directory Size : %d\n" , RootDirectorySector);
+    Kernel::printf("FAT Size       : %d\n" ,((TotalSector-(VBR.ReservedSectorCount+RootDirectorySector))+((256*VBR.SectorsPerCluster)+VBR.NumberOfFAT-1))/(VBR.NumberOfFAT+(256*VBR.SectorsPerCluster)));
+    */
+    FileSystem::FileInfo *FileInfo = FileSystem::FAT16::OpenFile(SysRAMDisk , "Hello.txt");
+    if(FileInfo == 0x00) {
+        Kernel::printf("File \"Hello.txt\" not found.\n");
+    }
+    FileSystem::FileInfo *FileInfo2 = FileSystem::FAT16::OpenFile(SysRAMDisk , "Hello.txt");
+    if(FileInfo2 == 0x00) {
+        Kernel::printf("File \"Testing/Hello.txt\" not found.\n");
+    }
+    char Data[FileInfo2->FileSize+1] = {0 , };
+    FileSystem::FAT16::ReadFile(SysRAMDisk , FileInfo2 , FileInfo2->FileSize , Data);
+    Kernel::printf("Data : \n");
+    Kernel::printf("%s\n" , Data);
+    Kernel::printf("===================================\n");
+
+    // To-do : Create interface
     while(1) {
         ;
     }
@@ -147,8 +122,10 @@ extern "C" void APStartup(void) {
     /* To do : Seperate AP & BSP , 
      * Create TSS for AP
      * Create Memory Management System
-     * Create IO Redirecting table
+     * Create IO Redirection table
      */
+    unsigned long i = 0;
+    unsigned long CoreID = LocalAPIC::GetCurrentAPICID();
     while(1) {
         __asm__ ("hlt");
     }
