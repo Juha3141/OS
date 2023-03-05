@@ -1,3 +1,5 @@
 FAT32.img
 BochsBoot.txt 
 .vscode/*
+stub/
+stub
