@@ -6,6 +6,8 @@ using namespace Kernel::FileSystem;
 bool ISO9660::Register(void) {
     FileSystem::Standard *ISO9660FileSystem = FileSystem::AssignSystem(
     ISO9660::Check , 
+    ISO9660::CreateFile , 
+    ISO9660::CreateDir , 
     
     ISO9660::OpenFile , 
     ISO9660::CloseFile , 
@@ -31,6 +33,14 @@ bool ISO9660::Check(Drivers::StorageSystem::Storage *Storage) {
     return true;
 }
 
+bool ISO9660::CreateFile(Drivers::StorageSystem::Storage *Storage , const char *FileName) {
+    return false;
+}
+
+bool ISO9660::CreateDir(Drivers::StorageSystem::Storage *Storage , const char *DirectoryName) {
+    return false;
+}
+
 FileSystem::FileInfo *ISO9660::OpenFile(Drivers::StorageSystem::Storage *Storage , const char *FileName) {
     unsigned short Date;
     unsigned short Time;
@@ -40,6 +50,7 @@ FileSystem::FileInfo *ISO9660::OpenFile(Drivers::StorageSystem::Storage *Storage
     DirectoryRecord = (struct DirectoryRecord *)Kernel::MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
     if(GetFileRecord(Storage , GetRootDirectorySector(Storage) , FileName , DirectoryRecord) == false) {
         Kernel::printf("File not found.\n");
+        Kernel::MemoryManagement::Free(DirectoryRecord);
         return 0x00;
     }
     FileInfo = (FileSystem::FileInfo *)Kernel::MemoryManagement::Allocate(sizeof(FileSystem::FileInfo));
@@ -88,6 +99,7 @@ int ISO9660::ReadFile(Drivers::StorageSystem::Storage *Storage , struct FileSyst
     unsigned int SectorAddress = FileInfo->SectorAddress+(FileInfo->FileOffset/FileInfo->BlockSize);
     unsigned int SectorCountToRead = Size/FileInfo->BlockSize+(((Size%FileInfo->BlockSize) == 0) ? 0 : 1);
     unsigned char *TempBuffer = (unsigned char *)Kernel::MemoryManagement::Allocate(SectorCountToRead*FileInfo->BlockSize);
+    
     if((ReadSize = Storage->Driver->ReadSectorFunction(Storage , SectorAddress , SectorCountToRead , TempBuffer)) == (SectorCountToRead*FileInfo->BlockSize)) {
         memcpy(Buffer , TempBuffer , ReadSize);
         FileInfo->FileOffset += ReadSize;
@@ -127,6 +139,7 @@ bool ISO9660::GetFileRecord(Drivers::StorageSystem::Storage *Storage , unsigned 
         if(DirectoryFileEntry->VolumeSequenceNumberL != 1) {
             break;
         }
+        // Kernel::printf("File List : %s\n" , (const char*)(Data+Offset+sizeof(struct DirectoryRecord)));
         if(memcmp((const char*)(Data+Offset+sizeof(struct DirectoryRecord)) , Name , DirectoryFileEntry->DirectoryLength-sizeof(struct DirectoryRecord)) == 0) {
             memcpy(DirectoryRecord , DirectoryFileEntry , sizeof(struct DirectoryRecord));
             Kernel::MemoryManagement::Free(Directory);

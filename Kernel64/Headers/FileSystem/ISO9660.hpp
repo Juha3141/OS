@@ -89,6 +89,8 @@ namespace Kernel {
             
             bool Check(Drivers::StorageSystem::Storage *Storage); // true : The storage has this file system, false : The storage has different file system.
 
+            bool CreateFile(Drivers::StorageSystem::Storage *Storage , const char *FileName);
+            bool CreateDir(Drivers::StorageSystem::Storage *Storage , const char *DirectoryName);
             FileSystem::FileInfo *OpenFile(Drivers::StorageSystem::Storage *Storage , const char *FileName);
             int CloseFile(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
             int RemoveFile(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);

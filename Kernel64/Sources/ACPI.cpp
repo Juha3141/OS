@@ -53,7 +53,7 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
         CoreInformation->ACPIUsed = 0;  // Didn't use ACPI to get the information
         return false;
     }
-    MADT += 8;  // 
+    MADT += 8;
     // Allocate space to store core informations.
     
     // Get the address of Local APIC registers from MSR.
@@ -64,26 +64,21 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
 
     __asm__ ("mov %0 , eax":"=r"(EAX)); // EAX : Lower 32 bits
     __asm__ ("mov %0 , edx":"=r"(EDX)); // EDX : Higher 32 bits
-    
     CoreInformation->LocalAPICAddress = (EDX << 31)|EAX;
     // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
-    //Kernel::printf("Local APIC Address : 0x%X\n" , CoreInformation->LocalAPICAddress);
-    while(1) {
+    do {
         if(MADT[i] == 0) {
             CoreCount++;
         }
         i += MADT[i+1];
-        if(i >= (MADTHeader->Length-sizeof(SDTHeader)-8)) {
-            i = 0;
-            break;
-        }
-    }
+    }while(i < (MADTHeader->Length-sizeof(SDTHeader)-8));
+    i = 0;
     CoreInformation->LocalAPICID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
     CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
-    /*Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
+    Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
     Kernel::printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
-    */while(i < (MADTHeader->Length-sizeof(SDTHeader)-8)) {
+    while(i < (MADTHeader->Length-sizeof(SDTHeader)-8)) {
         if(MADT[i] == 0) {      // Entry Type 0 : Processor Local APIC
             /* Process Local APIC Entry : 
              * Offset 2(Size : 1) : ACPI Processor ID
