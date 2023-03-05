@@ -6,8 +6,9 @@
 
 #define FILESYSTEM_FILETYPE_PRESENT     1
 #define FILESYSTEM_FILETYPE_READONLY    2
-#define FILESYSTEM_FILETYPE_SYSTEM      4
-#define FILESYSTEM_FILETYPE_REMOVED     8
+#define FILESYSTEM_FILETYPE_SYSTEM      3
+#define FILESYSTEM_FILETYPE_REMOVED     4
+#define FILESYSTEM_FILETYPE_HIDDEN      5
 
 namespace Kernel {
     namespace FileSystem {
@@ -29,10 +30,15 @@ namespace Kernel {
 
             unsigned int StorageDriverID;
             unsigned int StorageID;
-            unsigned int FileSystemID;
+        };
+        struct DirectoryInfo {
+            FileInfo BasicInfo;
+            FileInfo **Tree;
         };
         typedef bool (*StandardCheckFunction)(Drivers::StorageSystem::Storage *Storage); // true : The storage has this file system, false : The storage has different file system.
-        
+        typedef bool (*StandardCreateFileFunction)(Drivers::StorageSystem::Storage *Storage , const char *FileName); // true : The storage has this file system, false : The storage has different file system.
+        typedef bool (*StandardCreateDirFunction)(Drivers::StorageSystem::Storage *Storage , const char *DirectoryName);
+
         typedef FileSystem::FileInfo * (*StandardOpenFileFunction)(Drivers::StorageSystem::Storage *Storage , const char *FileName);
         typedef int (*StandardCloseFileFunction)(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
         typedef int (*StandardRemoveFileFunction)(Drivers::StorageSystem::Storage *Storage , FileSystem::FileInfo *FileInfo);
@@ -46,6 +52,8 @@ namespace Kernel {
             char FileSystemString[32];
 
             StandardCheckFunction Check; // true : The storage has this file system, false : The storage has different file system.
+            StandardCreateFileFunction CreateFile;
+            StandardCreateDirFunction CreateDir;
 
             StandardOpenFileFunction OpenFile;
             StandardCloseFileFunction CloseFile;
@@ -60,7 +68,9 @@ namespace Kernel {
         void Initialize(void);
         FileSystem::Standard *AssignSystem(
         StandardCheckFunction Check , 
-
+        StandardCreateFileFunction CreateFile , 
+        StandardCreateDirFunction CreateDir , 
+        
         StandardOpenFileFunction OpenFile , 
         StandardCloseFileFunction CloseFile , 
         StandardRemoveFileFunction RemoveFile , 
