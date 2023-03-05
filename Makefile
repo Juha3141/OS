@@ -42,7 +42,7 @@ clean:
 run: virtualbox
 
 qemurun:
-	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d
+	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d -smp 8
 
 debugrun: 
 	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d -s -S -serial stdio
