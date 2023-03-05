@@ -52,9 +52,6 @@ void Kernel::LocalAPIC::EnableLocalAPIC(void) {
     __asm__ ("rdmsr");
     __asm__ ("or eax , 0b100000000000");    // E(APIC Global Enable flag) = 1
     __asm__ ("wrmsr");
-    // For debugging, read the register again
-    __asm__ ("mov rcx , 27");
-    __asm__ ("rdmsr");
     Kernel::printf("LocalAPIC Register Address from the structure : 0x%X\n" , CoreInformation->LocalAPICAddress);
     // To enable APIC, set bit 8 in LocalAPIC Spurious interrupt vector register to 1 
     // Currently, we're enabling BSP's Local APIC
@@ -79,14 +76,12 @@ bool Kernel::LocalAPIC::CheckBSP(void) {    // Check if current CPU is BSP
     }
 }
 
-unsigned int CurrentlyRunningCoreCount = 0;
-unsigned char CoreActivated = 0;
 unsigned int ActivatedCoreCount = 0;
-
+/*
 void Kernel::LocalAPIC::SendActivatedSignal(void) {
     CoreActivated = 1;          // AP sends this signal, and BSP gets it
     ActivatedCoreCount++;
-}
+}*/
 
 unsigned int Kernel::LocalAPIC::GetActivatedCoreCount(void) {
     return ActivatedCoreCount;
@@ -132,17 +127,17 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
     for(j = 0; j < 2; j++) {
         WriteRegister(LAPIC_ERROR_STATUS_REGISTER , 0x00);
         WriteRegister(LAPIC_INTERRUPT_COMMAND_REGISTER , LAPIC_ICR_SENDING_FOR_EVERYONE_EXCEPT_FOR_ME|LAPIC_ICR_LEVEL_ASSERT|LAPIC_ICR_IPI_STARTUP|0x08);
-        Kernel::PIT::DelayMicroseconds(200);
+        Kernel::PIT::DelayMilliseconds(10);
         if((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
             Kernel::printf("Failed sending AP Setup IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
             return;
         }
     }
     
-    __asm__ ("sti");
-
+    //__asm__ ("sti");
     while(1) { // Wait until activated core count is equal to number of cores
         if(Kernel::LocalAPIC::GetActivatedCoreCount() >= CoreInformation::GetInstance()->CoreCount-1) {
+            Kernel::PIT::DelayMilliseconds(50);
             Kernel::printf("All AP Cores are activated\n");
             break;
         }
@@ -195,4 +190,26 @@ void Kernel::LocalAPIC::Timer::MainInterruptHandler(void) {
 
 /// I/O APIC ///
 
-//void Kernel::IOAPIC::
+void Kernel::IOAPIC::Initialize(void) {
+    struct IORedirectionTable RedirectionTable;
+    memset(&(RedirectionTable) , 0 , sizeof(unsigned long));
+    RedirectionTable.InterruptVector = 33;
+    RedirectionTable.DeliveryMode = IOAPIC_IOREDTBL_DELIVERY_MODE_FIXED;
+    RedirectionTable.InterruptPinPolarity = 0;
+    RedirectionTable.TriggerMode = 0;
+    RedirectionTable.InterruptMask = 0;
+    RedirectionTable.DestinationMode = 0;
+    RedirectionTable.DestinationAddress = 0x00;
+    WriteIORedirectionTable(1 , RedirectionTable);
+    RedirectionTable.InterruptVector = 32;
+    RedirectionTable.DestinationMode = 0;
+    RedirectionTable.DestinationAddress = 0x00;
+    WriteIORedirectionTable(2 , RedirectionTable);
+}
+
+void Kernel::IOAPIC::WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable) {
+    unsigned long Data;
+    memcpy(&(Data) , &(RedirectionTable) , sizeof(unsigned long));
+    IOAPIC::WriteRegister(IOAPIC_REGISTER_IO_REDIRECTION_TABLE+(INTIN*2) , Data & 0xFFFFFFFF);
+    IOAPIC::WriteRegister(IOAPIC_REGISTER_IO_REDIRECTION_TABLE+(INTIN*2)+1 , Data >> 32);
+}

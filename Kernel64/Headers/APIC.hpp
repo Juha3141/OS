@@ -11,7 +11,7 @@
 #define LAPIC_ARTIBRATION_PRIORITY_REGISTER                 0xA0
 #define LAPIC_EOI_REGISTER                                  0xB0
 #define LAPIC_REMOTE_READ_REGISTER                          0xC0
-#define LAIC_LOGICAL_DESTINATION_REGISTER                   0xD0
+#define LAPIC_LOGICAL_DESTINATION_REGISTER                  0xD0
 #define LAPIC_DESTINATION_FORMAT_REGISTER                   0xE0
 #define LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER            0xF0
 #define LAPIC_IN_SERVICE_REGISTER                           0x100
@@ -63,6 +63,13 @@
 #define IOAPIC_REGISTER_IOAPIC_VERSION                      0x01
 #define IOAPIC_REGISTER_IO_REDIRECTION_TABLE                0x10 // 0x10 ~ 0x3F
 
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_FIXED                 0b000 // Trigger Mode : Edge / Level
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_LOWEST_PRIORITY       0b001 // Trigger Mode : Edge / Level
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_SMI                   0b010 // SMI : System Management Interrupt
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_NMI                   0b100 // Trigger Mode : Edge
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_INIT                  0b101 // Trigger Mode : Edge
+#define IOAPIC_IOREDTBL_DELIVERY_MODE_EXTINT                0b111 // Edge
+
 namespace Kernel {
     namespace LocalAPIC {
         struct LocalVectorTableRegister {
@@ -104,10 +111,23 @@ namespace Kernel {
         }
     }
     namespace IOAPIC {
+        struct IORedirectionTable {
+            unsigned char InterruptVector;
+            unsigned char DeliveryMode:3;
+            unsigned char DestinationMode:1; // 0 : Physical Mode , 0 : Logical Mode
+            unsigned char DeliveryStaus:1; // 0 : Idle , 1 : Send Pending
+            unsigned char InterruptPinPolarity:1; // 0 : High Active , 1 : Low Active
+            unsigned char RemoteIRR:1; // Read Only
+            unsigned char TriggerMode:1; // 0 : Edge sensitive , 1 : Level sensitive
+            unsigned char InterruptMask:1; // 0 : Unmasked , 1 : Masked
+            unsigned long Reserved:39;
+
+            unsigned char DestinationAddress;
+        };
+        void Initialize(void);
+        void WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable);
         void WriteRegister(unsigned char RegisterAddress , unsigned int Data);
         unsigned int ReadRegister(unsigned char RegisterAddress);
-
-        
     }
 }
 
