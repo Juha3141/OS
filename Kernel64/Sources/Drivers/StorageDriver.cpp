@@ -52,7 +52,7 @@ StorageSystem::Driver *StorageSystem::SearchStorageDriver(const char *DriverName
         return 0;
     }
     for(i = 0; i < StorageDriverManager->SystemCount; i++) {
-        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(DriverName)) == 0) {
+        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName)) == 0) {
             return (StorageSystem::Driver *)StorageDriverManager->SystemList[i];
         }
     }
@@ -99,37 +99,61 @@ StorageSystem::Storage *StorageSystem::AssignStorage(int PortsCount , int FlagsC
     return Storage;
 }
 
+void AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount) {
+    int i;
+    Storage->LogicalStorages = (StorageSystem::Storage **)Kernel::MemoryManagement::Allocate(PartitionCount*sizeof(StorageSystem::Storage *));
+    for(i = 0; i < PartitionCount; i++) {
+        Storage->LogicalStorages[i] = (StorageSystem::Storage *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Storage));
+        memcpy(&(Storage->LogicalStorages[i]->Geometry) , &(Storage->Geometry) , sizeof(StorageSystem::StorageGeometry));
+        Storage->LogicalStorages[i]->Ports = Storage->Ports;
+        Storage->LogicalStorages[i]->PortsCount = Storage->PortsCount;
+        Storage->LogicalStorages[i]->IRQs = Storage->IRQs;
+        Storage->LogicalStorages[i]->IRQsCount = Storage->IRQsCount;
+        Storage->LogicalStorages[i]->Flags = Storage->Flags;
+        Storage->LogicalStorages[i]->FlagsCount = Storage->FlagsCount;
+        Storage->LogicalStorages[i]->Resources = Storage->Resources;
+        Storage->LogicalStorages[i]->ResourcesCount = Storage->ResourcesCount;
+        Storage->LogicalStorages[i]->StorageType = 0x01;
+        memcpy(&(Storage->LogicalStorages[i]->LogicalPartitionInfo) , &(Partitions[i]) , sizeof(StorageSystem::Partition));
+        RegisterStorage(StorageDriver , Storage->LogicalStorages[i]);
+    }
+}
+
 bool StorageSystem::RegisterStorage(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage) {
     int i;
+    StorageSystem::Storage *LogicalStorage;
     FileSystem::Standard *FileSystem;
-    Partition *PartitionNode;
+    Partition *Partitions;
     if(StorageDriver == 0x00) {
         return false;
     }
     MBR::Identifier MBRIdentifier(StorageDriver , Storage);
     GPT::Identifier GPTIdentifier(StorageDriver , Storage);
+    if(Storage->StorageType == 0x00) {
+        if(StorageDriver->GetGeometryFunction(Storage , &(Storage->Geometry)) == false) {
+            return false;
+        }
+    }
     Storage->Driver = StorageDriver;
-    Storage->ID = StorageDriver->StoragesManager->Register((unsigned long)Storage);
+    // Storage is dependent to StorageDriver. We need to seperate them, and create universal storage info container system.
+    Storage->ID = StorageDriver->StoragesManager->Register((unsigned long)Storage); // StorageDriver***
     if(Storage->ID == DRIVERSYSTEM_INVALIDID) {
         return false;
     }
-    if(StorageDriver->GetGeometryFunction(Storage , &(Storage->Geometry)) == false) {
-        Kernel::printf("Failed getting geometry\n");
-        return false;
-    }
-    // errorrr
+    Kernel::printf("Registered Storage System , ID : %d(%s)\n" , Storage->ID , (Storage->StorageType == 0x00) ? "Physical" : "Logical");
+    // Goal : Create indivisual partition
     if(MBRIdentifier.Detect() == true) {
-        Storage->Partitions = MBRIdentifier.GetPartition();
+        Partitions = MBRIdentifier.GetPartition();
         Storage->PartitionCount = MBRIdentifier.PartitionCount;
-        Kernel::printf("Partition Count : %d\n" , MBRIdentifier.PartitionCount);
         Storage->PartitionScheme = STORAGESYSTEM_MBR;
+        AddLogicalDrive(StorageDriver , Storage , Partitions , MBRIdentifier.PartitionCount);
     }
     else {
         if(GPTIdentifier.Detect() == true) {
-            Storage->Partitions = GPTIdentifier.GetPartition();
+            Partitions = GPTIdentifier.GetPartition();
             Storage->PartitionCount = GPTIdentifier.PartitionCount;
-            Kernel::printf("Partition Count : %d\n" , GPTIdentifier.PartitionCount);
             Storage->PartitionScheme = STORAGESYSTEM_GPT;
+            AddLogicalDrive(StorageDriver , Storage , Partitions , GPTIdentifier.PartitionCount);
         }
         else {
             Storage->PartitionScheme = STORAGESYSTEM_ETC;
@@ -139,7 +163,7 @@ bool StorageSystem::RegisterStorage(StorageSystem::Driver *StorageDriver , Stora
     if(FileSystem == 0x00) {
         Storage->FileSystem = 0x00;
         strcpy(Storage->FileSystemString , "NONE");
-        Kernel::printf("Warning : Storage %d has no file system.\n" , Storage->ID);
+        Kernel::printf("No file system\n");
         return true;
     }
     Storage->FileSystem = FileSystem;
@@ -154,6 +178,9 @@ bool StorageSystem::RegisterStorage(const char *DriverName , StorageSystem::Stor
 
 StorageSystem::Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned long StorageID) {
     StorageSystem::Driver *StorageDriver = SearchStorageDriver(DriverName);
+    if(StorageDriver == 0x00) {
+        return 0x00;
+    }
     return (StorageSystem::Storage *)StorageDriver->StoragesManager->GetSystem(StorageID);
 }
 
