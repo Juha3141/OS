@@ -25,6 +25,10 @@ bool MBR::Identifier::Detect(void) {
         return false;
     }
     for(i = 0; i < 4; i++) {
+        // If storage is logical storage, and it's not extended partition -> No partition found.
+        if((Storage->StorageType == 0x01) && (PartitionTable->Entries[i].PartitionType != 0x0F) && (PartitionTable->Entries[i].PartitionType != 0x05)) {
+            return false;
+        }
         if(PartitionTable->Entries[i].PartitionType == 0xEE) { // GPT, not MBR
             //Kernel::MemoryManagement::Free(PartitionTable);
             return false;   
@@ -35,7 +39,6 @@ bool MBR::Identifier::Detect(void) {
             return true;
         }
     }
-    Kernel::MemoryManagement::Free(PartitionTable);
     return false;
 }
 
@@ -56,6 +59,5 @@ StorageSystem::Partition *MBR::Identifier::GetPartition(void) {
             PartitionCount++;
         }
     }
-    Kernel::printf("(MBR) PartitionCount : %d (Driver %s , Storage %d)\n" , PartitionCount , StorageDriver->DriverName , Storage->ID);
     return Partitions;
 }

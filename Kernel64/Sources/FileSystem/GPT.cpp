@@ -57,6 +57,5 @@ StorageSystem::Partition *GPT::Identifier::GetPartition(void) {
         }
         PartitionCount += 1;
     }
-    Kernel::printf("(GPT) PartitionCount : %d (Driver %s , Storage %d)\n" , PartitionCount , StorageDriver->DriverName , Storage->ID);
     return Partitions;
 }
