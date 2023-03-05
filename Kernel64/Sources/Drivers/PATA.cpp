@@ -109,15 +109,12 @@ bool PATA::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::StorageG
     }
     memcpy(Geometry->Model , HDDGeometry.Model , 20*sizeof(unsigned short));
     Geometry->Model[20] = 0x00;
-    Kernel::printf("Model Number : %s\n" , Geometry->Model);
     Geometry->Model[41] = 0x00;
     Geometry->BytesPerSector = 512;
     Geometry->BytesPerTrack = 0;
     Geometry->CylindersCount = 0;
     Geometry->TracksPerCylinder = 0;
     Geometry->TotalSectorCount = HDDGeometry.TotalSectors;
-    Kernel::printf("Total sector count : %d\n" , Geometry->TotalSectorCount);
-    Kernel::printf("Bytes per sector   : %d\n" , Geometry->BytesPerSector);
     return true;
 }
 // thies code needs to be fixed, and also, storage system manager should be fixed, because one driver can't handle many storage systems.
@@ -132,20 +129,23 @@ unsigned long PATA::ReadSector(StorageSystem::Storage *Storage , unsigned long S
     unsigned short BasePort = Storage->Ports[0];
     unsigned short Status;
     unsigned long Address;
+    if(Storage->StorageType == 0x01) {
+        SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+    }
     if(Storage->Flags[0] == true) { // true : master
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xE0); // Master : 0xA0
     }
     else {
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Slave : 0xB0
     }
-    /*
+    
     if(SectorAddress > 0x10000000) {
         IO::Write(BasePort+PATA_PORT_SECTOR_COUNT , (Count >> 8) & 0xFF);
         IO::Write(BasePort+PATA_PORT_LBALOW , (SectorAddress >> 24) & 0xFF);
         IO::Write(BasePort+PATA_PORT_LBAMIDDLE , (SectorAddress >> 32) & 0xFF);
         IO::Write(BasePort+PATA_PORT_LBAHIGH , (SectorAddress >> 48) & 0xFF);
         Use28bitPIO = false;
-    }*/
+    }
     // when accessing address is below 128GB, use 28bit PIO, because it's faster than 48bit PIO
     IO::Write(BasePort+PATA_PORT_SECTOR_COUNT , Count & 0xFF);
     IO::Write(BasePort+PATA_PORT_LBALOW , SectorAddress & 0xFF);
@@ -153,7 +153,7 @@ unsigned long PATA::ReadSector(StorageSystem::Storage *Storage , unsigned long S
     IO::Write(BasePort+PATA_PORT_LBAHIGH , (SectorAddress >> 16) & 0xFF);
     
     // Read Sector(0x20) for 28bit, Read Sector EXT(0x24) for 48bit
-    IO::Write(BasePort+PATA_PORT_COMMAND_IO , /*(Use28bitPIO == true) ? 0x20 : 0x24*/0x20);
+    IO::Write(BasePort+PATA_PORT_COMMAND_IO , (Use28bitPIO == true) ? 0x20 : 0x24);
     for(i = 0; i < Count; i++) {
         if(PATA::Wait(BasePort) == false) {
             return i*512;
