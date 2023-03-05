@@ -36,6 +36,7 @@ void Main(void) {
 	struct DirectoryRecord *DirectoryRecordSector;
 	ClearScreen(0x07);
 	BIOSINT_PrintString("Hello world in Kernel32\r\n");
+	memcpy((unsigned char *)0x3FF400 , (unsigned char *)0xA000 , sizeof(struct QuerySystemAddressMap)*128);
 	while(1) {
 		DirectoryRecordSector = (struct DirectoryRecord *)DirectoryRecordLocation;
 		if(DirectoryRecordSector->DirectoryLength == 0) {
