@@ -183,7 +183,7 @@ void sprintf(char *Destination , const char *Format , ...) {
 int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
     int i = 0;
     int StringLength = 0;
-    char Temprory;
+    char Temporary;
     bool Negative = Value < 0;
     if(Value == 0) {
         String[0] = '0';
@@ -202,9 +202,9 @@ int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
     }
     StringLength = i+((((StringLength+1)%2) == 0) ? 0 : -1);
     for(i = 0; i <= StringLength/2; i++) {
-        Temprory = String[i];
+        Temporary = String[i];
         String[i] = String[StringLength-i];
-        String[StringLength-i] = Temprory;
+        String[StringLength-i] = Temporary;
     }
     String[StringLength+1] = 0x00;
     return StringLength+1;
@@ -213,7 +213,7 @@ int ToString_Hex(char *String , unsigned long long Value , char UpperCase) {
 int ToString(char *String , unsigned long long Value) {
     int i = 0;
     int StringLength = 0;
-    char Temprory;
+    char Temporary;
     if(Value == 0) {
         String[0] = '0';
         String[1] = 0x00;
@@ -226,9 +226,9 @@ int ToString(char *String , unsigned long long Value) {
     }
     StringLength = i+((((StringLength+1)%2) == 0) ? 0 : -1);
     for(i = 0; i <= StringLength/2; i++) {
-        Temprory = String[i];
+        Temporary = String[i];
         String[i] = String[StringLength-i];
-        String[StringLength-i] = Temprory;
+        String[StringLength-i] = Temporary;
     }
     String[StringLength+1] = 0x00;
     return StringLength+1;
@@ -237,7 +237,7 @@ int ToString(char *String , unsigned long long Value) {
 int ToString(char *String , long long Value) {
     int i = 0;
     int StringLength = 0;
-    char Temprory;
+    char Temporary;
     bool Negative = Value < 0;
     if(Value == 0) {
         String[0] = '0';
@@ -256,9 +256,9 @@ int ToString(char *String , long long Value) {
     }
     StringLength = i+((((StringLength+1)%2) == 0) ? 0 : -1);
     for(i = 0; i <= StringLength/2; i++) {
-        Temprory = String[i];
+        Temporary = String[i];
         String[i] = String[StringLength-i];
-        String[StringLength-i] = Temprory;
+        String[StringLength-i] = Temporary;
     }
     String[StringLength+1] = 0x00;
     return StringLength+1;
@@ -285,7 +285,7 @@ int ToString_Double(char *String , long double Value , int Length) {
     int j = 0;
     int Position = 0;
     int StringLength;
-    int Temprory;
+    int Temporary;
     long double BackupValue = Value;
     while(((unsigned long)Value) != 0) {
         String[i] = (((unsigned long)Value)%10)+'0';
@@ -294,9 +294,9 @@ int ToString_Double(char *String , long double Value , int Length) {
     }
     StringLength = i;
     for(i = 0; i <= (int)((StringLength+(((i%2) == 0) ? 0 : 1))/2); i++) {
-        Temprory = String[i];
+        Temporary = String[i];
         String[i] = String[StringLength-i];
-        String[StringLength-i] = Temprory;
+        String[StringLength-i] = Temporary;
     }
     i = StringLength+1;
     String[i++] = '.';
@@ -447,8 +447,8 @@ int vsprintf(char *String , const char *Format , va_list ap) {
     unsigned long UnsignedLong;
 
     double Double;
-    char TemproryBuffer1[128];
-    char TemproryBuffer2[16];
+    char TemporaryBuffer1[128];
+    char TemporaryBuffer2[16];
     for(i = 0; i < strlen(Format); i++) {
 		switch(Format[i]) {
 			case '%':
@@ -482,20 +482,20 @@ int vsprintf(char *String , const char *Format , va_list ap) {
                 else if((Type == 'd')||(Type == 'i')) {
                     if(Precision == 'l') {
                         UnsignedLong = va_arg(ap , unsigned long);
-                        ToString(TemproryBuffer2 , UnsignedLong);
+                        ToString(TemporaryBuffer2 , UnsignedLong);
                         if(Width == 0) {
                             j += ToString(String+j , UnsignedLong);
                         }
                         else {
-                            if(Width < strlen(TemproryBuffer2)) {
-                                Width = strlen(TemproryBuffer2);
+                            if(Width < strlen(TemporaryBuffer2)) {
+                                Width = strlen(TemporaryBuffer2);
                             }
                             for(k = 0; k < Width; k++) {
-                                TemproryBuffer1[k] = Flags;
+                                TemporaryBuffer1[k] = Flags;
                             }
-                            memcpy(TemproryBuffer1+Width-strlen(TemproryBuffer2) , TemproryBuffer2 , strlen(TemproryBuffer2));
-                            TemproryBuffer1[k] = 0x00;
-                            strcpy(String+j , TemproryBuffer1);
+                            memcpy(TemporaryBuffer1+Width-strlen(TemporaryBuffer2) , TemporaryBuffer2 , strlen(TemporaryBuffer2));
+                            TemporaryBuffer1[k] = 0x00;
+                            strcpy(String+j , TemporaryBuffer1);
                             j += k;
                             while(Width != 0) {
                                 Width /= 10;
@@ -505,20 +505,20 @@ int vsprintf(char *String , const char *Format , va_list ap) {
                     }
                     else {
                         Integer = va_arg(ap , int);
-                        ToString(TemproryBuffer2 , Integer);
+                        ToString(TemporaryBuffer2 , Integer);
                         if(Width == 0) {
                             j += ToString(String+j , Integer);
                         }
                         else {
-                            if(Width < strlen(TemproryBuffer2)) {
-                                Width = strlen(TemproryBuffer2);
+                            if(Width < strlen(TemporaryBuffer2)) {
+                                Width = strlen(TemporaryBuffer2);
                             }
                             for(k = 0; k < Width; k++) {
-                                TemproryBuffer1[k] = Flags;
+                                TemporaryBuffer1[k] = Flags;
                             }
-                            memcpy(TemproryBuffer1+Width-strlen(TemproryBuffer2) , TemproryBuffer2 , strlen(TemproryBuffer2));
-                            TemproryBuffer1[k] = 0x00;
-                            strcpy(String+j , TemproryBuffer1);
+                            memcpy(TemporaryBuffer1+Width-strlen(TemporaryBuffer2) , TemporaryBuffer2 , strlen(TemporaryBuffer2));
+                            TemporaryBuffer1[k] = 0x00;
+                            strcpy(String+j , TemporaryBuffer1);
                             j += k;
                             while(Width != 0) {
                                 Width /= 10;
@@ -546,20 +546,20 @@ int vsprintf(char *String , const char *Format , va_list ap) {
                 }
                 else if((Type == 'x')||(Type == 'X')) {
                     UnsignedLong = va_arg(ap , unsigned long);
-                    ToString_Hex(TemproryBuffer2 , UnsignedLong , (Type == 'x') ? 0 : 1);
+                    ToString_Hex(TemporaryBuffer2 , UnsignedLong , (Type == 'x') ? 0 : 1);
                     if(Width == 0) {
                         j += ToString_Hex(String+j , UnsignedLong , (Type == 'x') ? 0 : 1);
                     }
                     else {
-                        if(Width < strlen(TemproryBuffer2)) {
-                            Width = strlen(TemproryBuffer2);
+                        if(Width < strlen(TemporaryBuffer2)) {
+                            Width = strlen(TemporaryBuffer2);
                         }
                         for(k = 0; k < Width; k++) {
-                            TemproryBuffer1[k] = Flags;
+                            TemporaryBuffer1[k] = Flags;
                         }
-                        memcpy(TemproryBuffer1+Width-strlen(TemproryBuffer2) , TemproryBuffer2 , strlen(TemproryBuffer2));
-                        TemproryBuffer1[k] = 0x00;
-                        strcpy(String+j , TemproryBuffer1);
+                        memcpy(TemporaryBuffer1+Width-strlen(TemporaryBuffer2) , TemporaryBuffer2 , strlen(TemporaryBuffer2));
+                        TemporaryBuffer1[k] = 0x00;
+                        strcpy(String+j , TemporaryBuffer1);
                         j += k;
                         if(Width != 0) {
                             i++;

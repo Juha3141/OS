@@ -20,7 +20,7 @@ unsigned int ManualProbe(unsigned int Address);
 
 void Main(void) {
 	unsigned int DirectoryRecordLocation = 0x500+(2048*2);
-	unsigned int TemproryBufferLocation = 0x500;
+	unsigned int TemporaryBufferLocation = 0x500;
 
 	unsigned int KernelSectorLocation;
 	unsigned int KernelSectorSize;

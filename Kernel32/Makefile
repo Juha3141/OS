@@ -1,6 +1,6 @@
 SOURCESFOLDER = Sources
-TEMPRORYFOLDER = ../Temprory
-KERNEL32TEMPRORYFOLDER = $(TEMPRORYFOLDER)/Kernel32
+TEMPORARYFOLDER = ../Temporary
+KERNEL32TEMPORARYFOLDER = $(TEMPORARYFOLDER)/Kernel32
 
 CC = gcc
 LD = ld
@@ -14,24 +14,24 @@ ENTRYSOURCE	 = Entry.asm
 CO-ASMSOURCE = Assembly.asm
 MAINSOURCES = Main.obj string.obj vsprintf.obj BIOS.obj
 LINKERSCRIPT = Linker.ld
-ELF = $(TEMPRORYFOLDER)/Kernel32.elf
-PREP = $(TEMPRORYFOLDER)/Kernel32.bin
+ELF = $(TEMPORARYFOLDER)/Kernel32.elf
+PREP = $(TEMPORARYFOLDER)/Kernel32.bin
 ISOFOLDER = ../iso
 TARGET = KernelLoader.ldr
 
 prepare:
-	mkdir $(KERNEL32TEMPRORYFOLDER)
+	mkdir $(KERNEL32TEMPORARYFOLDER)
 
 all: prepare asm $(MAINSOURCES)
-	cd $(KERNEL32TEMPRORYFOLDER); $(LD) $(LDOPTIONS) -T ../../Kernel32/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj $(MAINSOURCES) Assembly.obj
+	cd $(KERNEL32TEMPORARYFOLDER); $(LD) $(LDOPTIONS) -T ../../Kernel32/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj $(MAINSOURCES) Assembly.obj
 	$(OBJCOPY) -O binary $(ELF) $(PREP)
-	./KernelLoaderMaker $(TEMPRORYFOLDER)/Loaders/Kernel16.bin $(PREP) $(TEMPRORYFOLDER)/Loaders/APLoader.bin $(ISOFOLDER)/$(TARGET) 2048 0
+	./KernelLoaderMaker $(TEMPORARYFOLDER)/Loaders/Kernel16.bin $(PREP) $(TEMPORARYFOLDER)/Loaders/APLoader.bin $(ISOFOLDER)/$(TARGET) 2048 0
 asm:
-	nasm $(SOURCESFOLDER)/$(ENTRYSOURCE) -f elf32 -o $(KERNEL32TEMPRORYFOLDER)/Entry.obj
-	nasm $(SOURCESFOLDER)/$(CO-ASMSOURCE) -f elf32 -o $(KERNEL32TEMPRORYFOLDER)/Assembly.obj
+	nasm $(SOURCESFOLDER)/$(ENTRYSOURCE) -f elf32 -o $(KERNEL32TEMPORARYFOLDER)/Entry.obj
+	nasm $(SOURCESFOLDER)/$(CO-ASMSOURCE) -f elf32 -o $(KERNEL32TEMPORARYFOLDER)/Assembly.obj
 
 %.obj:
-	$(CC) -m32 -c $(SOURCESFOLDER)/$*.c -o $(KERNEL32TEMPRORYFOLDER)/$*.obj $(GCCOPTIONS)
+	$(CC) -m32 -c $(SOURCESFOLDER)/$*.c -o $(KERNEL32TEMPORARYFOLDER)/$*.obj $(GCCOPTIONS)
 
 clean:
 	rm -rf $(TARGET)
