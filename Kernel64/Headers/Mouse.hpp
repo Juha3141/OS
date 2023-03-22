@@ -26,7 +26,7 @@ namespace Kernel {
                 StructureQueue<struct MouseData>MouseDataQueue;
             private:
                 int DataPhase = 0;
-                struct MouseData TemproryMouseData;
+                struct MouseData TemporaryMouseData;
         };
         void Initialize(void);
         bool IsDataQueueEmpty(void);

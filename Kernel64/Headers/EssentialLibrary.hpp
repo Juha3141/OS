@@ -3,6 +3,9 @@
 
 #include <stdarg.h>
 
+#define MIN(X , Y) ((X) >= (Y) ? (Y) : (X))
+#define MAX(X , Y) ((X) >= (Y) ? (X) : (Y))
+
 extern void *memset(void *Destination , unsigned char Value , unsigned long Size);
 extern void *memcpy(void *Destination , const void *Source , unsigned long Size);
 extern int memcmp(const void *Buffer1 , const void *Buffer2 , unsigned long Size);
