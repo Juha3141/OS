@@ -21,6 +21,7 @@
 // 8. User   Data Segment //
 // -> Total Nine Segments //
 ////////////////////////////
+
 #define GDT_ENTRYCOUNT 9
 // Flags and type of GDT, more details are down below.
 #define GDT_TYPE_RW                  0b00000010
@@ -55,9 +56,10 @@
 #define IDT_TYPE_32BIT_INTERRUPT_GATE 0x0E
 #define IDT_TYPE_32BIT_TRAP_GATE      0x0F
 
-#define TSS_ENTRYCOUNT   1
-#define IST_STARTADDRESS 0x620000
-#define IST_SIZE         0x100000
+#define TSS_ENTRYCOUNT    128
+#define IST_STARTADDRESS  0x620000
+#define IST_SIZE          0x100000
+#define IST_SIZE_PER_CORE 8*1024
 
 #define KERNEL_CS   0x08
 #define KERNEL_DS   0x10
@@ -186,6 +188,11 @@ namespace Kernel {
                 void Initialize(unsigned long BaseAddress , unsigned long RegisterAddress);
                 void SetGDTEntry(int Offset , unsigned int BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags);
                 void SetTSSEntry(int Offset , unsigned long BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags);
+
+                struct GDTEntry *GDTEntry;
+                struct TSSEntry *TSSEntry;
+                struct TSS *TSS;
+                DescriptorTablesRegister *GDTR;
             private:
                 inline void SetTSS_IST(struct TSS *TSS , int ISTNumber , unsigned long IST) {
                     TSS->IST[ISTNumber] = IST;
@@ -208,18 +215,15 @@ namespace Kernel {
                             break;
                     }
                 }
-                struct GDTEntry *GDTEntry;
-                struct TSSEntry *TSSEntry;
-                struct TSS *TSS;
-                DescriptorTablesRegister *GDTR;
         };
         class InterruptDescriptorTable {
             public:
                 void Initialize(unsigned long BaseAddress , unsigned long RegisterAddress);
                 void SetIDTEntry(int Offset , unsigned int BaseAddress , unsigned short Selector , unsigned char Type , unsigned char Flags , unsigned char IST);
-            private:
+                
                 struct IDTEntry *IDTEntry;
                 DescriptorTablesRegister *IDTR;
+            private:
         };
         void Initialize(void);
     }

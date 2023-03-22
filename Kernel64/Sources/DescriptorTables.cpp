@@ -16,23 +16,28 @@
 
 #include <Drivers/PATA.hpp>
 
-
-
 void Kernel::DescriptorTables::Initialize(void) {
     unsigned int ID;
+    static DescriptorTables::GlobalDescriptorTable *GlobalDescriptorTable;
+    static DescriptorTables::InterruptDescriptorTable *InterruptDescriptorTable;
+    if(LocalAPIC::CheckBSP() == false) {
+        __asm__ ("lgdt [%0]"::"r"(((unsigned long)GlobalDescriptorTable->GDTR)));
+        __asm__ ("lidt [%0]"::"r"(((unsigned long)InterruptDescriptorTable->IDTR)));
+        
+        __asm__ ("ltr %0"::"r"((unsigned short)((TSS_SEGMENT+sizeof(struct TSSEntry)*LocalAPIC::GetCurrentAPICID()))));
+        return;
+    }
     // Allocate space for each descriptor respectively
-    Kernel::DescriptorTables::GlobalDescriptorTable *GlobalDescriptorTable
-                                                    = (Kernel::DescriptorTables::GlobalDescriptorTable *)Kernel::SystemStructure::Allocate(
-                                                    sizeof(Kernel::DescriptorTables::GlobalDescriptorTable));
-    Kernel::DescriptorTables::InterruptDescriptorTable *InterruptDescriptorTable
-                                                       = (Kernel::DescriptorTables::InterruptDescriptorTable*)Kernel::SystemStructure::Allocate(
-                                                       sizeof(Kernel::DescriptorTables::InterruptDescriptorTable));
+    GlobalDescriptorTable = (Kernel::DescriptorTables::GlobalDescriptorTable *)Kernel::SystemStructure::Allocate(
+                          sizeof(Kernel::DescriptorTables::GlobalDescriptorTable));
+    InterruptDescriptorTable = (Kernel::DescriptorTables::InterruptDescriptorTable*)Kernel::SystemStructure::Allocate(
+                             sizeof(Kernel::DescriptorTables::InterruptDescriptorTable));
 #ifdef DEBUG
     Kernel::printf("GDT Management Structure : 0x%X\n" , GlobalDescriptorTable);
     Kernel::printf("IDT Management Structure : 0x%X\n" , InterruptDescriptorTable);
 #endif
     // Initialize and allocate space for descriptor table entries and registers
-    GlobalDescriptorTable->Initialize(Kernel::SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(TSSEntry)))
+    GlobalDescriptorTable->Initialize(Kernel::SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(struct TSSEntry)))
                                     , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
     InterruptDescriptorTable->Initialize(Kernel::SystemStructure::Allocate(IDT_ENTRYCOUNT*sizeof(IDTEntry))
                                        , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
@@ -42,14 +47,17 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     // BaseAddress = Location of GDT Entry
     // BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Location of TSS Entry
     // (GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Size of GDT Entry
+    int i;
+    unsigned long ISTStackAddress = IST_STARTADDRESS+IST_SIZE;
     GDTEntry = (struct GDTEntry *)BaseAddress;
     TSSEntry = (struct TSSEntry *)(BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))); // Note : Always put "()" in the address ****
     TSS = (struct TSS *)Kernel::SystemStructure::Allocate(sizeof(struct TSS)*TSS_ENTRYCOUNT);
-    memset(TSS , 0 , sizeof(struct TSS));
+    memset(TSS , 0 , sizeof(struct TSS)*TSS_ENTRYCOUNT);
     GDTR = (struct DescriptorTablesRegister *)RegisterAddress;
     // Size of "struct GDTEntry" : 8 , size of "struct TSSEntry" : 16
     GDTR->Size = ((GDT_ENTRYCOUNT*sizeof(struct GDTEntry))+(TSS_ENTRYCOUNT*sizeof(struct TSSEntry))); // Total size of GDT Entry
     GDTR->Address = BaseAddress;
+    // Seperated descriptor table
 #ifdef DEBUG
     Kernel::printf("GDTEntry Structure : 0x%X\n" , GDTEntry);
     Kernel::printf("TSSEntry Structure : 0x%X\n" , TSSEntry);
@@ -69,7 +77,7 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     SetGDTEntry(1 , 0x00 , 0xFFFFF , GDT_TYPE_E|GDT_TYPE_RW , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_S|GDT_FLAGS_L|GDT_FLAGS_G); 
     // Kernel Data Segment : E=0 , DC=0 , RW=1 , P=1 , DPL=0 , S=1 , L=1 , G=1
     SetGDTEntry(2 , 0x00 , 0xFFFFF , GDT_TYPE_RW , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_S|GDT_FLAGS_L|GDT_FLAGS_G);
-    // Ring 1 Code/Data Segments
+    // Ring 1 Code/Data SegmentsIST는 16바이트 단위로 정렬해야 함
     SetGDTEntry(3 , 0x00 , 0xFFFFF , GDT_TYPE_E|GDT_TYPE_RW , GDT_FLAGS_P|GDT_FLAGS_DPL1|GDT_FLAGS_S|GDT_FLAGS_L|GDT_FLAGS_G);
     SetGDTEntry(4 , 0x00 , 0xFFFFF , GDT_TYPE_RW , GDT_FLAGS_P|GDT_FLAGS_DPL1|GDT_FLAGS_S|GDT_FLAGS_L|GDT_FLAGS_G);
     // Ring 2 Code/Data Segments
@@ -81,10 +89,12 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     // TSS Segment : Type : 0x09(32bit TSS available) , P=1 , S=0(Becasue it is system segment) , DPL=0 , L=1 , G=1
     // TSS segment's base address is the location of TSS(it must be specified, unlike code, data segments), and its limit is the size of TSS.
     // L bit should be cleared, and G should be set to 1 ******
-    SetTSSEntry(0 , (unsigned long)TSS , sizeof(struct TSS) ,  GDT_TYPE_32BIT_TSS_AVAILABLE , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_G);
-    SetTSS_IST(TSS , 0 , IST_STARTADDRESS+IST_SIZE); // IST Address : 0x620000 Size of IST : 0x100000
-    TSS->IOPBOffset = 0xFFFF;               // Allow every port possible to access for user level
-
+    for(i = 0; i < TSS_ENTRYCOUNT; i++) {
+        SetTSSEntry(i , (unsigned long)&(TSS[i]) , sizeof(struct TSS)-1 ,  GDT_TYPE_32BIT_TSS_AVAILABLE , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_G);
+        // Allocate stack for interrupt handler (IST), each core gets 8KB
+        SetTSS_IST(&(TSS[i]) , 0 , (unsigned long)Kernel::MemoryManagement::Allocate(IST_SIZE_PER_CORE , MemoryManagement::ALIGN_4K)); // IST Address : 0x620000 Size of IST : 0x100000
+        TSS[i].IOPBOffset = 0xFFFF;              // Allow every port possible to access for user level
+    }
     __asm__ ("lgdt [%0]"::"r"((RegisterAddress)));
     // Don't forget to set Task Segment to TSS Segment "BEFORE" IDT initialization!
     __asm__ ("ltr %0"::"r"((unsigned short)(TSS_SEGMENT)));
