@@ -1,6 +1,7 @@
 #include <APIC.hpp>
 #include <PIT.hpp>
 #include <TaskManagement.hpp>
+#include <MutualExclusion.hpp>
 
 void Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
@@ -34,17 +35,10 @@ unsigned int Kernel::IOAPIC::ReadRegister(unsigned char RegisterAddress) {
     return *((unsigned int *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_WINDOW));
 }
 
-
-
-void Kernel::LocalAPIC::EnableLocalAPIC(void) {
-    unsigned int EAX;
-    unsigned int EDX;
-    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
-    
+void Kernel::LocalAPIC::GlobalEnableLocalAPIC(void) {
     // Disable all interrupts
     IO::Write(0x21 , 0xFF);
     IO::Write(0xA1 , 0xFF);
-
     // Enable Local APIC, set E bit in APIC_BASE MSR to 1
     // MSR 0x1B : APIC_BASE
     // Contains 32bits of Local APIC base and E flag, which if it enabled, Local APIC is globally enabled.
@@ -52,12 +46,18 @@ void Kernel::LocalAPIC::EnableLocalAPIC(void) {
     __asm__ ("rdmsr");
     __asm__ ("or eax , 0b100000000000");    // E(APIC Global Enable flag) = 1
     __asm__ ("wrmsr");
-    Kernel::printf("LocalAPIC Register Address from the structure : 0x%X\n" , CoreInformation->LocalAPICAddress);
+}
+
+void Kernel::LocalAPIC::EnableLocalAPIC(void) {
+    unsigned int EAX;
+    unsigned int EDX;
+    struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
+    // Kernel::printf("LocalAPIC Register Address from the structure : 0x%X\n" , CoreInformation->LocalAPICAddress);
     // To enable APIC, set bit 8 in LocalAPIC Spurious interrupt vector register to 1 
     // Currently, we're enabling BSP's Local APIC
     WriteRegister(LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER , ReadRegister(LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER)|0x100);
     // For debugging, read the register again
-    Kernel::printf("LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER      : 0x%X\n" , ReadRegister(LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER));
+    // Kernel::printf("LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER      : 0x%X\n" , ReadRegister(LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER));
 }
 
 bool Kernel::LocalAPIC::CheckBSP(void) {    // Check if current CPU is BSP
@@ -95,6 +95,7 @@ unsigned int Kernel::LocalAPIC::GetCurrentAPICID(void) {
 void Kernel::LocalAPIC::ActiveAPCores(void) {
     int i;
     int j;
+    int ActivatedCoreCount;
     unsigned int BSPAPICID;
     // Wow so I made two running core counter
     unsigned long LocalAPICBootLoaderLocation = 0x8000; // Pre-saved APIC boot loader location
@@ -120,28 +121,29 @@ void Kernel::LocalAPIC::ActiveAPCores(void) {
     // Wait 10ms for the response
     Kernel::PIT::DelayMilliseconds(10);
     // If Local APIC status is pending, sending IPI is failed. :/
-    if((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
-        Kernel::printf("Failed sending Init IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
-        return;
+    while((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
+        // Kernel::printf("Failed sending Init IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
+        // return;
     }
     for(j = 0; j < 2; j++) {
         WriteRegister(LAPIC_ERROR_STATUS_REGISTER , 0x00);
         WriteRegister(LAPIC_INTERRUPT_COMMAND_REGISTER , LAPIC_ICR_SENDING_FOR_EVERYONE_EXCEPT_FOR_ME|LAPIC_ICR_LEVEL_ASSERT|LAPIC_ICR_IPI_STARTUP|0x08);
-        Kernel::PIT::DelayMilliseconds(10);
-        if((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
-            Kernel::printf("Failed sending AP Setup IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
-            return;
+        while((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
+            // Kernel::printf("Failed sending AP Setup IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
+            // return;
         }
     }
     
     //__asm__ ("sti");
     while(1) { // Wait until activated core count is equal to number of cores
-        if(Kernel::LocalAPIC::GetActivatedCoreCount() >= CoreInformation::GetInstance()->CoreCount-1) {
-            Kernel::PIT::DelayMilliseconds(50);
-            Kernel::printf("All AP Cores are activated\n");
+        ActivatedCoreCount = GetActivatedCoreCount();
+        Kernel::PIT::DelayMilliseconds(10);
+        if(ActivatedCoreCount == GetActivatedCoreCount()) {
             break;
         }
     }
+    CoreInformation::GetInstance()->CoreCount = (GetActivatedCoreCount()+1);
+    Kernel::printf("Activated Core Count : %d\n" , CoreInformation::GetInstance()->CoreCount);
 }
 
 void Kernel::LocalAPIC::SendEOI(void) { // Send End Of Interrupt Signal to APIC
@@ -154,16 +156,19 @@ void Kernel::LocalAPIC::SendEOI(void) { // Send End Of Interrupt Signal to APIC
 volatile unsigned int InitialLocalAPICTickCount;
 
 void Kernel::LocalAPIC::Timer::Initialize(void) {
-    unsigned int LastTickCount;
-    Kernel::printf("Initializing Timer\n");
-    WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , 0xFFFFFFFF); // Initial value of the counter
-    WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b1011);
-    WriteRegister(LAPIC_LVT_TIMER_REGISTER , LAPIC_TIMER_MASK_INTERRUPT);
-    InitialLocalAPICTickCount = 10000;
+    // Kernel::printf("Initializing Timer\n");
+    if(CheckBSP() == true) {
+        WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b0011);
+        WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , 0xFFFFFFFF); // Initial value of the counter
+        PIT::DelayMicroseconds(10); // kinda dangerous?
+        WriteRegister(LAPIC_LVT_TIMER_REGISTER , LAPIC_TIMER_MASK_INTERRUPT);
+        InitialLocalAPICTickCount = 0xFFFFFFFF-LocalAPIC::Timer::GetTickCount();
+    }
     WriteRegister(LAPIC_LVT_TIMER_REGISTER , (0b10 << 16)|41); // LVT Timer Register, determins how interrupt occur.
-    WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b1011);
+    WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b0011);
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , InitialLocalAPICTickCount); // Initial value of the counter
-    Kernel::printf("Initial LocalAPIC Tick Count : %d\n" , InitialLocalAPICTickCount);
+    // Kernel::printf("Initial LocalAPIC Tick Count : %d\n" , InitialLocalAPICTickCount);
+    TimerSpinLock.Initialize();
 }
 
 void Kernel::LocalAPIC::Timer::SetInitialValue(unsigned int Value) {
@@ -182,29 +187,66 @@ unsigned int Kernel::LocalAPIC::Timer::GetTickCount(void) {
     return ReadRegister(LAPIC_CURRENT_COUNT_REGISTER);
 }
 
+unsigned int Kernel::LocalAPIC::Timer::GetInitialValue(void) {
+    return InitialLocalAPICTickCount;
+}
+
 void Kernel::LocalAPIC::Timer::MainInterruptHandler(void) {
-    Kernel::PIC::SendEOI(41);
+    // Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
     Kernel::LocalAPIC::SendEOI();
-    Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
 }
 
 /// I/O APIC ///
 
-void Kernel::IOAPIC::Initialize(void) {
+void Kernel::IOAPIC::InitializeRedirectionTable(void) {
+    int i;
+    unsigned long TableAddress;
+    struct MPFloatingTable::MPFloatingPointer *MPFloatingPointer = (struct MPFloatingTable::MPFloatingPointer *)MPFloatingTable::FindMPFloatingTable();
+    struct MPFloatingTable::MPFloatingTableHeader *TableHeader = (struct MPFloatingTable::MPFloatingTableHeader *)MPFloatingPointer->PhysicalAddressPointer;
+    
+    struct MPFloatingTable::Entries::IOInterruptAssignment *IOInterruptAssignmentEntry;
+    struct MPFloatingTable::Entries::LocalInterrupt *LocalInterruptEntry;
+    
     struct IORedirectionTable RedirectionTable;
-    memset(&(RedirectionTable) , 0 , sizeof(unsigned long));
-    RedirectionTable.InterruptVector = 33;
-    RedirectionTable.DeliveryMode = IOAPIC_IOREDTBL_DELIVERY_MODE_FIXED;
-    RedirectionTable.InterruptPinPolarity = 0;
-    RedirectionTable.TriggerMode = 0;
-    RedirectionTable.InterruptMask = 0;
-    RedirectionTable.DestinationMode = 0;
-    RedirectionTable.DestinationAddress = 0x00;
-    WriteIORedirectionTable(1 , RedirectionTable);
-    RedirectionTable.InterruptVector = 32;
-    RedirectionTable.DestinationMode = 0;
-    RedirectionTable.DestinationAddress = 0x00;
-    WriteIORedirectionTable(2 , RedirectionTable);
+    memset(&(RedirectionTable) , 0 , sizeof(struct IORedirectionTable));
+    if(MPFloatingPointer == 0x00) {
+        Kernel::printf("MP floating pointer not found.\n");
+        while(1) {
+            ;
+        }
+    }
+    Kernel::printf("MP Table Entry Count : %d\n" , TableHeader->EntryCount);
+    TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTable::MPFloatingTableHeader);
+    for(i = 0; i < TableHeader->EntryCount; i++) {
+        switch(*((unsigned char*)TableAddress)) {
+            case 0:
+                TableAddress += sizeof(struct MPFloatingTable::Entries::Processor);
+                break;
+            case 1:
+                TableAddress += sizeof(struct MPFloatingTable::Entries::BUS);
+                break;
+            case 2:
+                TableAddress += sizeof(struct MPFloatingTable::Entries::IOAPIC);
+                break;
+            case 3:
+                IOInterruptAssignmentEntry = (struct MPFloatingTable::Entries::IOInterruptAssignment *)TableAddress;
+                RedirectionTable.DeliveryMode = IOAPIC_IOREDTBL_DELIVERY_MODE_FIXED;
+                RedirectionTable.DestinationMode = 0x00;
+                RedirectionTable.DestinationAddress = 0x00;
+                RedirectionTable.InterruptVector = IOInterruptAssignmentEntry->SourceBusIRQ+0x20;
+                WriteIORedirectionTable(IOInterruptAssignmentEntry->DestinationIOAPICINTIN , RedirectionTable);
+                // Kernel::printf("INTIN %d -> IRQ %d\n" , IOInterruptAssignmentEntry->DestinationIOAPICINTIN , IOInterruptAssignmentEntry->SourceBusIRQ);
+                TableAddress += sizeof(struct MPFloatingTable::Entries::IOInterruptAssignment);
+                break;
+            case 4:
+                TableAddress += sizeof(struct MPFloatingTable::Entries::LocalInterrupt);
+                break;
+            default:
+                TableAddress += 8;
+                break;
+        };
+    }
+    
 }
 
 void Kernel::IOAPIC::WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable) {
