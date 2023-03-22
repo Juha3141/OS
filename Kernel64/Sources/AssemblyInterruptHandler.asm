@@ -466,6 +466,34 @@ _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
     push rbp
     mov rbp , rsp
     SAVE_REGISTERS_TO_STACK
+    
+    ; Get Current APIC ID
+    mov rcx , 27
+    xor rax , rax
+    xor rdx , rdx
+    rdmsr
+
+    xor rsi , rsi
+
+    mov esi , eax
+    and eax , 0b111111111111
+    xor esi , eax
+    shl rdx , 31
+    or rsi , rdx
+
+    xor rax , rax
+    mov eax , dword[esi+0x20]
+    shr eax , 24
+    
+    ; rax = APIC ID
+
+    mov rcx , rax
+    imul rax , 2
+
+    mov rsi , 0xB8000
+    add rsi , rax
+    lock add byte[rsi] , 1
+    lock add byte[rsi+1] , 1
 
     call _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv
 
