@@ -136,3 +136,22 @@ bool Kernel::ACPI::CheckRSDPChecksum(unsigned long Address) { // error
     }
     return true;
 }
+
+unsigned int Kernel::ACPI::IdentifySDT(unsigned long Address) {
+    int i;
+    struct SDTHeader *Header = (struct SDTHeader *)Address;
+    char RSDTSignatureList[22][5] = {
+        "APIC" , "BERT" , "CPEP" , "DSDT" , 
+        "ECDT" , "EINJ" , "ERST" , "FACP" , 
+        "FACS" , "HEST" , "MSCT" , "MPST" , 
+        "OEMx" , "PMTT" , "PSDT" , "RASF" , 
+        "RSDT" , "SBST" , "SLIT" , "SRAT" , 
+        "SSDT" , "XSDT" , 
+    };
+    for(i = 0; i < 22; i++) {
+        if(memcpy((unsigned char *)Address , RSDTSignatureList[i] , 4) == 0) {
+            return i+1;
+        }
+    }
+    return 0x00;
+}

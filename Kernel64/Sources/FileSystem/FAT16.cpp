@@ -141,6 +141,20 @@ unsigned int FAT16::ReadCluster(Drivers::StorageSystem::Storage *Storage , unsig
     return i;
 }
 
+unsigned int FAT16::FindFirstEmptyCluster(Drivers::StorageSystem::Storage *Storage) {
+    int i;
+    unsigned char Data[512];
+    struct VBR VBR;
+    Storage->Driver->ReadSectorFunction(Storage , 0 , 1 , Data);
+    memcpy(&(VBR) , Data , 512);
+    for(i = 0; i < VBR.TotalSector16/VBR.SectorsPerCluster; i++) {
+        if(FindNextCluster(Storage , i , &(VBR)) == 0x00) {
+            return i;
+        }
+    }
+    return 0xFFFFFFFF;
+}
+
 unsigned int FAT16::GetFATAreaLocation(struct VBR *VBR) {
     return VBR->ReservedSectorCount;
 }

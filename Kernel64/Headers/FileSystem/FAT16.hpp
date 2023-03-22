@@ -76,6 +76,7 @@ namespace Kernel {
 
             void WriteVBR(struct VBR *VBR , Drivers::StorageSystem::StorageGeometry *Geometry);
             unsigned int ReadCluster(Drivers::StorageSystem::Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR);
+            unsigned int FindFirstEmptyCluster(Drivers::StorageSystem::Storage *Storage);
             unsigned int GetFATAreaLocation(struct VBR *VBR);
             unsigned int GetRootDirectoryLocation(struct VBR *VBR);
             unsigned int GetRootDirectorySize(struct VBR *VBR);
