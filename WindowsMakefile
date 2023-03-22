@@ -5,7 +5,7 @@ VBOXMANAGE = "C:/Program Files/Oracle/VirtualBox/VBoxManage.exe"
 
 OSCDIMG = Oscdimg/oscdimg.exe
 ISOFOLDER = iso
-TEMPRORYFOLDER = Temprory
+TEMPORARYFOLDER = Temporary
 
 TARGET = OS.iso 
 
@@ -14,7 +14,7 @@ clean:
 
 all:
 	$(BASH) make windows
-	$(OSCDIMG) -b$(TEMPRORYFOLDER)/BootLoader.bin $(ISOFOLDER)/ $(TARGET) -m
+	$(OSCDIMG) -b$(TEMPORARYFOLDER)/BootLoader.bin $(ISOFOLDER)/ $(TARGET) -m
 
 run: virtualbox
 
