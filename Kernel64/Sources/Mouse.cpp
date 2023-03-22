@@ -55,28 +55,28 @@ void Kernel::Mouse::MainInterruptHandler(void) {
 void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
     if(DataPhase == 0) {
         DataPhase++;
-        TemproryMouseData.ButtonData = Data;
+        TemporaryMouseData.ButtonData = Data;
     }
     else if(DataPhase == 1) {
         DataPhase++;
-        TemproryMouseData.RelativeX = Data;
+        TemporaryMouseData.RelativeX = Data;
     }
     else if(DataPhase == 2) {
         DataPhase++;
-        TemproryMouseData.RelativeY = Data;
+        TemporaryMouseData.RelativeY = Data;
     }
     else {
         DataPhase = 0;
     }
     if(DataPhase >= 3) {
-        if((TemproryMouseData.ButtonData & 0x10) == 0x10) {
-            TemproryMouseData.RelativeX |= 0xFFFFFF00;
+        if((TemporaryMouseData.ButtonData & 0x10) == 0x10) {
+            TemporaryMouseData.RelativeX |= 0xFFFFFF00;
         }
-        if((TemproryMouseData.ButtonData & 0x20) == 0x20) {
-            TemproryMouseData.RelativeY |= 0xFFFFFF00;
+        if((TemporaryMouseData.ButtonData & 0x20) == 0x20) {
+            TemporaryMouseData.RelativeY |= 0xFFFFFF00;
         }
-        TemproryMouseData.RelativeY = -TemproryMouseData.RelativeY;
-        MouseDataQueue.Enqueue(TemproryMouseData);
+        TemporaryMouseData.RelativeY = -TemporaryMouseData.RelativeY;
+        MouseDataQueue.Enqueue(TemporaryMouseData);
         DataPhase = 0;
     }
 }
