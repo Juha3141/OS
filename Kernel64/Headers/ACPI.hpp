@@ -7,6 +7,30 @@
 #define RSDP_ADDRESS_1 0xE0000
 #define RSDP_ADDRESS_2 0x40E
 
+#define RSDT_TYPE_UNIDENTIFIED 0x00
+#define RSDT_TYPE_APIC         0x01
+#define RSDT_TYPE_BERT         0x02
+#define RSDT_TYPE_CPEP         0x03
+#define RSDT_TYPE_DSDT         0x04
+#define RSDT_TYPE_ECDT         0x05
+#define RSDT_TYPE_EINJ         0x06
+#define RSDT_TYPE_ERST         0x07
+#define RSDT_TYPE_FACP         0x08
+#define RSDT_TYPE_FACS         0x09
+#define RSDT_TYPE_HEST         0x0A
+#define RSDT_TYPE_MSCT         0x0B
+#define RSDT_TYPE_MPST         0x0C
+#define RSDT_TYPE_OEMx         0x0D
+#define RSDT_TYPE_PMTT         0x0E
+#define RSDT_TYPE_PSDT         0x0F
+#define RSDT_TYPE_RASF         0x10
+#define RSDT_TYPE_RSDT         0x11
+#define RSDT_TYPE_SBST         0x12
+#define RSDT_TYPE_SLIT         0x13
+#define RSDT_TYPE_SRAT         0x14
+#define RSDT_TYPE_SSDT         0x15
+#define RSDT_TYPE_XSDT         0x16
+
 namespace Kernel {
     struct CoreInformation {
         int CoreCount;
@@ -123,6 +147,7 @@ namespace Kernel {
         unsigned long GetDescriptorTable(const char Signature[4]);
         bool SaveCoresInformation(void);
         bool CheckRSDPChecksum(unsigned long Address);
+        unsigned int IdentifySDT(unsigned long Address);
     }
     struct CPUInformation *GetCoresInformation(void);
     void WriteCoresInformation(CPUInformation *NewCoreInformation);
