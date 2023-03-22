@@ -7,6 +7,9 @@ extern Main
 extern APStartup
 
 extern ActivatedCoreCount
+extern KernelStackBase
+extern KernelStackSize
+extern StackReady
 
 LongModeEntry:
     mov ax , 0x10
@@ -22,14 +25,37 @@ LongModeEntry:
     cmp byte[0x8000+2] , 0x01
     je .BSP
 
-    lock add word[0x8000+2+1] , 1
+    lock inc dword[ActivatedCoreCount]
 
-    mov rax , 0x00
-    mov ax , word[0x8000+2+1]
+    .L1:
+        mov eax , dword[StackReady]
+        cmp eax , 0x01
+        jnz .L1
 
-    imul rax , 128*1024 ; Demanded stack size for each core
+    mov rcx , 27
+    xor rax , rax
+    xor rdx , rdx
+    rdmsr
+
+    xor rsi , rsi
+
+    mov esi , eax
+    and eax , 0b111111111111
+    xor esi , eax
+    shl rdx , 31
+    or rsi , rdx
+
+    xor rax , rax
+    mov eax , dword[esi+0x20]
+    shr eax , 24
+    
+    sub rax , 1 ; Exclude BSP
+    imul eax , dword[KernelStackSize]
+
+    xor rbp , rbp
+    mov ebp , dword[KernelStackBase]
     sub rbp , rax
-    sub rsp , rax
+    mov rsp , rbp
 
     jmp .AP
 
@@ -61,7 +87,6 @@ LongModeEntry:
     jmp $
 
 .AP:
-    lock inc dword[ActivatedCoreCount]
     call APStartup
 
     jmp $
