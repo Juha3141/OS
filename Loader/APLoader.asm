@@ -7,14 +7,17 @@ IsAPStarted: db 0x01
 RunningAPCoreCount: dw 0x00
 
 StartAP:
+    mov ax , 0x00
+
     mov al , 0xFF
-    lock xchg byte[IsAPStarted] , al
+    xchg byte[IsAPStarted] , al
+    inc byte[RunningAPCoreCount]
 
     cli                 ; Disable interrupt to switch to PMode
     lgdt [GDTR]         ; Load GDT
 
     mov eax , cr0       ; We can't write CR0 register directly(just like ES register)
-    or eax , 0x01       ; Set CR0 PE bit to 1
+    or eax , 0x01      ; Set CR0 PE bit to 1
     mov cr0 , eax
     
     jmp 0x08:APProtectMode
@@ -22,6 +25,13 @@ StartAP:
 [BITS 32]
 
 APProtectMode:
+    mov ax , 0x10
+    mov ds , ax
+    mov es , ax
+    mov fs , ax
+    mov gs , ax
+    mov ss , ax
+
     xor edx , edx
                             ; Switch to Long Mode
     mov eax , cr4           ; 1. Set PAE(Physical Address Extension) bit to 1 (5th bit)
@@ -40,7 +50,7 @@ APProtectMode:
                             ; (System Call will be featured in this Operating System,
                             ;  that's why I'm currently setting SCE bit to 1)
     wrmsr
-        
+    
     mov eax , cr0
     or eax , 0x80000000     ; Set PG(Paging Enable) bit to 1
     mov cr0 , eax
