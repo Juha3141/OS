@@ -6,22 +6,29 @@
 
 unsigned long Kernel::MPFloatingTable::FindMPFloatingTable(void) {
     int i;
-    unsigned char *MPFloatingPointerLocation;
+    unsigned long MPFloatingPointerLocation;
+    unsigned long EBDAAddress;
+    unsigned long SystemBaseMemory;
     Kernel::printf("Finding MP Floating Pointer : \n");
-    for(MPFloatingPointerLocation = (unsigned char *)(0x40E*16); MPFloatingPointerLocation <= (unsigned char *)((0x40E*16)+1024); MPFloatingPointerLocation += 1) {
-        if(memcmp(MPFloatingPointerLocation , "_MP_" , 4) == 0) {
+    // Actually this was based on the "POINTER value" of this address
+    EBDAAddress = *((unsigned short *)0x40E);
+    EBDAAddress *= 16;
+    SystemBaseMemory = *((unsigned short *)0x413);
+    SystemBaseMemory *= 1024;
+    for(MPFloatingPointerLocation = EBDAAddress; MPFloatingPointerLocation <= (EBDAAddress+1024); MPFloatingPointerLocation += 1) {
+        if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
             Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
     }
-    for(MPFloatingPointerLocation = (unsigned char *)((0x413*1024)-1024); MPFloatingPointerLocation <= (unsigned char *)((0x403*1024)); MPFloatingPointerLocation += 1) {
-        if(memcmp(MPFloatingPointerLocation , "_MP_" , 4) == 0) {
+    for(MPFloatingPointerLocation = (SystemBaseMemory-1024); MPFloatingPointerLocation <= SystemBaseMemory; MPFloatingPointerLocation += 1) {
+        if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
             Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
     }
-    for(MPFloatingPointerLocation = (unsigned char *)0xF0000; MPFloatingPointerLocation <= (unsigned char *)0xFFFFF; MPFloatingPointerLocation += 1) {
-        if(memcmp(MPFloatingPointerLocation , "_MP_" , 4) == 0) {
+    for(MPFloatingPointerLocation = 0xF0000; MPFloatingPointerLocation <= 0xFFFFF; MPFloatingPointerLocation += 1) {
+        if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
             Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
@@ -36,6 +43,7 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     unsigned int EAX;
     unsigned int EDX;
     unsigned long TableAddress;
+    char BusName[7];
     struct Kernel::CoreInformation *CoreInformation = (struct Kernel::CoreInformation *)Kernel::MemoryManagement::Allocate(sizeof(struct Kernel::CoreInformation));
     struct MPFloatingPointer *MPFloatingPointer = (struct MPFloatingPointer *)FindMPFloatingTable();
     struct MPFloatingTableHeader *TableHeader = (struct MPFloatingTableHeader *)MPFloatingPointer->PhysicalAddressPointer;
@@ -60,11 +68,6 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
         switch(*((unsigned char*)TableAddress)) {
             case 0:
                 CoreCount++;
-                TableAddress += sizeof(struct Entries::Processor);
-                break;
-            case 1:
-                TableAddress += sizeof(struct Entries::BUS);
-                break;
             default:
                 TableAddress += 8;
                 break;
@@ -83,8 +86,23 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
                 CoreInformation->LocalAPICProcessorID[j] = ProcessorEntry->LocalAPICID;
                 j++;
                 TableAddress += sizeof(struct Entries::Processor);
+                /*
+                Kernel::printf("Entry : Processor\n");
+                Kernel::printf("CPU Flags           : %d\n" , ProcessorEntry->CPUFlags);
+                Kernel::printf("CPU Signature       : %d\n" , ProcessorEntry->CPUSignature);
+                Kernel::printf("Local APIC ID       : %d\n" , ProcessorEntry->LocalAPICID);
+                Kernel::printf("Local APIC ID Ver.  : %d\n" , ProcessorEntry->LocalAPICVersion);
+                */
                 break;
             case 1:
+                /*
+                BUSEntry = (struct Entries::BUS *)TableAddress;
+                Kernel::printf("Entry : Bus\n");
+                Kernel::printf("BUS ID   : %d\n" , BUSEntry->BusID);
+                memcpy(BusName , BUSEntry->BusTypeString , 6);
+                BusName[6] = 0;
+                Kernel::printf("BUS Type : %d\n"  , BusName);
+                */
                 TableAddress += sizeof(struct Entries::BUS);
                 break;
             case 2:
@@ -104,7 +122,6 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
                 break;
         };
     }
-    
     // Get the address of Local APIC registers from MSR(As ACPI did)
     // (the comments are same as the acpi part)
 
