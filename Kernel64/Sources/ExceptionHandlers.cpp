@@ -52,11 +52,11 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Hypervisor Injection Exception" , "VMM Communication Exception" , 
         "Security Exception" , 
     };
-    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-sizeof(struct Kernel::TaskRegisters));
+    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-(IST_SIZE_PER_CORE*LocalAPIC::GetCurrentAPICID())-sizeof(struct Kernel::TaskRegisters));
     __asm__ ("cli");
     Kernel::PrintString("[Exception occurred]\n");
     Kernel::printf("Vector Number : %d(%s)\n" , ExceptionNumber , ExceptionNames[ExceptionNumber]);
-    Kernel::printf("IST Location  : 0x%X\n" , ((IST_STARTADDRESS+IST_SIZE)-sizeof(struct Kernel::TaskRegisters)));
+    Kernel::printf("IST Location  : 0x%X, Core Number : %d\n" , IST , LocalAPIC::GetCurrentAPICID());
     Kernel::printf("Dumping Registers : \n");
     Kernel::printf("RAX=0x%X RBX=0x%X RCX=0x%X RDX=0x%X\n" , IST->RAX , IST->RBX , IST->RCX , IST->RDX);
     Kernel::printf("RDI=0x%X RSI=0x%X R8=0x%X R9=0x%X\n" , IST->RDI , IST->RSI , IST->R8 , IST->R9);
