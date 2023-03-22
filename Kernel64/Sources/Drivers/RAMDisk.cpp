@@ -53,6 +53,7 @@ bool RAMDisk::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::Stora
 }
 
 unsigned long RAMDisk::ReadSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
+    unsigned long Offset = 0;
     unsigned long Temporary;
     unsigned long MemoryAddress;
     unsigned long StartAddress = (Storage->Resources[0]+(SectorAddress*Storage->Flags[1]));
@@ -63,13 +64,14 @@ unsigned long RAMDisk::ReadSector(StorageSystem::Storage *Storage , unsigned lon
         if(MemoryAddress >= (Storage->Resources[0]+(Storage->Flags[0]*Storage->Flags[1]))) {
             break;
         }
-        *((unsigned long*)Buffer) = *((unsigned long *)MemoryAddress);
-        Buffer += 8;
+        *((unsigned long *)(Buffer+Offset)) = *((unsigned long *)MemoryAddress);
+        Offset += 8;
     }
     return (MemoryAddress-StartAddress);
 }
 
 unsigned long RAMDisk::WriteSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
+    unsigned long Offset = 0;
     unsigned long Temporary;
     unsigned long MemoryAddress;
     unsigned long StartAddress = (Storage->Resources[0]+(SectorAddress*Storage->Flags[1]));
@@ -80,8 +82,8 @@ unsigned long RAMDisk::WriteSector(StorageSystem::Storage *Storage , unsigned lo
         if(MemoryAddress >= (Storage->Resources[0]+(Storage->Flags[0]*Storage->Flags[1]))) {
             break;
         }
-        *((unsigned long *)MemoryAddress) = *((unsigned long*)Buffer);
-        Buffer += 8;
+        *((unsigned long *)(Buffer+Offset)) = *((unsigned long *)MemoryAddress);
+        Offset += 8;
     }
     return (MemoryAddress-StartAddress);
 }
