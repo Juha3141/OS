@@ -20,6 +20,7 @@
 #define LAPIC_ERROR_STATUS_REGISTER                         0x280
 #define LAPIC_CMCMI_REGISTER                                0x2F0
 #define LAPIC_INTERRUPT_COMMAND_REGISTER                    0x300
+#define LAPIC_INTERRUPT_COMMAND_REGISTER_HIGH               0x310
 #define LAPIC_LVT_TIMER_REGISTER                            0x320
 #define LAPIC_LVT_THERMAL_SENSOR_REGISTER                   0x330
 #define LAPIC_LVT_PERFORMANCE_MONITORING_COUNTERS_REGISTER  0x340
@@ -89,11 +90,13 @@ namespace Kernel {
         unsigned int ReadRegister(unsigned int RegisterAddress);
         unsigned long ReadRegister_L(unsigned int RegisterAddress);
 
+        void GlobalEnableLocalAPIC(void);
         void EnableLocalAPIC(void);
         bool CheckBSP(void);
         void ActiveAPCores(void);
+        bool SendInitSignal(unsigned int APICID);
+        bool SendActivateSignal(unsigned int APICID);
 
-        void SendActivatedSignal(void);
         unsigned int GetActivatedCoreCount(void);
         unsigned int GetCurrentAPICID(void);
 
@@ -101,6 +104,7 @@ namespace Kernel {
 
         namespace Timer {
             void Initialize(void);
+            unsigned int GetInitialValue(void);
             void SetInitialValue(unsigned int Value);
             void Enable(void);
             void Disable(void);
@@ -124,7 +128,8 @@ namespace Kernel {
 
             unsigned char DestinationAddress;
         };
-        void Initialize(void);
+        void InitializeRedirectionTable(void);
+        void ReadIORedirectionTable(int INTIN , struct IORedirectionTable *RedirectionTable);
         void WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable);
         void WriteRegister(unsigned char RegisterAddress , unsigned int Data);
         unsigned int ReadRegister(unsigned char RegisterAddress);
