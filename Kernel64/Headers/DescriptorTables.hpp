@@ -226,6 +226,7 @@ namespace Kernel {
             private:
         };
         void Initialize(void);
+        unsigned long GetInterruptStackTable(unsigned long CoreID);
     }
     struct InterruptStackTable {
         unsigned long GS;
@@ -238,6 +239,7 @@ namespace Kernel {
         unsigned long R12;
         unsigned long R11;
         unsigned long R10;
+
         unsigned long R9;
         unsigned long R8;
         unsigned long RSI;
