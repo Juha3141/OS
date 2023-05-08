@@ -60,6 +60,9 @@ unsigned long RAMDisk::ReadSector(StorageSystem::Storage *Storage , unsigned lon
     // Flag 0 : Total Sector Count
     // Flags 1 : Bytes Per Sector
     // Resource 0 : Physical Location
+    if(Storage->StorageType == 0x01) {
+        SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+    }
     for(MemoryAddress = StartAddress; MemoryAddress < (StartAddress+(Count*Storage->Flags[1])); MemoryAddress += 8) {
         if(MemoryAddress >= (Storage->Resources[0]+(Storage->Flags[0]*Storage->Flags[1]))) {
             break;
@@ -78,11 +81,14 @@ unsigned long RAMDisk::WriteSector(StorageSystem::Storage *Storage , unsigned lo
     // Flag 0 : Total Sector Count
     // Flags 1 : Bytes Per Sector
     // Resource 0 : Physical Location
+    if(Storage->StorageType == 0x01) {
+        SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+    }
     for(MemoryAddress = StartAddress; MemoryAddress < (StartAddress+(Count*Storage->Flags[1])); MemoryAddress += 8) {
         if(MemoryAddress >= (Storage->Resources[0]+(Storage->Flags[0]*Storage->Flags[1]))) {
             break;
         }
-        *((unsigned long *)(Buffer+Offset)) = *((unsigned long *)MemoryAddress);
+        *((unsigned long *)MemoryAddress) =  *((unsigned long *)(Buffer+Offset));
         Offset += 8;
     }
     return (MemoryAddress-StartAddress);
