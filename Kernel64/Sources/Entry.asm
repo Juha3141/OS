@@ -9,7 +9,6 @@ extern APStartup
 extern ActivatedCoreCount
 extern KernelStackBase
 extern KernelStackSize
-extern StackReady
 
 LongModeEntry:
     mov ax , 0x10
@@ -28,9 +27,8 @@ LongModeEntry:
     lock inc dword[ActivatedCoreCount]
 
     .L1:
-        mov eax , dword[StackReady]
-        cmp eax , 0x01
-        jnz .L1
+        cmp qword[KernelStackBase] , 0x00
+        jz .L1
 
     mov rcx , 27
     xor rax , rax
