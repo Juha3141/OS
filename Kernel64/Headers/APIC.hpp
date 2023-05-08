@@ -13,7 +13,7 @@
 #define LAPIC_REMOTE_READ_REGISTER                          0xC0
 #define LAPIC_LOGICAL_DESTINATION_REGISTER                  0xD0
 #define LAPIC_DESTINATION_FORMAT_REGISTER                   0xE0
-#define LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER            0xF0
+#define LAPIC_LVT_SPURIOUS_REGISTER                         0xF0
 #define LAPIC_IN_SERVICE_REGISTER                           0x100
 #define LAPIC_TRIGGER_MODE_REGISTER                         0x180
 #define LAPIC_INTERRUPT_REQUEST_REGISTER                    0x200
@@ -57,6 +57,13 @@
 
 #define LAPIC_TIMER_DELAY_MS                                50
 
+#define LAPIC_LVT_NMI                                       0b00000010000000000
+#define LAPIC_LVT_INTERRUPT_PENDING                         0b00001000000000000
+#define LAPIC_LVT_LOW_TRIGGERED                             0b00010000000000000
+#define LAPIC_LVT_REMOTE_IRR                                0b00100000000000000
+#define LAPIC_LVT_LEVEL_TRIGGER                             0b01000000000000000
+#define LAPIC_LVT_MASKED                                    0b10000000000000000
+
 #define IOAPIC_REGISTER_SELECTOR                            0x00
 #define IOAPIC_REGISTER_WINDOW                              0x10
 
@@ -93,7 +100,7 @@ namespace Kernel {
         void GlobalEnableLocalAPIC(void);
         void EnableLocalAPIC(void);
         bool CheckBSP(void);
-        void ActiveAPCores(void);
+        void ActivateAPCores(void);
         bool SendInitSignal(unsigned int APICID);
         bool SendActivateSignal(unsigned int APICID);
 
