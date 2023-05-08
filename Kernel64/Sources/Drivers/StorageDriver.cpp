@@ -99,10 +99,24 @@ StorageSystem::Storage *StorageSystem::AssignStorage(int PortsCount , int FlagsC
     return Storage;
 }
 
-void AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount) {
+/// @brief Add logical drive to Storage (Disclaimer : This function doesn't calculate how full the storage is)
+//         Use at your own risk, this function can't guarantee the stability when disk's full.
+/// @param StorageDriver Storage driver (Stroage->Driver)
+/// @param Storage Physical Storage
+/// @param Partitions List of partitions
+/// @param PartitionCount number of partition to add 
+void StorageSystem::AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount) {
     int i;
-    Storage->LogicalStorages = (StorageSystem::Storage **)Kernel::MemoryManagement::Allocate(PartitionCount*sizeof(StorageSystem::Storage *));
-    for(i = 0; i < PartitionCount; i++) {
+    int j = 0;
+    if(Storage->PartitionCount == 0) {
+        Storage->LogicalStorages = (StorageSystem::Storage **)Kernel::MemoryManagement::Allocate(PartitionCount*sizeof(StorageSystem::Storage *));
+    }
+    if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->PartitionCount == 4)) {
+        return;
+    }
+    Kernel::printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
+    Kernel::printf("Storage->PartitionCount : %d\n" , Storage->PartitionCount);
+    for(i = Storage->PartitionCount-1; i < PartitionCount; i++) {
         Storage->LogicalStorages[i] = (StorageSystem::Storage *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Storage));
         memcpy(&(Storage->LogicalStorages[i]->Geometry) , &(Storage->Geometry) , sizeof(StorageSystem::StorageGeometry));
         Storage->LogicalStorages[i]->Ports = Storage->Ports;
@@ -114,7 +128,7 @@ void AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Stora
         Storage->LogicalStorages[i]->Resources = Storage->Resources;
         Storage->LogicalStorages[i]->ResourcesCount = Storage->ResourcesCount;
         Storage->LogicalStorages[i]->StorageType = 0x01;
-        memcpy(&(Storage->LogicalStorages[i]->LogicalPartitionInfo) , &(Partitions[i]) , sizeof(StorageSystem::Partition));
+        memcpy(&(Storage->LogicalStorages[i]->LogicalPartitionInfo) , &(Partitions[j++]) , sizeof(StorageSystem::Partition));
         RegisterStorage(StorageDriver , Storage->LogicalStorages[i]);
     }
 }
