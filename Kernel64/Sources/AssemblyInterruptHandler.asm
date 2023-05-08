@@ -56,6 +56,8 @@ extern _ZN6Kernel5Mouse20MainInterruptHandlerEv             ; Kernel::Mouse::Mai
 extern _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv   ; Kernel::APIC::Timer::MainInterruptHandler
 extern _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb      ; Kernel::Drivers::PATA::MainInterruptHandler
 
+extern _ZN6Kernel9LocalAPIC7SendEOIEv                       ; Kernel::LocalAPIC::SendEOI
+
 extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
 
 %macro SAVE_REGISTERS_TO_STACK 0    ; Save the registers to stack, exactly IST
@@ -79,33 +81,27 @@ extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
     push rbx
     push rax
     
-    xor rax , rax
-    mov ax , gs
-    push rax
-    mov ax , fs
+    mov ax , ds
     push rax
     mov ax , es
     push rax
-    mov ax , ds
-    push rax
+    push fs
+    push gs
 
     mov ax , 0x10
     mov ds , ax
     mov es , ax
     mov fs , ax
     mov gs , ax
-    mov ss , ax
 %endmacro
 
 %macro LOAD_REGISTERS_FROM_STACK 0  ; Load the registers from stack
-    pop rax      ; ds
-    mov ds , ax
+    pop gs
+    pop fs
     pop rax      ; es
     mov es , ax
-    pop rax      ; fs
-    mov fs , ax
-    pop rax      ; gs
-    mov gs , ax
+    pop rax      ; ds
+    mov ds , ax
     
     pop rax
     pop rbx
@@ -463,8 +459,6 @@ _ZN6Kernel5Mouse16InterruptHandlerEv:
     iretq                       ; Return from the interrupt
 
 _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
-    push rbp
-    mov rbp , rsp
     SAVE_REGISTERS_TO_STACK
     
     ; Get Current APIC ID
@@ -495,35 +489,30 @@ _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
     lock add byte[rsi] , 1
     lock add byte[rsi+1] , 1
 
+    test rax , rax
+    jnz .DONE
+
     call _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv
-
+.DONE:
+    call _ZN6Kernel9LocalAPIC7SendEOIEv
+    
     LOAD_REGISTERS_FROM_STACK
-
-    pop rbp
     iretq
 
 _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev:
-    push rbp
-    mov rbp , rsp
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 1
     call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
-
-    pop rbp
     iretq
 
 _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev:
-    push rbp
-    mov rbp , rsp
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 0
     call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
-
-    pop rbp
     iretq
