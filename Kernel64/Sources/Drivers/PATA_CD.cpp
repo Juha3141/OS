@@ -25,7 +25,7 @@ bool PATA_CD::PreInitialization(StorageSystem::Driver *Driver) {
         Storages[i]->Flags[0] = Primary;
         Primary = false;
         if(StorageSystem::RegisterStorage(Driver , Storages[i]) == false) {
-            Kernel::printf("Device not found in ide_cd%d\n" , i);
+            Kernel::printf("Device not found in idecd%d\n" , i);
         }
     }
     Primary = true;
@@ -36,7 +36,7 @@ bool PATA_CD::PreInitialization(StorageSystem::Driver *Driver) {
         Storages[i]->Flags[0] = Primary;
         Primary = false;
         if(StorageSystem::RegisterStorage(Driver , Storages[i]) == false) {
-            Kernel::printf("Device not found in ide_cd%d\n" , i);
+            Kernel::printf("Device not found in idecd%d\n" , i);
         }
     }
     return true;
@@ -97,7 +97,7 @@ bool PATA_CD::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::Stora
     else {
         IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Secondary
     }
-    IO::WriteWord(BasePort+PATA_PORT_COMMAND_IO , 0xA1); // IDENTIFY
+    IO::Write(BasePort+PATA_PORT_COMMAND_IO , 0xA1); // IDENTIFY
     
     PATA_CD::Wait(BasePort);
     for(i = 0; i < 256; i++) {
