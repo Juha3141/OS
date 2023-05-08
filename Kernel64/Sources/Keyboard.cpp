@@ -62,7 +62,7 @@ void Kernel::Keyboard::Initialize(void) {
     }
     IO::Write(0x60 , 0xF4); // Send the enable command to input buffer port
     */
-    Kernel::PIC::Unmask(33);        // Unmask the keyboard interrupt
+    //Kernel::PIC::Unmask(33);        // Unmask the keyboard interrupt
     // Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
 }
 
@@ -86,7 +86,6 @@ void Kernel::Keyboard::MainInterruptHandler(void) {
         i = 0;
     }
 
-    PIC::SendEOI(33);                   // Send EOI signal
     LocalAPIC::SendEOI();
 }
 
