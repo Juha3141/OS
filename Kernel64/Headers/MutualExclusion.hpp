@@ -8,16 +8,18 @@ namespace Kernel {
         // What spinlock controller has to do
         // 1. Queue system(Job queue)
         // 2. Check if one's able to get resource
-        unsigned int LockSet(unsigned long Pointer , unsigned int Compare , unsigned int Data);
+        extern "C" unsigned long _cmpxchg(volatile unsigned char *Current , unsigned char Compare , unsigned char New);
         class SpinLock {
             public:
                 void Initialize(void);
                 void Lock(void);
                 void Unlock(void);
             private:
-                
-        };
-    }
+                volatile unsigned char Locked;
+                volatile unsigned long LockedCoreID;
+                volatile unsigned long LockedCount;
+            };
+    }   
 }
 
 #endif
