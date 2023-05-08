@@ -16,6 +16,8 @@
 
 #include <Drivers/PATA.hpp>
 
+unsigned long *InterruptStackTableAddress;
+
 void Kernel::DescriptorTables::Initialize(void) {
     unsigned int ID;
     static DescriptorTables::GlobalDescriptorTable *GlobalDescriptorTable;
@@ -89,10 +91,12 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     // TSS Segment : Type : 0x09(32bit TSS available) , P=1 , S=0(Becasue it is system segment) , DPL=0 , L=1 , G=1
     // TSS segment's base address is the location of TSS(it must be specified, unlike code, data segments), and its limit is the size of TSS.
     // L bit should be cleared, and G should be set to 1 ******
+    InterruptStackTableAddress = (unsigned long *)Kernel::SystemStructure::Allocate(TSS_ENTRYCOUNT*sizeof(unsigned long));
     for(i = 0; i < TSS_ENTRYCOUNT; i++) {
         SetTSSEntry(i , (unsigned long)&(TSS[i]) , sizeof(struct TSS)-1 ,  GDT_TYPE_32BIT_TSS_AVAILABLE , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_G);
         // Allocate stack for interrupt handler (IST), each core gets 8KB
-        SetTSS_IST(&(TSS[i]) , 0 , (unsigned long)Kernel::MemoryManagement::Allocate(IST_SIZE_PER_CORE , MemoryManagement::ALIGN_4K)); // IST Address : 0x620000 Size of IST : 0x100000
+        InterruptStackTableAddress[i] = (((unsigned long)Kernel::MemoryManagement::Allocate(IST_SIZE_PER_CORE , MemoryManagement::ALIGN_4K))+IST_SIZE_PER_CORE);
+        SetTSS_IST(&(TSS[i]) , 0 , InterruptStackTableAddress[i]); // IST Address : 0x620000 Size of IST : 0x100000
         TSS[i].IOPBOffset = 0xFFFF;              // Allow every port possible to access for user level
     }
     __asm__ ("lgdt [%0]"::"r"((RegisterAddress)));
@@ -189,7 +193,7 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::Initialize(unsigned lon
 void Kernel::DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset , unsigned int BaseAddress , unsigned short Selector , unsigned char Type , unsigned char Flags , unsigned char IST) {
     // Base     : Total 64 bits
     // (There is no limit field in IDT entry, because the base address is a location of handler, not a data)
-    // Selector : Total 16 bitss
+    // Selector : Total 16 bits
     // IST      : 6 reserved bits, and 2 IST bit
     // Type     : Total 4 bits
     // Flags    : Total 4 bits
@@ -200,4 +204,8 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset 
     this->IDTEntry[Offset].Flags = Flags & 0x0F;
     this->IDTEntry[Offset].BaseHigh = BaseAddress >> 16;
     this->IDTEntry[Offset].Reserved = 0x00;
+}
+
+unsigned long Kernel::DescriptorTables::GetInterruptStackTable(unsigned long CoreID) {
+    return InterruptStackTableAddress[CoreID];
 }
