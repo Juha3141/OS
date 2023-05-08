@@ -18,11 +18,11 @@
 
 namespace Kernel {
     struct TaskRegisters {
-        unsigned long DS;
-        unsigned long ES;
-        unsigned long FS;
         unsigned long GS;
-        
+        unsigned long FS;
+        unsigned long ES;
+        unsigned long DS;
+
         unsigned long RAX;
         unsigned long RBX;
         unsigned long RCX;
@@ -39,7 +39,9 @@ namespace Kernel {
         unsigned long R13;
         unsigned long R14;
         unsigned long R15;
-
+        // Now I get it! If interrupt occurrs, system puts those values to stack
+        // and after interrupt, by iretq instruction, all pushed instructions are put back to 
+        // Original registers! Now I get it!!
         unsigned long RBP;
         unsigned long RIP;
         unsigned long CS;
@@ -48,6 +50,16 @@ namespace Kernel {
         unsigned long SS;
     };
     namespace TaskManagement {
+        struct Event {
+            char *EventName;
+            int NameLength;
+
+            unsigned long Sender;
+            unsigned long Receiver;
+
+            unsigned long EventID;
+            unsigned long EventResource;
+        };
         struct Task {
             unsigned long ID;
             unsigned long Flags;
@@ -60,11 +72,13 @@ namespace Kernel {
             char Name[32];
             struct Task *NextTask;
 
+            StructureQueue<struct Event>EventQueue;
+
             int DemandTime;
         };
 
         class TaskQueue {
-            friend class SchedulingManager;
+            friend struct SchedulingManager;
             public:
                 void Initialize(void);
                 void AddTask(struct Task *Task);
@@ -81,27 +95,41 @@ namespace Kernel {
                 struct Task *NextTaskLinkerToAllocate;
                 int TaskCount;
         };
-        class SchedulingManager {
+        struct SchedulingManager {
             friend class TaskQueue;
+            void Initialize(void);
+            struct Task *SwitchTask(void);
+            
+            struct Task *CurrentlyRunningTask;
+            int CurrentMaxAllocatedID;
+            int ExpirationDate;
+
+            TaskQueue *Queues[3];
+            int TotalTaskCount;
+        };
+        // to-do : tomorrow or 7-8th period!!
+        class CoreSchedulingManager {
+            friend class SchedulingManager;
             public:
                 void Initialize(void);
-                struct Task *SwitchTask(void);
+                unsigned int AddTask(void); // Returns Core Count
+                unsigned int AddTask(unsigned int CoreID);
+                unsigned int RemoveTask(unsigned int CoreID);
 
-                struct Task *CurrentlyRunningTask;
-                int CurrentMaxAllocatedID;
+                static struct CoreSchedulingManager *GetInstance(void) {
+                    static class CoreSchedulingManager *Instance = 0x00;
+                    if(Instance == 0x00) {
+                        Instance = (struct CoreSchedulingManager *)Kernel::SystemStructure::Allocate(sizeof(struct CoreSchedulingManager));
+                        Instance->Initialize();
+                    }
+                    return Instance;
+                }
+            private:
+                // Array type : holds task count per core, index = core ID
+                unsigned int *TaskCountPerCore;
+                unsigned int CoreCount = 0;
 
-                int ExpirationDate;
-                
-                TaskQueue *Queues[3];
-
-                int TotalTaskCount;
-        };
-        struct Event {
-            unsigned long Data;
-            char *EventName;
-
-            unsigned long Destination;
-            unsigned long Source;
+                unsigned int CurrentCoreOffset;
         };
 
         void Initialize(void);
