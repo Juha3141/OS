@@ -42,10 +42,10 @@ clean:
 run: virtualbox
 
 qemurun:
-	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M q35 -boot d -smp 8
+	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d
 
 debugrun: 
-	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M q35 -boot d -s -S -serial stdio
+	$(QEMU) -cdrom $(TARGET) -hda FAT32.img -m 8192 -rtc base=localtime -M pc -boot d -s -S -serial stdio
 
 virtualbox:
 	vboxmanage startvm "OS" -E VBOX_GUI_DBG_AUTO_SHOW=true -E VBOX_GUI_DBG_ENABLED=truesw
