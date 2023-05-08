@@ -14,7 +14,7 @@ void vsprintf(char *Destination , const char *Format , va_list ap) {
 						break;
 					}
 					case 's': {
-						static char Buffer[4096];
+						char Buffer[4096];
 						memset(Buffer , 0 , 4096);
 						strcpy(Buffer , va_arg(ap , char*));
 						strcpy(Destination+j , Buffer);
@@ -25,7 +25,7 @@ void vsprintf(char *Destination , const char *Format , va_list ap) {
 					case 'd':
 					case 'i': {
 						unsigned long Value = va_arg(ap , unsigned long);
-						static char Buffer[128];
+						char Buffer[128];
 						memset(Buffer , 0 , 128);
 						itoa(Value , Buffer , 10);
 						strcpy(Destination+j , Buffer);
@@ -35,7 +35,7 @@ void vsprintf(char *Destination , const char *Format , va_list ap) {
 					}
 					case 'X': {
 						unsigned long Value = va_arg(ap , unsigned long);
-						static char Buffer[128];
+						char Buffer[128];
 						memset(Buffer , 0 , 128);
 						itoa(Value , Buffer , 16);
 						strcpy(Destination+j , Buffer);
