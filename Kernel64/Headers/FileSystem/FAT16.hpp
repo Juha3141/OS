@@ -76,6 +76,8 @@ namespace Kernel {
 
             void WriteVBR(struct VBR *VBR , Drivers::StorageSystem::StorageGeometry *Geometry);
             unsigned int ReadCluster(Drivers::StorageSystem::Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR);
+            unsigned int WriteCluster(Drivers::StorageSystem::Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR);
+            
             unsigned int FindFirstEmptyCluster(Drivers::StorageSystem::Storage *Storage);
             unsigned int GetFATAreaLocation(struct VBR *VBR);
             unsigned int GetRootDirectoryLocation(struct VBR *VBR);
@@ -88,9 +90,14 @@ namespace Kernel {
             bool GetVBR(Drivers::StorageSystem::Storage *Storage , struct VBR *VBR);
 
             unsigned int FindNextCluster(Drivers::StorageSystem::Storage *Storage , unsigned int Cluster , struct VBR *VBR);
+            void WriteClusterInfo(Drivers::StorageSystem::Storage *Storage , unsigned int Cluster , unsigned short ClusterInfo , struct VBR *VBR);
 
+            void CreateSFNName(char *SFNName , const char *LFNName , int Number);
+            unsigned char GetSFNChecksum(const char *SFNName);
+            bool WriteSFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , struct SFNEntry *Entry);
+            bool WriteLFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , const char *FileName);
             bool GetSFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , const char *FileName , struct SFNEntry *Destination);
-
+            
             // File name whatever
             int GetFileNameFromLFN(char *FileName , struct LFNEntry *Entries);
 

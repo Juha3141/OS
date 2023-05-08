@@ -17,7 +17,7 @@ namespace Kernel {
 			unsigned int SizeInSector;
 		};
 		struct PartitionTable {
-			unsigned char BootCode[446];
+			unsigned char BootCode[MBR_STARTADDRESS];
 			struct PartitionTableEntry Entries[4];
 			unsigned short Signature; // Always 0xAA55
 		};
@@ -32,6 +32,7 @@ namespace Kernel {
 				}
 				bool Detect(void);
 				Drivers::StorageSystem::Partition *GetPartition(void);
+				bool CreatePartition(Drivers::StorageSystem::Partition Partition);
 
 				int PartitionCount;
 			private:
