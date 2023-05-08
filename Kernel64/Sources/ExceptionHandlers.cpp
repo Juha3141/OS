@@ -1,5 +1,6 @@
 #include <ExceptionHandlers.hpp>
 #include <Kernel.hpp>
+#include <MutualExclusion.hpp>
 
 // Function usage : Mask the specified interrupt
 // Master : controlls
@@ -52,14 +53,19 @@ void Kernel::Exceptions::ProcessExceptions(int ExceptionNumber , unsigned long E
         "Hypervisor Injection Exception" , "VMM Communication Exception" , 
         "Security Exception" , 
     };
-    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(IST_STARTADDRESS+IST_SIZE-(IST_SIZE_PER_CORE*LocalAPIC::GetCurrentAPICID())-sizeof(struct Kernel::TaskRegisters));
+    struct Kernel::TaskRegisters *IST = (struct Kernel::TaskRegisters *)(DescriptorTables::GetInterruptStackTable(LocalAPIC::GetCurrentAPICID())-sizeof(struct Kernel::TaskRegisters));
+    static MutualExclusion::SpinLock *SpinLock = 0x00;
+    if(SpinLock == 0x00) {
+        SpinLock = (MutualExclusion::SpinLock *)MemoryManagement::Allocate(sizeof(MutualExclusion::SpinLock));
+        SpinLock->Initialize();
+    }
     __asm__ ("cli");
-    Kernel::PrintString("[Exception occurred]\n");
+    Kernel::printf("[Exception occurred]\n");
     Kernel::printf("Vector Number : %d(%s)\n" , ExceptionNumber , ExceptionNames[ExceptionNumber]);
     Kernel::printf("IST Location  : 0x%X, Core Number : %d\n" , IST , LocalAPIC::GetCurrentAPICID());
     Kernel::printf("Dumping Registers : \n");
     Kernel::printf("RAX=0x%X RBX=0x%X RCX=0x%X RDX=0x%X\n" , IST->RAX , IST->RBX , IST->RCX , IST->RDX);
-    Kernel::printf("RDI=0x%X RSI=0x%X R8=0x%X R9=0x%X\n" , IST->RDI , IST->RSI , IST->R8 , IST->R9);
+    Kernel::printf("RDI=0x%X RSI=0x%X R8=0x%X  R9=0x%X\n" , IST->RDI , IST->RSI , IST->R8 , IST->R9);
     Kernel::printf("R10=0x%X R11=0x%X R12=0x%X R13=0x%X\n" , IST->R10 , IST->R11 , IST->R12 , IST->R13);
     Kernel::printf("R14=0x%X R15=0x%X RBP=0x%X RSP=0x%X\n" , IST->R14 , IST->R15 , IST->RBP , IST->RSP);
     Kernel::printf("RIP=0x%X RFlags=0x%X CS=0x%X DS=0x%X\n" , IST->RIP , IST->RFlags , IST->CS , IST->DS);
