@@ -14,11 +14,10 @@ void PATA::Register(void) {
         PATA::ReadSector , 
         PATA::WriteSector , 
         PATA::GetGeometry);
-    StorageSystem::RegisterStorageDriver(PATADriver , "idehd");
     IO::Write(PATA_DEVICECONTROL_PRIMARY_BASE+PATA_PORT_DIGITAL_OUTPUT , 0);
     IO::Write(PATA_DEVICECONTROL_SECONDARY_BASE+PATA_PORT_DIGITAL_OUTPUT , 0);
-    Kernel::Drivers::PATA_CD::Register();
     
+    StorageSystem::RegisterStorageDriver(PATADriver , "idehd");
     PIC::Unmask(32+14);
     PIC::Unmask(32+15);
 }
@@ -108,7 +107,6 @@ bool PATA::GetGeometry(StorageSystem::Storage *Storage , StorageSystem::StorageG
         HDDGeometry.Model[i] = (Temporary >> 8)|((Temporary & 0xFF) << 8);
     }
     memcpy(Geometry->Model , HDDGeometry.Model , 20*sizeof(unsigned short));
-    Geometry->Model[20] = 0x00;
     Geometry->Model[41] = 0x00;
     Geometry->BytesPerSector = 512;
     Geometry->BytesPerTrack = 0;
@@ -168,18 +166,59 @@ unsigned long PATA::ReadSector(StorageSystem::Storage *Storage , unsigned long S
 }
 
 unsigned long PATA::WriteSector(StorageSystem::Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
-    return 0;
+
+    int i;
+    int j;
+    bool Use28bitPIO = true;
+    unsigned short BasePort = Storage->Ports[0];
+    unsigned short Status;
+    unsigned long Address;
+    if(Storage->StorageType == 0x01) {
+        SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+    }
+    if(Storage->Flags[0] == true) { // true : master
+        IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xE0); // Master : 0xA0
+    }
+    else {
+        IO::Write(BasePort+PATA_PORT_DRIVE_SELECT , 0xF0); // Slave : 0xB0
+    }
+    
+    if(SectorAddress > 0x10000000) {
+        IO::Write(BasePort+PATA_PORT_SECTOR_COUNT , (Count >> 8) & 0xFF);
+        IO::Write(BasePort+PATA_PORT_LBALOW , (SectorAddress >> 24) & 0xFF);
+        IO::Write(BasePort+PATA_PORT_LBAMIDDLE , (SectorAddress >> 32) & 0xFF);
+        IO::Write(BasePort+PATA_PORT_LBAHIGH , (SectorAddress >> 48) & 0xFF);
+        Use28bitPIO = false;
+    }
+    // when accessing address is below 128GB, use 28bit PIO, because it's faster than 48bit PIO
+    IO::Write(BasePort+PATA_PORT_SECTOR_COUNT , Count & 0xFF);
+    IO::Write(BasePort+PATA_PORT_LBALOW , SectorAddress & 0xFF);
+    IO::Write(BasePort+PATA_PORT_LBAMIDDLE , (SectorAddress >> 8) & 0xFF);
+    IO::Write(BasePort+PATA_PORT_LBAHIGH , (SectorAddress >> 16) & 0xFF);
+    
+    // Write Sector(0x20) for 38bit, Read Sector EXT(0x34) for 48bit
+    IO::Write(BasePort+PATA_PORT_COMMAND_IO , (Use28bitPIO == true) ? 0x30 : 0x34);
+    for(i = 0; i < Count; i++) {
+        if(PATA::Wait(BasePort) == false) {
+            return i*512;
+        }
+        for(j = 0; j < 512; j += 2) {
+            Address = (unsigned long)Buffer;
+            Address += (i*512)+j;
+            IO::WriteWord(BasePort+PATA_PORT_DATA , *((unsigned short *)Address));
+        }
+    }
+    return Count*512;
 } 
 
 void PATA::MainInterruptHandler(bool Primary) {
     if(Primary == true) {
         PrimaryInterruptFlag = true;
         SecondaryInterruptFlag = false;
-        PIC::SendEOI(32+15); // Primary, IRQ 14
     }
     else {
         PrimaryInterruptFlag = false;
         SecondaryInterruptFlag = true;
-        PIC::SendEOI(32+14); // Secondary, IRQ 15
     }
+    LocalAPIC::SendEOI();
 }
