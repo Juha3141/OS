@@ -112,6 +112,7 @@ namespace Kernel {
             StorageSystem::Driver *DeregisterStorageDriver(unsigned long ID);
 
             StorageSystem::Storage *AssignStorage(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount);
+            void AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount);
             bool RegisterStorage(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage);
             bool RegisterStorage(const char *DriverName , Storage *Storage);
             StorageSystem::Storage *SearchStorage(const char *DriverName , unsigned long StorageID);
