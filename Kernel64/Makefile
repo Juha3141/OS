@@ -18,7 +18,8 @@ ExceptionHandlers.obj PIT.obj Keyboard.obj Mouse.obj IO.obj APIC.obj ACPI.obj MP
 ResourceAccessManagement.obj Paging.obj MutualExclusion.obj \
 Drivers/DeviceDriver.obj Drivers/StorageDriver.obj Drivers/FileSystemDriver.obj \
 Drivers/RAMDisk.obj Drivers/PATA.obj Drivers/PATA_CD.obj Drivers/PCI.obj Drivers/AHCI.obj \
-FileSystem/MBR.obj FileSystem/GPT.obj FileSystem/ISO9660.obj FileSystem/FAT16.obj
+FileSystem/MBR.obj FileSystem/GPT.obj FileSystem/ISO9660.obj FileSystem/FAT16.obj \
+KernelInterface.obj
 
 ASMSOURCE = Entry.asm
 ASMSOURCE2 = AssemblyInterruptHandler.asm
