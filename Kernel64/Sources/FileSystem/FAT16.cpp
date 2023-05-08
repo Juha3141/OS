@@ -124,18 +124,116 @@ int FAT16::WriteDirectoryData(Drivers::StorageSystem::Storage *Storage , struct 
 
 
 void FAT16::WriteVBR(struct VBR *VBR , Drivers::StorageSystem::StorageGeometry *Geometry) {
-    // error
+    VBR->BytesPerSector = Geometry->BytesPerSector;
+    if(Geometry->TotalSectorCount >= 65536) {
+        VBR->TotalSector16 = 0;
+        VBR->TotalSector32 = Geometry->TotalSectorCount;
+    }
+    else {
+        VBR->TotalSector16 = Geometry->TotalSectorCount;
+        VBR->TotalSector32 = 0;
+    }
+    VBR->MediaType = 0xF8;
+    VBR->HiddenSectors = 0;
+    VBR->JumpCode[0] = 0xEB;
+    VBR->JumpCode[1] = 0x3C;
+    VBR->JumpCode[2] = 0x90;
+    memcpy(VBR->OEMID , "ILOVEYOU" , 8);
+    memcpy(VBR->VolumeLabel , "HELLO WORLD" , 11);
+    memcpy(VBR->FileSystemType , "FAT16    " , 8);
+    VBR->Reserved = 0;
+    VBR->SerialNumber = 0x31415926;
+    VBR->BootSignature = 0x27182848;
+    VBR->SectorPerTrack = Geometry->SectorsPerTrack;
+    // determine cluster size
+    if(Geometry->TotalSectorCount < 32768) {
+        VBR->SectorsPerCluster = 8;
+    }
+    if((Geometry->TotalSectorCount >= 32768) && (Geometry->TotalSectorCount < 262144)) {
+        VBR->SectorsPerCluster = 4;
+    }
+    if((Geometry->TotalSectorCount >= 262144) && (Geometry->TotalSectorCount < 524288)) {
+        VBR->SectorsPerCluster = 8;
+    }
+    if((Geometry->TotalSectorCount >= 524288) && (Geometry->TotalSectorCount < 1048576)) {
+        VBR->SectorsPerCluster = 16;
+    }
+    if((Geometry->TotalSectorCount >= 1048576) && (Geometry->TotalSectorCount < 2097152)) {
+        VBR->SectorsPerCluster = 32;
+    }
+    if((Geometry->TotalSectorCount >= 2097152) && (Geometry->TotalSectorCount <= 4294304)) {
+        VBR->SectorsPerCluster = 64;
+    }
+    VBR->ReservedSectorCount = 1*VBR->SectorsPerCluster; // 1 if not fat32, 32 if fat32
+    VBR->FATSize16 = (Geometry->TotalSectorCount/VBR->SectorsPerCluster)*sizeof(unsigned short)/Geometry->BytesPerSector;
+    // determine root directory entry count
+    // used some of code from :
+    // https://github.com/Godzil/dosfstools/blob/master/src/mkdosfs.c, line 603
+    switch(Geometry->TotalSectorCount) {
+        case 720: // 5.25" - 360KB
+            VBR->RootDirectoryEntryCount = 112;
+            VBR->SectorsPerCluster = 2;
+            VBR->MediaType = 0xFD;
+            break;
+        case 2400: // 5.25" - 1200KB
+            VBR->RootDirectoryEntryCount = 224;
+            VBR->SectorsPerCluster = 2;
+            VBR->MediaType = 0xF9;
+            break;
+        case 1440: // 3.5" - 720KB
+            VBR->RootDirectoryEntryCount = 112;
+            VBR->SectorsPerCluster = 2;
+            VBR->MediaType = 0xF9;
+            break;
+        case 5760: // 3.5" - 2880KB
+            VBR->RootDirectoryEntryCount = 224;
+            VBR->SectorsPerCluster = 2;
+            VBR->MediaType = 0xF0;
+            break;
+        case 2880: // 3.5" - 1440KB
+            VBR->RootDirectoryEntryCount = 224;
+            VBR->SectorsPerCluster = 2;
+            VBR->MediaType = 0xF0;
+            break;
+    }
+    
+    VBR->NumberOfFAT = 2;
+    VBR->INT0x13DriveNumber = 0x00;
+    
 }
 
 unsigned int FAT16::ReadCluster(Drivers::StorageSystem::Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR) {
     unsigned long i;
     unsigned long NextClusterAddress = ClusterNumber;
+    Kernel::printf("Reading Cluster, Cluster count to read : %d\n" , ClusterCountToRead);
+    Kernel::printf("Cluster Number : %d\n" , ClusterNumber);
+    Kernel::printf("Sector Address : %d\n" , ClusterToSector(ClusterNumber , VBR));
     for(i = 0; i < ClusterCountToRead*VBR->SectorsPerCluster; i++) {
         if(Storage->Driver->ReadSectorFunction(Storage , ClusterToSector(NextClusterAddress , VBR) , 1 , (Data+(i*VBR->BytesPerSector))) != Storage->Geometry.BytesPerSector) {
             break;
         }
         if(ClusterCountToRead%VBR->SectorsPerCluster == 0) {
             NextClusterAddress = FindNextCluster(Storage , NextClusterAddress , VBR);
+            if(NextClusterAddress == 0xFFFF) {
+                break;
+            }
+        }
+    }
+    return i;
+}
+
+unsigned int FAT16::WriteCluster(Drivers::StorageSystem::Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR) {
+    unsigned long i;
+    unsigned long NextClusterAddress = ClusterNumber;
+    for(i = 0; i < ClusterCountToRead*VBR->SectorsPerCluster; i++) {
+        if(Storage->Driver->WriteSectorFunction(Storage , ClusterToSector(NextClusterAddress , VBR) , 1 , (Data+(i*VBR->BytesPerSector))) != Storage->Geometry.BytesPerSector) {
+            break;
+        }
+        if(ClusterCountToRead%VBR->SectorsPerCluster == 0) {
+            NextClusterAddress = FindNextCluster(Storage , NextClusterAddress , VBR);
+            if(NextClusterAddress == 0xFFFF) {
+                break;
+            }
         }
     }
     return i;
@@ -208,17 +306,17 @@ unsigned int FAT16::ClusterToSector(unsigned int ClusterNumber , struct VBR *VBR
 }
 
 unsigned int FAT16::SectorToCluster(unsigned int SectorNumber , struct VBR *VBR) {
-    return ((SectorNumber-(+GetRootDirectoryLocation(VBR)+GetRootDirectorySize(VBR)))/VBR->SectorsPerCluster)+2;
+    return ((SectorNumber-GetRootDirectoryLocation(VBR)-GetRootDirectorySize(VBR))/VBR->SectorsPerCluster)+2;
 }
 
 bool FAT16::GetVBR(Drivers::StorageSystem::Storage *Storage , struct VBR *VBR) {
     unsigned char *Sector = (unsigned char *)Kernel::MemoryManagement::Allocate(Storage->Geometry.BytesPerSector);
     if(Storage->Driver->ReadSectorFunction(Storage , 0 , 1 , Sector) != Storage->Geometry.BytesPerSector) {
-        Kernel::MemoryManagement::Free(Sector);
+        // Kernel::MemoryManagement::Free(Sector);
         return false;
     }
     memcpy(VBR , Sector , sizeof(struct VBR));
-    Kernel::MemoryManagement::Free(Sector);
+    // Kernel::MemoryManagement::Free(Sector);
     return true;
 }
 
@@ -230,8 +328,215 @@ unsigned int FAT16::FindNextCluster(Drivers::StorageSystem::Storage *Storage , u
     return (FATArea[((Cluster%256)*2)])+(FATArea[((Cluster%256)*2)+1] << 8); 
 }
 
-// DirectoryAddress : Directory Location in Sector
-// Return file location in cluster
+void FAT16::WriteClusterInfo(Drivers::StorageSystem::Storage *Storage , unsigned int Cluster , unsigned short ClusterInfo , struct VBR *VBR) {
+    int SectorAddress = (int)(Cluster/256)+VBR->ReservedSectorCount;
+    unsigned char FATArea[512];
+    
+    Storage->Driver->ReadSectorFunction(Storage , SectorAddress , 1 , FATArea);
+    FATArea[(Cluster%256)*2] = ClusterInfo & 0xFF;
+    FATArea[((Cluster%256)*2)+1] = (ClusterInfo >> 8) & 0xFF;
+    Storage->Driver->WriteSectorFunction(Storage , SectorAddress , 1 , FATArea);
+    Storage->Driver->WriteSectorFunction(Storage , SectorAddress+VBR->FATSize16 , 1 , FATArea);
+}
+
+void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
+    int i;
+    int j;
+    int DotIndex = 0;
+    char *Buffer = (char *)Kernel::MemoryManagement::Allocate(strlen(LFNName));
+    char NumberString[32];
+    sprintf(NumberString , "%d" , Number);
+    for(i = j = 0; i < strlen(LFNName); i++) {
+        if(LFNName[i] != ' ') {
+            Buffer[j++] = LFNName[i];
+        }
+    }
+    Buffer[j] = 0x00;
+    for(i = 0; i < strlen(Buffer); i++) {
+        if(Buffer[i] == '.') {
+            break;
+        }
+    }
+    DotIndex = i;
+    for(i = 0; Buffer[i] != 0; i++) {
+        if((Buffer[i] >= 'a') && (Buffer[i] <= 'z')) {
+            Buffer[i] = (Buffer[i]-'a')+'A';
+        }
+    }
+    if(strlen(Buffer) > 8) {
+        strncpy(SFNName , Buffer , 6);
+        strcat(SFNName , "~");
+        strcat(SFNName , NumberString);
+    }
+    else {
+        strcpy(SFNName , Buffer);
+        if(strlen(Buffer) < 8) {
+            for(i = strlen(Buffer); i < 8; i++) {
+                SFNName[i] = ' ';
+            }
+            SFNName[i] = 0x00;
+        }
+    }
+    strcat(SFNName , Buffer+DotIndex+1);
+    // Kernel::MemoryManagement::Free(Buffer);
+}
+
+/*
+def CheckSum(string):
+	sum = 0
+	check = 0
+	for i in range(0, len(string)):
+		check = 0x80 if (check & 1) esle 0
+		sum = check + (sum >> 1)
+		sum = sum + ord(string[i])
+		if sum >= 0x100:
+			sum = sum - 0x100
+		check = sum
+	return sum
+
+*/
+
+unsigned char FAT16::GetSFNChecksum(const char *SFNName) {
+    int i;
+    unsigned char Sum = 0;
+    int Check = 0;
+    for(i = 0; i < strlen(SFNName); i++) {
+        Check = (Check & 0x01) ? 0x80 : 0x00;
+        Sum = Check+(Sum >> 1);
+        Sum = Sum+SFNName[i];
+        if(Sum >= 0x100) {
+            Sum -= 0x100;
+        }
+        Check = Sum;
+    }
+    return Sum;
+}
+
+bool FAT16::WriteSFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , struct SFNEntry *Entry) {
+    unsigned char *Cluster;
+    unsigned int ClusterAddress;
+    unsigned int ClusterNumber;
+    unsigned int DirectoryClusterSize;
+    int DirectoryEntryCount;
+    struct VBR VBR;
+
+// sector for root directory
+    unsigned int SectorAddress = DirectoryAddress;
+    unsigned int SectorNumber;
+    unsigned int DirectorySectorSize;
+    GetVBR(Storage , &(VBR));
+
+    DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
+    // error
+    Kernel::printf("VBR.BytesPerSector*VBR.SectorsPerCluster = %d\n" , VBR.BytesPerSector*VBR.SectorsPerCluster);
+    
+    Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.BytesPerSector*VBR.SectorsPerCluster);
+    Kernel::printf("Cluster Buffer : 0x%X\n" , Cluster);
+    // If root directory, take care of it differently. 
+    
+    if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
+        SectorNumber = (DirectoryEntryCount*sizeof(struct SFNEntry))/VBR.BytesPerSector;
+        
+        Storage->Driver->ReadSectorFunction(Storage , SectorAddress+SectorNumber , 1 , Cluster);
+        // this corrupted the data?
+        memcpy((Cluster+((DirectoryEntryCount*sizeof(struct SFNEntry))%VBR.BytesPerSector)) , 
+        Entry , sizeof(struct SFNEntry));
+        Storage->Driver->WriteSectorFunction(Storage , SectorAddress+SectorNumber , 1 , Cluster);
+        
+    }
+    else {
+        ClusterAddress = SectorToCluster(DirectoryAddress , &(VBR));
+        ClusterNumber = (DirectoryEntryCount*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster);
+        ReadCluster(Storage , ClusterAddress+ClusterNumber , 1 , Cluster , &(VBR));
+        
+        memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster)]) , 
+        Entry , sizeof(struct SFNEntry));
+        WriteCluster(Storage , ClusterAddress+ClusterNumber , 1 , Cluster , &(VBR));
+    }
+    // Kernel::MemoryManagement::Free(Cluster);
+    return true;
+}
+
+/// @brief Automatically adds LFN Entry to directory, write LFN entry using given file name
+/// @param Storage 
+/// @param DirectoryAddress Sector Address of directory
+/// @param FileName Name of file
+/// @return Always return true
+bool FAT16::WriteLFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , const char *FileName) {
+    int i;
+    int j;
+    int NameOffset = 0;
+    int Checksum;
+    int RequiredLFNEntry = (strlen(FileName)/13)+((strlen(FileName)%13 == 0) ? 0 : 1);
+    struct LFNEntry *LFNEntry = (struct LFNEntry *)Kernel::MemoryManagement::Allocate((RequiredLFNEntry*sizeof(struct LFNEntry))+4096);
+    char SFNName[12];
+
+// cluster for other directory
+    unsigned char *Cluster;
+    unsigned int ClusterAddress;
+    unsigned int ClusterNumber;
+    unsigned int ClusterCount;
+    unsigned int DirectoryClusterSize;
+    int DirectoryEntryCount;
+    struct VBR VBR;
+
+// sector for root directory
+    unsigned int SectorAddress = DirectoryAddress;
+    unsigned int SectorNumber;
+    unsigned int SectorCount;
+    unsigned int DirectorySectorSize;
+
+    GetVBR(Storage , &(VBR));
+    memset(LFNEntry , 0 , RequiredLFNEntry*sizeof(struct LFNEntry));
+    CreateSFNName(SFNName , FileName , 1); // To-do : number
+    Checksum = GetSFNChecksum(SFNName);
+    // Create LFN Entries
+    Kernel::printf("SFN file name   : %s\n" , SFNName);
+    Kernel::printf("LFN Entry count : %d\n" , RequiredLFNEntry);
+    for(i = RequiredLFNEntry-1; i >= 0; i--) {
+        LFNEntry[i].Attribute = 0x0F;
+        LFNEntry[i].SequenceNumber = (RequiredLFNEntry-i)|(((i == 0) ? 0x40 : 0));
+        LFNEntry[i].Checksum = Checksum; // To-do : Checksum is weird
+        LFNEntry[i].Reserved = 0x00;
+        LFNEntry[i].FirstClusterLow = 0;
+        for(j = 0; j < 5; j++) { LFNEntry[i].FileName1[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
+        for(j = 0; j < 6; j++) { LFNEntry[i].FileName2[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
+        for(j = 0; j < 2; j++) { LFNEntry[i].FileName3[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
+    }
+    DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
+    Kernel::printf("Directory Entry Count : %d\n" , DirectoryEntryCount);
+    
+    // If root directory, take care of it differently. 
+    if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
+        SectorNumber = (DirectoryEntryCount*sizeof(struct SFNEntry))/VBR.BytesPerSector;
+        SectorCount = ((RequiredLFNEntry*sizeof(struct SFNEntry))/VBR.BytesPerSector)
+                     +(((RequiredLFNEntry*sizeof(SFNEntry))%VBR.BytesPerSector == 0) ? 0 : 1);
+        
+        Storage->Driver->ReadSectorFunction(Storage , SectorNumber , SectorCount , Cluster);
+        Kernel::printf("Sector Count : %d\n" , SectorCount);
+        Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.BytesPerSector*SectorCount);
+        Storage->Driver->ReadSectorFunction(Storage , SectorAddress+SectorNumber , SectorCount , Cluster);
+
+        memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector)]) , 
+        LFNEntry , sizeof(struct SFNEntry)*RequiredLFNEntry);
+        Storage->Driver->WriteSectorFunction(Storage , SectorAddress+SectorNumber , SectorCount , Cluster);
+    }
+    else {
+        ClusterAddress = SectorToCluster(DirectoryAddress , &(VBR));
+        ClusterNumber = (DirectoryEntryCount*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster);
+        ClusterCount = ((RequiredLFNEntry*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster))
+                     +(((RequiredLFNEntry*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster) == 0) ? 0 : 1);
+
+        Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*ClusterCount);
+        ReadCluster(Storage , ClusterNumber , ClusterCount , Cluster , &(VBR));
+        
+        memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster)]) , 
+        LFNEntry , sizeof(struct SFNEntry)*RequiredLFNEntry);
+        WriteCluster(Storage , ClusterNumber , ClusterCount , Cluster , &(VBR));
+    }
+    return true; 
+}
+
 bool FAT16::GetSFNEntry(Drivers::StorageSystem::Storage *Storage , unsigned int DirectoryAddress , const char *FileName , struct SFNEntry *Destination) {
     int i;
     int Offset = 0;
