@@ -61,3 +61,30 @@ StorageSystem::Partition *MBR::Identifier::GetPartition(void) {
     }
     return Partitions;
 }
+
+bool MBR::Identifier::CreatePartition(Drivers::StorageSystem::Partition Partition) {
+    int i;
+    unsigned long TotalSectorCount = 0;
+    struct PartitionTable *PartitionTable = (struct PartitionTable *)Kernel::MemoryManagement::Allocate(512);
+    this->GetPartition();
+    if(PartitionCount == 4) {
+        return false;
+    }
+    for(i = 0; i < PartitionCount; i++) {
+        TotalSectorCount += (Partitions[i].EndAddressLBA-Partitions[i].StartAddressLBA);
+    }
+    if((TotalSectorCount > Partitions[0].StartAddressLBA+1) && (TotalSectorCount-Partitions[0].StartAddressLBA-1 >= Storage->Geometry.TotalSectorCount)) {
+        return false;
+    }
+    if(StorageDriver->ReadSectorFunction(Storage , 0 , 1 , PartitionTable) != 512) {
+        return false;
+    }
+    PartitionTable->Entries[PartitionCount].BootableFlag = ((Partition.IsBootable == true) ? 0x80 : 0x00);
+    PartitionTable->Entries[PartitionCount].StartingLBA = Partition.StartAddressLBA;
+    PartitionTable->Entries[PartitionCount].SizeInSector = Partition.EndAddressLBA-Partition.StartAddressLBA;
+    PartitionTable->Entries[PartitionCount].PartitionType = Partition.PartitionType;
+    if(StorageDriver->WriteSectorFunction(Storage , 0 , 1 , PartitionTable) != 512) {
+        return false;
+    }
+    return true;
+}
