@@ -12,20 +12,22 @@
 #include <Drivers/PATA_CD.hpp>
 #include <Drivers/PCI.hpp>
 
+#include <FileSystem/MBR.hpp>
+#include <FileSystem/GPT.hpp>
+
 #include <FileSystem/ISO9660.hpp>
 #include <FileSystem/FAT16.hpp>
 
 using namespace Kernel;
 using namespace Drivers;
 
-unsigned long KernelStackBase;
+unsigned long KernelStackBase = 0;
 unsigned long KernelStackSize = 2*1024*1024;
-unsigned int StackReady = 0;
 
 // problem : Kernel stack is too small & overrides kernel
 // One core per 2MB *** 
 
-Kernel::MutualExclusion::SpinLock CoreSpinLock;
+void AutoFormat_FAT16(struct StorageSystem::Storage *Storage);
 
 extern "C" void Main(void) {
     __asm__ ("cli");
@@ -55,25 +57,16 @@ extern "C" void Main(void) {
     }
     
     TaskManagement::Initialize();
-    
-    LocalAPIC::Timer::Initialize();
+    LocalAPIC::Timer::Initialize();/*
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
     IOAPIC::InitializeRedirectionTable();
-    CoreSpinLock.Initialize();
-    LocalAPIC::ActiveAPCores();
+    LocalAPIC::ActivateAPCores();*/
+    __asm__ ("sti");
 
     // To-do : Make proper stack system
     KernelStackBase = (unsigned long)Kernel::MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
     KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
-    StackReady = 1;
-
-    __asm__ ("sti");
-    Kernel:printf("Kernel core initialized\n");
-
-    while(1) {
-        ;
-    }
 
     FileSystem::Initialize();
     Kernel::printf("File System Initialized\n");
@@ -84,51 +77,79 @@ extern "C" void Main(void) {
     FileSystem::FAT16::Register();
 
     Drivers::PATA::Register();
+    // Drivers::PATA_CD::Register();
     Drivers::RAMDisk::Register();
     Kernel::printf("Detecting PCI devices\n");
     Drivers::PCI::Detect();
     Kernel::printf("Done\n");
-
-    unsigned char *Buffer = (unsigned char *)Kernel::MemoryManagement::Allocate(40960*512);
-    StorageSystem::Storage *ISORAMDisk = Drivers::RAMDisk::CreateRAMDisk(12736 , 2048 , 0x720000);
-    Kernel::printf("Registering RAM disk (16MB)\n");
-    FileSystem::FileInfo *VBRFile = FileSystem::ISO9660::OpenFile(ISORAMDisk , "RDIMG.IMG");
-    if(VBRFile == 0x00) {
-        Kernel::printf("File not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    FileSystem::ISO9660::ReadFile(ISORAMDisk , VBRFile , 16*1024*1024 , Buffer);
-    StorageSystem::Storage *SysRAMDisk = Drivers::RAMDisk::CreateRAMDisk(40960 , 512 , (unsigned long)Buffer); // 8MBs of System RAM Disk, Formatted by FAT12
-    Kernel::printf("Done\n");
-    FileSystem::FileInfo *FileInfo = FileSystem::FAT16::OpenFile(SysRAMDisk , "Hello.txt");
-    if(FileInfo == 0x00) {
-        Kernel::printf("File \"Hello.txt\" not found.\n");
-    }
-    FileSystem::FileInfo *FileInfo2 = FileSystem::FAT16::OpenFile(SysRAMDisk , "Testing/Hello.txt");
-    if(FileInfo2 == 0x00) {
-        Kernel::printf("File \"Testing/Hello.txt\" not found.\n");
-    }
-
-    char Data[FileInfo2->FileSize+1] = {0 , };
-    FileSystem::FAT16::ReadFile(SysRAMDisk , FileInfo2 , FileInfo2->FileSize , Data);
-    Kernel::printf("Data : \n");
-    Kernel::printf("%s\n" , Data);
-    Kernel::printf("===================================\n");
     // To-do : Create interface
+    Drivers::StorageSystem::Storage *RAMDiskStorage = Drivers::RAMDisk::CreateRAMDisk(65536 , 512 , 0x00);
+    Kernel::printf("Created Live RAM Disk (Size : %dMB)\n" , RAMDiskStorage->Geometry.BytesPerSector*RAMDiskStorage->Geometry.TotalSectorCount/1024/1024);
+    Kernel::printf("Location : 0x%X\n" , RAMDiskStorage->Resources[0]);
+    // AutoFormat_FAT16(Storage);
+
+    // To-do : Create function that creates partition
+    AutoFormat_FAT16(RAMDiskStorage);
     while(1) {
-        Kernel::printf("%c" , Kernel::Keyboard::GetASCIIData());
+        ;
     }
 }
 
-void TestTask(void) {
-    unsigned char *VideoMemory = (unsigned char *)(0xB8000+(TaskManagement::GetCurrentlyRunningTaskID()*2));
-    char haha[4] = {'-' , '\\' , '|' , '/'};
-    unsigned char i = 0;
+void AutoFormat_FAT16(struct StorageSystem::Storage *Storage) {
+    struct FileSystem::FAT16::VBR VBR;
+    unsigned char ByteCode[140] = {
+        0xB8 , 0x00 , 0x00 , 0x8E , 0xD8 , 0xB8 , 0x00 , 0xB8 , 0x8E , 0xC0 , 0x31 , 0xFF , 0x26 , 0xC6 , 0x05 , 0x00 , 
+        0x47 , 0x26 , 0xC6 , 0x05 , 0x07 , 0x47 , 0x81 , 0xFF , 0xA0 , 0x0F , 0x72 , 0xF0 , 0x26 , 0x66 , 0xC7 , 0x06 , 
+        0x00 , 0x00 , 0x48 , 0x07 , 0x6F , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x04 , 0x00 , 0x77 , 0x07 , 0x20 , 0x07 , 
+        0x26 , 0x66 , 0xC7 , 0x06 , 0x08 , 0x00 , 0x64 , 0x07 , 0x69 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x0C , 0x00 , 
+        0x64 , 0x07 , 0x20 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x10 , 0x00 , 0x79 , 0x07 , 0x6F , 0x07 , 0x26 , 0x66 , 
+        0xC7 , 0x06 , 0x14 , 0x00 , 0x75 , 0x07 , 0x20 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x18 , 0x00 , 0x67 , 0x07 , 
+        0x65 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x1C , 0x00 , 0x74 , 0x07 , 0x20 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 
+        0x20 , 0x00 , 0x68 , 0x07 , 0x65 , 0x07 , 0x26 , 0x66 , 0xC7 , 0x06 , 0x24 , 0x00 , 0x72 , 0x07 , 0x65 , 0x07 , 
+        0x26 , 0x66 , 0xC7 , 0x06 , 0x28 , 0x00 , 0x3F , 0x07 , 0x00 , 0x00 , 0xEB , 0xFE , };
+    unsigned char *BootSector = (unsigned char *)Kernel::MemoryManagement::Allocate(512);
+    struct FileSystem::FAT16::SFNEntry VolumeLabel;
+    struct StorageSystem::Partition Partition;
+    FileSystem::FAT16::WriteVBR(&(VBR) , &(Storage->Geometry));
+    memcpy(BootSector , &(VBR) , sizeof(struct FileSystem::FAT16::VBR));
+    memcpy(BootSector+sizeof(struct FileSystem::FAT16::VBR) , ByteCode , 140);
+    BootSector[510] = 0x55;
+    BootSector[511] = 0xAA;
+    Storage->Driver->WriteSectorFunction(Storage , 0 , 1 , BootSector);
+    Kernel::printf("Root Directory Location : %d\n" , FileSystem::FAT16::GetRootDirectoryLocation(&(VBR)));
+    Kernel::printf("FAT Area Location       : %d\n" , FileSystem::FAT16::GetFATAreaLocation(&(VBR)));
+    memset(&(VolumeLabel) , 0 , sizeof(struct FileSystem::FAT16::SFNEntry));
+    memcpy(VolumeLabel.FileName , "NO NAME    " , 11);
+    VolumeLabel.Attribute = 0x08;
+    
+    Partition.StartAddressLBA = 128; // Always starts in this sector
+    Partition.EndAddressLBA = Storage->Geometry.TotalSectorCount-Partition.StartAddressLBA;
+    Partition.PartitionType = 0x86;
+    Partition.IsBootable = 0;
+// setup drive    
+    MBR::Identifier MBRIdentifier(Storage->Driver , Storage);
+    MBRIdentifier.CreatePartition(Partition);
+    StorageSystem::AddLogicalDrive(Storage->Driver , Storage , &(Partition) , 1);
+
+
+    /* <Major Problem in Kernel Core>
+     * The Faulty Memory management system(Especially "MemoryManagement::Free") was all the problem.
+     * The allocated data overwrote the system structure(In this case, it was IST), and caused triple fault.
+     * If we can't find how this happends, which is, how the memory manager failed to manage memory, we might 
+     * have to re-write this entire memory management system.
+    */
+
+    /* <What we have to do with blank disk>
+     * 1. Write MBR
+     * 2. Create new partition
+     * 3. Format the partition with some file system
+    */ 
+    
+    FileSystem::FAT16::WriteClusterInfo(Storage , 0 , 0xFFF8 , &(VBR));
+    FileSystem::FAT16::WriteClusterInfo(Storage , 1 , 0xFFFF , &(VBR));
+    FileSystem::FAT16::WriteSFNEntry(Storage , FileSystem::FAT16::GetRootDirectoryLocation(&(VBR)) , &(VolumeLabel));
     while(1) {
-        *(VideoMemory) = (i++);
-        Kernel::PIT::DelayMicroseconds(100);
+        ;
     }
 }
 
@@ -138,10 +159,14 @@ extern "C" void APStartup(void) {
      * Create Memory Management System
      * Create IO Redirection table
      */
+    static MutualExclusion::SpinLock *SpinLock = 0x00;
+    if(SpinLock == 0x00) {
+        SpinLock = (MutualExclusion::SpinLock *)MemoryManagement::Allocate(sizeof(MutualExclusion::SpinLock));
+        SpinLock->Initialize();
+    }
     __asm__ ("cli");
     DescriptorTables::Initialize();
     LocalAPIC::EnableLocalAPIC();
-    LocalAPIC::Timer::Initialize();
     __asm__ ("sti");
     while(1) {
         ;
@@ -149,3 +174,4 @@ extern "C" void APStartup(void) {
 }
 
 // To-do : More reliable way to detect core
+// To-do : Change driver to Polymorphism.
