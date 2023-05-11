@@ -10,6 +10,20 @@
 
 // #define DEBUG
 
+// for C++ standard
+
+void *operator new(unsigned long Size) {
+    return Kernel::MemoryManagement::Allocate(Size);
+}
+
+void *operator new[](unsigned long Size) {
+    return Kernel::MemoryManagement::Allocate(Size);
+}
+
+void operator delete(void *Pointer) {
+    Kernel::MemoryManagement::Free(Pointer);
+}
+
 void Kernel::MemoryManagement::Initialize(void) {
 	int E820EntryCount = 0;
 	unsigned long TotalUsableMemory = 0;
