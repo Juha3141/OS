@@ -2,7 +2,6 @@
 #define _PCI_HPP_
 
 #include <Kernel.hpp>
-#include <Drivers/DeviceDriver.hpp>
 
 #define PCI_MAX_DEVICE_COUNT    256*32
 
