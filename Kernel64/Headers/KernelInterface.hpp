@@ -39,19 +39,20 @@ namespace Kernel {
                 return Instance;
             }
 
-            void Initialize(Drivers::StorageSystem::Storage *Storage , const char *DirectoryName) {
+            void Initialize(struct Storage *Storage , const char *DirectoryName) {
                 static bool Initialized = false;
                 if(Initialized == true) {
                     return;
                 }
                 this->Storage = Storage;
+                /* temporarily disable feature
                 if(Storage->FileSystem->CreateDir(Storage , DirectoryName) == false) {
                     Kernel::printf("Warning : Kernel Interface directory \"%s\" already exists.\n" , DirectoryName);
                 }
                 DirectoryInfo = Storage->FileSystem->OpenFile(Storage , DirectoryName);
                 if(DirectoryInfo == 0x00) {
                     Kernel::printf("Critical Error : Failed creating kernel interface directory\n");
-                }
+                }*/
                 InterfaceIndex = 0;
                 StartKernelInterface = 0x00;
                 Initialized = true;
@@ -62,10 +63,10 @@ namespace Kernel {
             bool DeregisterInterface(const char *FileName);
 
             struct KernelInterface *GetInterface(const char *FileName);
-            bool IsFileInterface(struct FileSystem::FileInfo *FileInfo);
+            bool IsFileInterface(struct FileInfo *FileInfo);
         private:
-            Drivers::StorageSystem::Storage *Storage;
-            struct FileSystem::FileInfo *DirectoryInfo;
+            struct Storage *Storage;
+            struct FileInfo *DirectoryInfo;
             struct KernelInterface *StartKernelInterface;
             
             unsigned long InterfaceIndex = 0;

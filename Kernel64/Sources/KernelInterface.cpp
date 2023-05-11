@@ -81,7 +81,7 @@ struct KernelInterface *KernelInterfaceManager::GetInterface(const char *FileNam
     return Pointer;
 }
 
-bool KernelInterfaceManager::IsFileInterface(struct FileSystem::FileInfo *FileInfo) {
+bool KernelInterfaceManager::IsFileInterface(struct FileInfo *FileInfo) {
     if(Storage->ID != FileInfo->StorageID) {
         return false;
     }
