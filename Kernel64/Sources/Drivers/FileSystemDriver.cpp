@@ -1,71 +1,35 @@
-#include <Drivers/DeviceDriver.hpp>
 #include <Drivers/FileSystemDriver.hpp>
 #include <Drivers/StorageDriver.hpp>
 
-struct Kernel::Drivers::DriverSystemManager *FileSystemManager;
+using namespace Kernel;
 
-void Kernel::FileSystem::Initialize(void) {
-    FileSystemManager = (struct Drivers::DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct Drivers::DriverSystemManager));
-    Kernel::printf("FileSystemManager : 0x%X\n" , FileSystemManager);
-    FileSystemManager->Initialize();
+void FileSystem::Initialize(void) {
+    FileSystemManager::GetInstance()->Initialize();
 }
 
-Kernel::FileSystem::Standard *Kernel::FileSystem::AssignSystem(
-StandardCheckFunction Check , 
-StandardCreateFileFunction CreateFile , 
-StandardCreateDirFunction CreateDir , 
 
-StandardOpenFileFunction OpenFile , 
-StandardCloseFileFunction CloseFile , 
-StandardRemoveFileFunction RemoveFile , 
-
-StandardWriteFileFunction WriteFile , 
-StandardReadFileFunction ReadFile , 
-
-StandardReadDirectoryFunction ReadDirectory , 
-StandardGetFileCountInDirectoryFunction GetFileCountInDirectory) {
-    FileSystem::Standard *FileSystem = (FileSystem::Standard *)Kernel::MemoryManagement::Allocate(sizeof(FileSystem::Standard));
-    FileSystem->Check = Check;
-
-    FileSystem->OpenFile = OpenFile;
-    FileSystem->CloseFile = CloseFile;
-    FileSystem->RemoveFile = RemoveFile;
-
-    FileSystem->WriteFile = WriteFile;
-    FileSystem->ReadFile = ReadFile;
-
-    FileSystem->ReadDirectory = ReadDirectory;
-    FileSystem->GetFileCountInDirectory = GetFileCountInDirectory;
-    return FileSystem;
-}
-
-bool Kernel::FileSystem::Register(Kernel::FileSystem::Standard *FileSystem , const char *FileSystemString) {
-    strcpy(FileSystem->FileSystemString , FileSystemString);
-    if(FileSystemManager->Register((unsigned long)FileSystem) == false) {
+bool FileSystem::Register(FileSystemDriver *Driver , const char *FileSystemString) {
+    if(FileSystemManager::GetInstance()->Register(Driver) == false) {
         return false;
     }
+    strcpy(Driver->FileSystemString , FileSystemString);
     return true;
 }
 
-Kernel::FileSystem::Standard *Kernel::FileSystem::Search(unsigned long ID) {
-    return (Kernel::FileSystem::Standard *)FileSystemManager->GetSystem(ID);
+FileSystemDriver *FileSystem::Search(unsigned long ID) {
+    return FileSystemManager::GetInstance()->GetObject(ID);
 }
 
-Kernel::FileSystem::Standard *Kernel::FileSystem::Search(const char *FileSystemString) {
-    int i;
-    for(i = 0; i < FileSystemManager->SystemCount; i++) {
-        if(memcmp(((Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i])->FileSystemString , FileSystemString , strlen(FileSystemString)) == 0) {
-            return (Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i];
-        }
-    }
-    return 0x0; // can't find storage
+FileSystemDriver *FileSystem::Search(const char *FileSystemString) {
+    return FileSystemManager::GetInstance()->GetObjectByName(FileSystemString);
 }
 
-Kernel::FileSystem::Standard *Kernel::FileSystem::DetectFileSystem(Drivers::StorageSystem::Storage *Storage) {
+FileSystemDriver *FileSystem::DetectFileSystem(struct Storage *Storage) {
     int i;
-    for(i = 0; i < FileSystemManager->SystemCount; i++) {
-        if(((Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i])->Check(Storage) == true) {
-            return (Kernel::FileSystem::Standard *)FileSystemManager->SystemList[i];
+    FileSystemManager *Manager = FileSystemManager::GetInstance();
+    for(i = 0; i < Manager->CurrentObjectCount; i++) {
+        if(Manager->Check(i , Storage) == true) {
+            return Manager->GetObject(i);
         }
     }
     return 0x00;
