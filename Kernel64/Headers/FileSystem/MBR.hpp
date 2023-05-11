@@ -7,6 +7,29 @@
 #define MBR_STARTADDRESS 446
 
 namespace Kernel {
+	class StorageSchemeIdentifier {
+		public:
+			StorageSchemeIdentifier(struct StorageDriver *StorageDriver_
+			         , struct Storage *Storage_)
+					 : Driver(StorageDriver_)
+					 , Storage(Storage_)
+					 , PartitionCount(0) {
+			}
+			~StorageSchemeIdentifier(void) {
+				Kernel::printf("Removing StorageSchemeIdentifier\n");
+			}
+			virtual bool Detect(void) = 0;
+			virtual struct Partition *GetPartition(void) = 0;
+			virtual bool CreatePartition(struct Partition Partition) = 0;
+
+			int PartitionCount = 0;
+		protected:
+			struct StorageDriver *Driver = 0; 
+			struct Storage *Storage = 0;
+			struct Partition *Partitions;
+
+			unsigned int CurrentOffset = 0;
+	};
 	namespace MBR {
 		struct PartitionTableEntry {
 			unsigned char BootableFlag;
@@ -21,27 +44,17 @@ namespace Kernel {
 			struct PartitionTableEntry Entries[4];
 			unsigned short Signature; // Always 0xAA55
 		};
-		class Identifier {
+		class Identifier : public StorageSchemeIdentifier {
 			public:
-				Identifier(Drivers::StorageSystem::Driver *StorageDriver_
-				         , Drivers::StorageSystem::Storage *Storage_)
-						 : StorageDriver(StorageDriver_)
-						 , Storage(Storage_)
-						 , PartitionCount(0) {
+				Identifier(struct StorageDriver *StorageDriver_
+				         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
 					PartitionTable = (struct PartitionTable *)Kernel::MemoryManagement::Allocate(512);
 				}
 				bool Detect(void);
-				Drivers::StorageSystem::Partition *GetPartition(void);
-				bool CreatePartition(Drivers::StorageSystem::Partition Partition);
-
-				int PartitionCount;
+				struct Partition *GetPartition(void);
+				bool CreatePartition(struct Partition Partition);
 			private:
-				Drivers::StorageSystem::Driver *StorageDriver = 0; 
-				Drivers::StorageSystem::Storage *Storage = 0;
-				Drivers::StorageSystem::Partition *Partitions;
 			    struct PartitionTable *PartitionTable;
-
-				unsigned int CurrentOffset = 0;
 		};
 	}
 }

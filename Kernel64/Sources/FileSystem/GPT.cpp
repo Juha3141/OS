@@ -1,19 +1,18 @@
 #include <FileSystem/GPT.hpp>
 
 using namespace Kernel;
-using namespace Kernel::Drivers;
 
 bool GPT::Identifier::Detect(void) {
     int i;
-    if(StorageDriver == 0x00) {
+    if(Driver == 0x00) {
         //Kernel::MemoryManagement::Free(Header);
         return false;
     }
-    if(Storage->Geometry.BytesPerSector != 512) {
+    if(Storage->PhysicalInfo.Geometry.BytesPerSector != 512) {
         //Kernel::MemoryManagement::Free(Header);
         return false;
     }
-    if(StorageDriver->ReadSectorFunction(Storage , 1 , 1 , Header) != 512) {
+    if(Storage->Driver->ReadSector(Storage , 1 , 1 , Header) != 512) {
         //Kernel::MemoryManagement::Free(Header);
         return false;
     }
@@ -25,17 +24,17 @@ bool GPT::Identifier::Detect(void) {
     return true;
 }
 
-StorageSystem::Partition *GPT::Identifier::GetPartition(void) {
+struct Partition *GPT::Identifier::GetPartition(void) {
     int i = 0;
     int j;
     unsigned int AllocateSize = Header->NumberOfPartitionEntries*sizeof(struct PartitionTableEntry);
-    struct StorageSystem::Partition *Pointer;
+    struct Partition *Pointer;
     if((AllocateSize%512) != 0x00) {
         AllocateSize = (((unsigned int)(AllocateSize/512))+1)*512;
     }
-    Partitions = (StorageSystem::Partition *)Kernel::MemoryManagement::Allocate(128*sizeof(struct StorageSystem::Partition));
+    Partitions = (Partition *)Kernel::MemoryManagement::Allocate(128*sizeof(struct Partition));
     PartitionTableEntry = (struct PartitionTableEntry *)Kernel::MemoryManagement::Allocate(AllocateSize);
-    StorageDriver->ReadSectorFunction(Storage , Header->PartitionTableEntryLBA ,  AllocateSize/512 , PartitionTableEntry);
+    Storage->Driver->ReadSector(Storage , Header->PartitionTableEntryLBA ,  AllocateSize/512 , PartitionTableEntry);
     if((PartitionTableEntry[0].PartitionTypeGUID[0] == 0) && (PartitionTableEntry[0].PartitionTypeGUID[1] == 0)
     && (PartitionTableEntry[0].PartitionTypeGUID[2] == 0) && (PartitionTableEntry[0].PartitionTypeGUID[3] == 0)) {
         i = 1;
@@ -55,7 +54,11 @@ StorageSystem::Partition *GPT::Identifier::GetPartition(void) {
         else {
             Partitions[PartitionCount].IsBootable = false;
         }
-        PartitionCount += 1;
+        PartitionCount++;
     }
     return Partitions;
+}
+
+bool GPT::Identifier::CreatePartition(struct Partition Partition) {
+    return false; // not implemented yet!
 }

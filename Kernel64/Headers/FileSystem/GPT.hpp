@@ -40,27 +40,18 @@ namespace Kernel {
 			unsigned long AttributeFlag;
 			char PartitionName[72];
 		};
-		class Identifier {
+		class Identifier : public StorageSchemeIdentifier {
 			public:
-				Identifier(Drivers::StorageSystem::Driver *StorageDriver_
-				         , Drivers::StorageSystem::Storage *Storage_)
-						 : StorageDriver(StorageDriver_)
-						 , Storage(Storage_)
-						 , PartitionCount(0) {
-					Header = (struct GPTHeader *)Kernel::MemoryManagement::Allocate(512);
+				Identifier(struct StorageDriver *StorageDriver_
+				         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
+					Header = (struct GPTHeader *)Kernel::MemoryManagement::Allocate(128);
 				}
 				bool Detect(void);
-				Drivers::StorageSystem::Partition *GetPartition(void);
+				struct Partition *GetPartition(void);
+				bool CreatePartition(struct Partition Partition);
 
-				int PartitionCount;
-				struct PartitionTableEntry *PartitionTableEntry;
 				struct GPTHeader *Header;
-			private:
-				Drivers::StorageSystem::Driver *StorageDriver = 0; 
-				Drivers::StorageSystem::Storage *Storage = 0;
-				Drivers::StorageSystem::Partition *Partitions;
-
-				unsigned int CurrentOffset = 0;
+				struct PartitionTableEntry *PartitionTableEntry;
 
 		};
 	}
