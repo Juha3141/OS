@@ -16,7 +16,6 @@
 
 #define PARTITIONID_PHYSICALDRIVE 0xFFFFFFFF
 
-namespace Kernel {
     class FileSystemDriver;
     struct StorageGeometry { // StorageGeometry
         unsigned long CylindersCount;
@@ -114,7 +113,7 @@ namespace Kernel {
             virtual unsigned long Register(T *Object) { // returns ID
                 unsigned int i;
                 if(ObjectContainer == 0x00) {
-                    Kernel::printf("Error : ObjectContainer yet not initialized\n");
+                    printf("Error : ObjectContainer yet not initialized\n");
                     return STORAGESYSTEM_INVALIDID;
                 }
                 if(CurrentObjectCount >= MaxObjectCount) {
@@ -167,13 +166,13 @@ namespace Kernel {
                 static class StorageDriverManager *Instance;
                 if(Instance == 0x00) {
                     // to-do : change everything to new plz
-                    Instance = new StorageDriverManager; // (class StorageDriverManager *)Kernel::MemoryManagement::Allocate(sizeof(StorageDriverManager));
+                    Instance = new StorageDriverManager; // (class StorageDriverManager *)MemoryManagement::Allocate(sizeof(StorageDriverManager));
                 }
                 return Instance;
             }
             void Initialize(void) {
                 ObjectManager<StorageDriver>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)Kernel::MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
             }
             unsigned long Register(StorageDriver *Driver) {
                 Driver->DriverID = ObjectManager<StorageDriver>::Register(Driver);
@@ -197,7 +196,7 @@ namespace Kernel {
         public:
             void Initialize(void) {
                 ObjectManager<struct Storage>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)Kernel::MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
             }
     };
 
@@ -229,13 +228,13 @@ namespace Kernel {
             SuperDriver = Driver;
         }
         bool PreInitialization(void) { 
-            Kernel::printf("It's not allowed to do this!\n");
+            printf("It's not allowed to do this!\n");
             return false;
         };
         unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
             struct Storage *PhysicalStorage;
             if(Storage->Type == Storage::StorageType::Physical) {
-                Kernel::printf("This can't be happening!\n");
+                printf("This can't be happening!\n");
                 return 0x00;
             }
             if(Storage->Type == Storage::StorageType::Logical) {
@@ -253,7 +252,7 @@ namespace Kernel {
         unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
             struct Storage *PhysicalStorage;
             if(Storage->Type == Storage::StorageType::Physical) {
-                Kernel::printf("This can't be happening!\n");
+                printf("This can't be happening!\n");
                 return 0x00;
             }
             if(Storage->Type == Storage::StorageType::Logical) {
@@ -270,13 +269,12 @@ namespace Kernel {
         }
         bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) {
             if(SuperDriver == 0x00) {
-                Kernel::printf("Warning : SuperDriver yet initialized!\n");
+                printf("Warning : SuperDriver yet initialized!\n");
                 return false;
             }
             return SuperDriver->GetGeometry(Storage , Geometry);
         }
         struct StorageDriver *SuperDriver;
     };
-}
 
 #endif

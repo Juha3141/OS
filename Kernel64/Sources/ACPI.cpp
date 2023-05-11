@@ -3,7 +3,7 @@
 
 #define DEBUG
 
-bool Kernel::ACPI::Initialize(void) { // Gather information, and write it to ACPI Entry structures
+bool ACPI::Initialize(void) { // Gather information, and write it to ACPI Entry structures
     struct ACPIEntry *UniversalACPIEntry = ACPIEntry::GetInstance();
     UniversalACPIEntry->RSDT = (struct RSDT *)UniversalACPIEntry->RSDP->RSDTAddress;
     if(CheckRSDPChecksum(RSDP_ADDRESS_1) == true) {
@@ -19,20 +19,20 @@ bool Kernel::ACPI::Initialize(void) { // Gather information, and write it to ACP
     if(UniversalACPIEntry->RSDP->Revision == 2) { // If revision is two, use XSDT.
         UniversalACPIEntry->RSDP20 = (struct ExtendedRSDP *)((CheckRSDPChecksum(RSDP_ADDRESS_1) == 1) ? RSDP_ADDRESS_1 : RSDP_ADDRESS_2);
         UniversalACPIEntry->RSDT = (struct RSDT *)UniversalACPIEntry->RSDP20->XSDTAddress;
-        Kernel::printf("Using XSDT\n");
+        printf("Using XSDT\n");
     }
     else {
         UniversalACPIEntry->RSDP20 = 0x00;
     }
     UniversalACPIEntry->RSDTEntryCount = (UniversalACPIEntry->RSDT->Header.Length-sizeof(SDTHeader))
                                          /((UniversalACPIEntry->RSDP->Revision == 2) ? sizeof(unsigned long) : sizeof(unsigned int));
-    /*Kernel::printf("RSDP Address         : 0x%X\n" , UniversalACPIEntry->RSDP);
-    Kernel::printf("RSDT Address         : 0x%X\n" , UniversalACPIEntry->RSDT);
-    Kernel::printf("RSDT Entries Count   : 0x%X\n" , UniversalACPIEntry->RSDTEntryCount);
+    /*printf("RSDP Address         : 0x%X\n" , UniversalACPIEntry->RSDP);
+    printf("RSDT Address         : 0x%X\n" , UniversalACPIEntry->RSDT);
+    printf("RSDT Entries Count   : 0x%X\n" , UniversalACPIEntry->RSDTEntryCount);
     */return true;
 }
 
-bool Kernel::ACPI::SaveCoresInformation(void) {
+bool ACPI::SaveCoresInformation(void) {
     int i = 0;
     int j = 0;
     int CoreCount = 0;
@@ -76,8 +76,8 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
     i = 0;
     CoreInformation->LocalAPICID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
     CoreInformation->LocalAPICProcessorID = (unsigned int *)SystemStructure::Allocate(CoreCount*sizeof(unsigned int));
-    Kernel::printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
-    Kernel::printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
+    printf("CoreInformation->LocalAPICID : 0x%X(%d)\n" , CoreInformation->LocalAPICID , CoreCount*sizeof(unsigned int));
+    printf("CoreInformation->LocalAPICProcessorID : 0x%X(%d)\n" , CoreInformation->LocalAPICProcessorID , CoreCount*sizeof(unsigned int));
     while(i < (MADTHeader->Length-sizeof(SDTHeader)-8)) {
         if(MADT[i] == 0) {      // Entry Type 0 : Processor Local APIC
             /* Process Local APIC Entry : 
@@ -96,15 +96,15 @@ bool Kernel::ACPI::SaveCoresInformation(void) {
         }
         i += MADT[i+1];
     }
-    /*Kernel::printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
-    Kernel::printf("Core count : %d\n" , CoreCount);
+    /*printf("IO APIC Address : 0x%X\n" , CoreInformation->IOAPICAddress);
+    printf("Core count : %d\n" , CoreCount);
     */CoreInformation->CoreCount = CoreCount;
-    Kernel::MemoryManagement::ProtectMemory(CoreInformation->LocalAPICAddress , 0x100000);
-    Kernel::MemoryManagement::ProtectMemory(CoreInformation->IOAPICAddress , 0x100000);
+    MemoryManagement::ProtectMemory(CoreInformation->LocalAPICAddress , 0x100000);
+    MemoryManagement::ProtectMemory(CoreInformation->IOAPICAddress , 0x100000);
     return true;
 }
 
-unsigned long Kernel::ACPI::GetDescriptorTable(const char Signature[4]) {
+unsigned long ACPI::GetDescriptorTable(const char Signature[4]) {
     int i = 0;
     unsigned int *NextAddress;
     unsigned long *NextAddressX; // Next Address for XSDT(Extended SDT)
@@ -125,7 +125,7 @@ unsigned long Kernel::ACPI::GetDescriptorTable(const char Signature[4]) {
     return 0x00;
 }
 
-bool Kernel::ACPI::CheckRSDPChecksum(unsigned long Address) { // error
+bool ACPI::CheckRSDPChecksum(unsigned long Address) { // error
     int i;
     unsigned char *RSDP = (unsigned char *)Address;
     unsigned char ChecksumString[8] = {'R' , 'S' , 'D' , ' ' , 'P' , 'T' , 'R' , ' '};
@@ -137,7 +137,7 @@ bool Kernel::ACPI::CheckRSDPChecksum(unsigned long Address) { // error
     return true;
 }
 
-unsigned int Kernel::ACPI::IdentifySDT(unsigned long Address) {
+unsigned int ACPI::IdentifySDT(unsigned long Address) {
     int i;
     struct SDTHeader *Header = (struct SDTHeader *)Address;
     char RSDTSignatureList[22][5] = {

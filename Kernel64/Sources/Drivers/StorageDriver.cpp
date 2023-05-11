@@ -4,8 +4,6 @@
 #include <FileSystem/MBR.hpp>
 #include <FileSystem/GPT.hpp>
 
-using namespace Kernel;
-
 void StorageSystem::Initialize(void) {
     StorageDriverManager::GetInstance()->Initialize();
     // StorageManager::GetInstance()->Initialize();
@@ -15,15 +13,15 @@ void StorageSystem::Initialize(void) {
 // Interface of StorageDriverManager
 bool StorageSystem::RegisterDriver(StorageDriver *Driver , const char *DriverName) {
     StorageDriverManager *DriverManager = StorageDriverManager::GetInstance();
-    Kernel::printf("DriverManager : 0x%X\n" , DriverManager);
-    Kernel::printf("Driver : 0x%X\n" , Driver);
+    printf("DriverManager : 0x%X\n" , DriverManager);
+    printf("Driver : 0x%X\n" , Driver);
     if(DriverManager->Register(Driver) == STORAGESYSTEM_INVALIDID) {
         return false;
     }
     Driver->StorageManager = new class StorageManager;
     Driver->StorageManager->Initialize();
     strcpy(Driver->DriverName , DriverName);
-    Kernel::printf("Registered driver info. : ID %d , registered as name \"%s\"\n" , Driver->DriverID , Driver->DriverName);
+    printf("Registered driver info. : ID %d , registered as name \"%s\"\n" , Driver->DriverID , Driver->DriverName);
     Driver->PreInitialization();
     return true;
 }
@@ -68,7 +66,7 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
         if(Storage->ID == STORAGESYSTEM_INVALIDID) {
             return false;
         }
-        Kernel::printf("Registered Physical Storage System , ID : %d(%s)\n" , Storage->ID , (Storage->Type == Storage::StorageType::Physical) ? "Physical" : "Logical");
+        printf("Registered Physical Storage System , ID : %d(%s)\n" , Storage->ID , (Storage->Type == Storage::StorageType::Physical) ? "Physical" : "Logical");
         Storage->PartitionID = PARTITIONID_PHYSICALDRIVE;
         Storage->Driver = Driver;
     }
@@ -102,17 +100,17 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
     if(FileSystem == 0x00) {
         Storage->FileSystem = 0x00;
         strcpy(Storage->FileSystemString , "NONE");
-        Kernel::printf("%s%d" , Driver->DriverName , Storage->ID);
+        printf("%s%d" , Driver->DriverName , Storage->ID);
         if(Storage->PartitionID != PARTITIONID_PHYSICALDRIVE) {
-            Kernel::printf(",part%d" , Storage->PartitionID);
+            printf(",part%d" , Storage->PartitionID);
         }
-        Kernel::printf(" : No file system\n");
+        printf(" : No file system\n");
         return true;
     }
     Storage->FileSystem = FileSystem;
     strcpy(Storage->FileSystemString , FileSystem->FileSystemString);
     
-    Kernel::printf("%s%d : File System Detected : %s\n" , Driver->DriverName , Storage->ID , Storage->FileSystemString);
+    printf("%s%d : File System Detected : %s\n" , Driver->DriverName , Storage->ID , Storage->FileSystemString);
     return true;
 }
 
@@ -167,9 +165,9 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
     if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->LogicalStorages->CurrentObjectCount == 4)) {
         return;
     }
-    Kernel::printf("PartitionCount : %d\n" , PartitionCount);
+    printf("PartitionCount : %d\n" , PartitionCount);
     for(i = CurrentPartitionCount; i < CurrentPartitionCount+PartitionCount; i++) {
-        LogicalStorage = (struct Storage *)Kernel::MemoryManagement::Allocate(sizeof(struct Storage));
+        LogicalStorage = (struct Storage *)MemoryManagement::Allocate(sizeof(struct Storage));
         // Write info of parent storage
         LogicalStorage->ID = Storage->ID;
         LogicalStorage->Type = Storage::StorageType::Logical;
@@ -178,35 +176,35 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
         memcpy(&(LogicalStorage->LogicalPartitionInfo) , &(Partitions[j++]) , sizeof(struct Partition));
         // to-do : fix infinite loop error
         LogicalStorage->PartitionID = Storage->LogicalStorages->Register(LogicalStorage);
-        Kernel::printf("LogicalStorage->PartitionID : %d\n" , LogicalStorage->PartitionID);
-        Kernel::printf("Partition %d : %d~%d\n" , i-CurrentPartitionCount , LogicalStorage->LogicalPartitionInfo.StartAddressLBA , LogicalStorage->LogicalPartitionInfo.StartAddressLBA+LogicalStorage->LogicalPartitionInfo.EndAddressLBA);
+        printf("LogicalStorage->PartitionID : %d\n" , LogicalStorage->PartitionID);
+        printf("Partition %d : %d~%d\n" , i-CurrentPartitionCount , LogicalStorage->LogicalPartitionInfo.StartAddressLBA , LogicalStorage->LogicalPartitionInfo.StartAddressLBA+LogicalStorage->LogicalPartitionInfo.EndAddressLBA);
         RegisterStorage(Driver , LogicalStorage);
     }
-    Kernel::printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
-    Kernel::printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->CurrentObjectCount);
+    printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
+    printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->CurrentObjectCount);
 }
 
 static void AssignPhysicalInfo(Storage *Storage , int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
     if(PortsCount != 0x00) {
-        Storage->PhysicalInfo.Ports = (unsigned short *)Kernel::MemoryManagement::Allocate(PortsCount*sizeof(unsigned short));
+        Storage->PhysicalInfo.Ports = (unsigned short *)MemoryManagement::Allocate(PortsCount*sizeof(unsigned short));
         Storage->PhysicalInfo.PortsCount = PortsCount;
     }
     if(FlagsCount != 0x00) {
-        Storage->PhysicalInfo.Flags = (unsigned long *)Kernel::MemoryManagement::Allocate(FlagsCount*sizeof(unsigned long));
+        Storage->PhysicalInfo.Flags = (unsigned long *)MemoryManagement::Allocate(FlagsCount*sizeof(unsigned long));
         Storage->PhysicalInfo.FlagsCount = FlagsCount;
     }
     if(IRQsCount != 0x00) {
-        Storage->PhysicalInfo.IRQs = (unsigned int *)Kernel::MemoryManagement::Allocate(IRQsCount*sizeof(unsigned int));
+        Storage->PhysicalInfo.IRQs = (unsigned int *)MemoryManagement::Allocate(IRQsCount*sizeof(unsigned int));
         Storage->PhysicalInfo.IRQsCount = IRQsCount;
     }
     if(ResourcesCount != 0x00) {
-        Storage->PhysicalInfo.Resources = (unsigned long *)Kernel::MemoryManagement::Allocate(ResourcesCount*sizeof(unsigned long));
+        Storage->PhysicalInfo.Resources = (unsigned long *)MemoryManagement::Allocate(ResourcesCount*sizeof(unsigned long));
         Storage->PhysicalInfo.ResourcesCount = ResourcesCount;
     }
 }
 
 struct Storage *StorageSystem::Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount , enum Storage::StorageType Type) {
-    struct Storage *Storage = (struct Storage *)Kernel::MemoryManagement::Allocate(sizeof(struct Storage));
+    struct Storage *Storage = (struct Storage *)MemoryManagement::Allocate(sizeof(struct Storage));
     AssignPhysicalInfo((struct Storage *)Storage , PortsCount , FlagsCount , IRQsCount , ResourcesCount);
     Storage->Type = Type;
     return Storage;

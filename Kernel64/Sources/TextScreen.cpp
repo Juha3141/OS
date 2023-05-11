@@ -2,18 +2,18 @@
 #include <KernelSystemStructure.hpp>
 #include <EssentialLibrary.hpp>
 
-static Kernel::TextScreen80x25::TextScreenInformation ScreenInfo;
+static TextScreen80x25::TextScreenInformation ScreenInfo;
 
-void Kernel::TextScreen80x25::Initialize(void) {
+void TextScreen80x25::Initialize(void) {
     ScreenInfo.VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
     ScreenInfo.Width = TEXTSCREEN_80x25_WIDTH;
     ScreenInfo.Height = TEXTSCREEN_80x25_HEIGHT;
     ScreenInfo.BackgroundColor = 0x00;
     ScreenInfo.ForegroundColor = 0x07;
-    Kernel::ClearScreen(0x00 , 0x07);
+    ClearScreen(0x00 , 0x07);
 }
 
-void Kernel::ClearScreen(unsigned char BackgroundColor , unsigned char ForegroundColor) {
+void ClearScreen(unsigned char BackgroundColor , unsigned char ForegroundColor) {
     int i;
     unsigned char Color = ((BackgroundColor & 0x0F) << 4)|(ForegroundColor & 0x0F);
     for(i = 0; i < ScreenInfo.Width*ScreenInfo.Height*2;) {
@@ -27,7 +27,7 @@ void Kernel::ClearScreen(unsigned char BackgroundColor , unsigned char Foregroun
     ScreenInfo.Y = 0;
 }
 
-void Kernel::PrintString(const char *String) {
+void PrintString(const char *String) {
     int i;
     int j;
     int Offset;
@@ -82,7 +82,7 @@ void Kernel::PrintString(const char *String) {
     }
 }
 
-void Kernel::printf(const char *Format , ...) {
+void printf(const char *Format , ...) {
     va_list ap;
     char String[512];
     va_start(ap , Format);
@@ -91,7 +91,7 @@ void Kernel::printf(const char *Format , ...) {
     va_end(ap);
 }
 
-void Kernel::SetPosition(int X , int Y) {
+void SetPosition(int X , int Y) {
     if(X >= ScreenInfo.Width-1) {
         X = ScreenInfo.Width-1;
     }
@@ -102,7 +102,7 @@ void Kernel::SetPosition(int X , int Y) {
     ScreenInfo.Y = Y;
 }
 
-void Kernel::MovePosition(int X , int Y) {
+void MovePosition(int X , int Y) {
     ScreenInfo.X -= X;
     ScreenInfo.Y -= Y;
     if(ScreenInfo.X < 0) {
@@ -119,7 +119,7 @@ void Kernel::MovePosition(int X , int Y) {
     }
 }
 
-void Kernel::GetScreenInformation(int *X , int *Y , unsigned char *BackgroundColor , unsigned char *ForegroundColor) {
+void GetScreenInformation(int *X , int *Y , unsigned char *BackgroundColor , unsigned char *ForegroundColor) {
     *X = ScreenInfo.X;
     *Y = ScreenInfo.Y;
     *BackgroundColor = ScreenInfo.BackgroundColor;

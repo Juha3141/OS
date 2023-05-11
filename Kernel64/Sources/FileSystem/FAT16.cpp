@@ -1,7 +1,5 @@
 #include <FileSystem/FAT16.hpp>
 
-using namespace Kernel;
-
 bool FAT16::Register(void) {
     struct FAT16::Driver *Driver = new FAT16::Driver;
     return FileSystem::Register(Driver , "FAT16");
@@ -10,9 +8,9 @@ bool FAT16::Register(void) {
 bool FAT16::Driver::Check(struct Storage *Storage) {
     unsigned char *Buffer;
     struct VBR *BootSector;
-    Buffer = (unsigned char *)Kernel::MemoryManagement::Allocate(Storage->PhysicalInfo.Geometry.BytesPerSector);
+    Buffer = (unsigned char *)MemoryManagement::Allocate(Storage->PhysicalInfo.Geometry.BytesPerSector);
     if(Storage->Driver->ReadSector(Storage , 0 , 1 , Buffer) != Storage->PhysicalInfo.Geometry.BytesPerSector) {
-        Kernel::printf("Failed reading\n");
+        printf("Failed reading\n");
         return false;
     }
     BootSector = (struct VBR *)Buffer;
@@ -44,7 +42,7 @@ struct FileInfo *FAT16::Driver::OpenFile(struct Storage *Storage , const char *F
     GetVBR(Storage , &(VBR));
     DirectoryCount = GetDirectoryCount(FileName);
     DirectoryLocation = GetRootDirectoryLocation(&(VBR));
-    Directories = (char **)Kernel::MemoryManagement::Allocate((DirectoryCount+1)*sizeof(char *)); 
+    Directories = (char **)MemoryManagement::Allocate((DirectoryCount+1)*sizeof(char *)); 
     if(DirectoryCount == 0) {
         strcpy(Directories[0] , FileName);
     }
@@ -60,7 +58,7 @@ struct FileInfo *FAT16::Driver::OpenFile(struct Storage *Storage , const char *F
         return 0x00;
     }
     FileClusterLocation = (SFNEntry.StartingClusterHigh << 16)|SFNEntry.StartingClusterLow;
-    FileInfo = (struct FileInfo *)Kernel::MemoryManagement::Allocate(sizeof(struct FileInfo));
+    FileInfo = (struct FileInfo *)MemoryManagement::Allocate(sizeof(struct FileInfo));
     WriteFileInfo(FileInfo , SFNEntry , FileName , &(VBR));
     return FileInfo;
 }
@@ -82,17 +80,17 @@ int FAT16::Driver::ReadFile(struct Storage *Storage , struct FileInfo *FileInfo 
     unsigned int ReadSize;
     unsigned int SectorAddress = FileInfo->SectorAddress+(FileInfo->FileOffset/FileInfo->BlockSize);
     unsigned int SectorCountToRead = Size/FileInfo->BlockSize+(((Size%FileInfo->BlockSize) == 0) ? 0 : 1);
-    unsigned char *TempBuffer = (unsigned char *)Kernel::MemoryManagement::Allocate(SectorCountToRead*FileInfo->BlockSize);
+    unsigned char *TempBuffer = (unsigned char *)MemoryManagement::Allocate(SectorCountToRead*FileInfo->BlockSize);
     GetVBR(Storage , &(VBR));
     if((ReadSize = ReadCluster(Storage , SectorToCluster(SectorAddress , &(VBR)) , SectorCountToRead*VBR.SectorsPerCluster , TempBuffer , &(VBR))) == (SectorCountToRead*FileInfo->BlockSize)) {
         memcpy(Buffer , TempBuffer , ReadSize);
         FileInfo->FileOffset += ReadSize;
-        Kernel::MemoryManagement::Free(TempBuffer);
+        MemoryManagement::Free(TempBuffer);
         return ReadSize;
     }
     FileInfo->FileOffset += Size;
     memcpy(Buffer , TempBuffer , Size);
-    Kernel::MemoryManagement::Free(TempBuffer);
+    MemoryManagement::Free(TempBuffer);
     return Size;
 }
 
@@ -191,9 +189,9 @@ void FAT16::WriteVBR(struct VBR *VBR , struct StorageGeometry *Geometry , const 
 unsigned int FAT16::ReadCluster(struct Storage *Storage , unsigned long ClusterNumber , unsigned long ClusterCountToRead , unsigned char *Data , struct VBR *VBR) {
     unsigned long i;
     unsigned long NextClusterAddress = ClusterNumber;
-    Kernel::printf("Reading Cluster, Cluster count to read : %d\n" , ClusterCountToRead);
-    Kernel::printf("Cluster Number : %d\n" , ClusterNumber);
-    Kernel::printf("Sector Address : %d\n" , ClusterToSector(ClusterNumber , VBR));
+    printf("Reading Cluster, Cluster count to read : %d\n" , ClusterCountToRead);
+    printf("Cluster Number : %d\n" , ClusterNumber);
+    printf("Sector Address : %d\n" , ClusterToSector(ClusterNumber , VBR));
     for(i = 0; i < ClusterCountToRead*VBR->SectorsPerCluster; i++) {
         if(Storage->Driver->ReadSector(Storage , ClusterToSector(NextClusterAddress , VBR) , 1 , (Data+(i*VBR->BytesPerSector))) != Storage->PhysicalInfo.Geometry.BytesPerSector) {
             break;
@@ -296,13 +294,13 @@ unsigned int FAT16::SectorToCluster(unsigned int SectorNumber , struct VBR *VBR)
 }
 
 bool FAT16::GetVBR(struct Storage *Storage , struct VBR *VBR) {
-    unsigned char *Sector = (unsigned char *)Kernel::MemoryManagement::Allocate(Storage->PhysicalInfo.Geometry.BytesPerSector);
+    unsigned char *Sector = (unsigned char *)MemoryManagement::Allocate(Storage->PhysicalInfo.Geometry.BytesPerSector);
     if(Storage->Driver->ReadSector(Storage , 0 , 1 , Sector) != Storage->PhysicalInfo.Geometry.BytesPerSector) {
-        // Kernel::MemoryManagement::Free(Sector);
+        // MemoryManagement::Free(Sector);
         return false;
     }
     memcpy(VBR , Sector , sizeof(struct VBR));
-    // Kernel::MemoryManagement::Free(Sector);
+    // MemoryManagement::Free(Sector);
     return true;
 }
 
@@ -329,7 +327,7 @@ void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
     int i;
     int j;
     int DotIndex = 0;
-    char *Buffer = (char *)Kernel::MemoryManagement::Allocate(strlen(LFNName));
+    char *Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName));
     char NumberString[32];
     sprintf(NumberString , "%d" , Number);
     for(i = j = 0; i < strlen(LFNName); i++) {
@@ -364,7 +362,7 @@ void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
         }
     }
     strcat(SFNName , Buffer+DotIndex+1);
-    // Kernel::MemoryManagement::Free(Buffer);
+    // MemoryManagement::Free(Buffer);
 }
 
 /*
@@ -414,11 +412,11 @@ bool FAT16::WriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
 
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
     // error
-    Kernel::printf("Location to write : %d\n" , DirectoryAddress);
-    Kernel::printf("VBR.BytesPerSector*VBR.SectorsPerCluster = %d\n" , VBR.BytesPerSector*VBR.SectorsPerCluster);
+    printf("Location to write : %d\n" , DirectoryAddress);
+    printf("VBR.BytesPerSector*VBR.SectorsPerCluster = %d\n" , VBR.BytesPerSector*VBR.SectorsPerCluster);
     
-    Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.BytesPerSector*VBR.SectorsPerCluster);
-    Kernel::printf("Cluster Buffer : 0x%X\n" , Cluster);
+    Cluster = (unsigned char *)MemoryManagement::Allocate(VBR.BytesPerSector*VBR.SectorsPerCluster);
+    printf("Cluster Buffer : 0x%X\n" , Cluster);
     // If root directory, take care of it differently. 
     
     if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
@@ -440,7 +438,7 @@ bool FAT16::WriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
         Entry , sizeof(struct SFNEntry));
         WriteCluster(Storage , ClusterAddress+ClusterNumber , 1 , Cluster , &(VBR));
     }
-    // Kernel::MemoryManagement::Free(Cluster);
+    // MemoryManagement::Free(Cluster);
     return true;
 }
 
@@ -455,7 +453,7 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     int NameOffset = 0;
     int Checksum;
     int RequiredLFNEntry = (strlen(FileName)/13)+((strlen(FileName)%13 == 0) ? 0 : 1);
-    struct LFNEntry *LFNEntry = (struct LFNEntry *)Kernel::MemoryManagement::Allocate((RequiredLFNEntry*sizeof(struct LFNEntry))+4096);
+    struct LFNEntry *LFNEntry = (struct LFNEntry *)MemoryManagement::Allocate((RequiredLFNEntry*sizeof(struct LFNEntry))+4096);
     char SFNName[12];
 
 // cluster for other directory
@@ -478,8 +476,8 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     CreateSFNName(SFNName , FileName , 1); // To-do : number
     Checksum = GetSFNChecksum(SFNName);
     // Create LFN Entries
-    Kernel::printf("SFN file name   : %s\n" , SFNName);
-    Kernel::printf("LFN Entry count : %d\n" , RequiredLFNEntry);
+    printf("SFN file name   : %s\n" , SFNName);
+    printf("LFN Entry count : %d\n" , RequiredLFNEntry);
     for(i = RequiredLFNEntry-1; i >= 0; i--) {
         LFNEntry[i].Attribute = 0x0F;
         LFNEntry[i].SequenceNumber = (RequiredLFNEntry-i)|(((i == 0) ? 0x40 : 0));
@@ -491,7 +489,7 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
         for(j = 0; j < 2; j++) { LFNEntry[i].FileName3[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
     }
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
-    Kernel::printf("Directory Entry Count : %d\n" , DirectoryEntryCount);
+    printf("Directory Entry Count : %d\n" , DirectoryEntryCount);
     
     // If root directory, take care of it differently. 
     if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
@@ -500,8 +498,8 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
                      +(((RequiredLFNEntry*sizeof(SFNEntry))%VBR.BytesPerSector == 0) ? 0 : 1);
         
         Storage->Driver->ReadSector(Storage , SectorNumber , SectorCount , Cluster);
-        Kernel::printf("Sector Count : %d\n" , SectorCount);
-        Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.BytesPerSector*SectorCount);
+        printf("Sector Count : %d\n" , SectorCount);
+        Cluster = (unsigned char *)MemoryManagement::Allocate(VBR.BytesPerSector*SectorCount);
         Storage->Driver->ReadSector(Storage , SectorAddress+SectorNumber , SectorCount , Cluster);
 
         memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector)]) , 
@@ -514,7 +512,7 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
         ClusterCount = ((RequiredLFNEntry*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster))
                      +(((RequiredLFNEntry*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster) == 0) ? 0 : 1);
 
-        Cluster = (unsigned char *)Kernel::MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*ClusterCount);
+        Cluster = (unsigned char *)MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*ClusterCount);
         ReadCluster(Storage , ClusterNumber , ClusterCount , Cluster , &(VBR));
         
         memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster)]) , 
@@ -536,7 +534,7 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
     unsigned char *Directory;
     EntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
     GetVBR(Storage , &(VBR));
-    Directory = (unsigned char *)Kernel::MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
+    Directory = (unsigned char *)MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
     ReadCluster(Storage , SectorToCluster(DirectoryAddress , &(VBR)) , DirectoryClusterSize , Directory , &(VBR));
     char TemporaryFileName[EntryCount*(5+6+2)];
     for(i = 0; i < EntryCount; i++) {
@@ -607,22 +605,22 @@ int FAT16::ParseDirectories(const char *FileName , char **Directories) {
     }
     for(i = 0; i < strlen(FileName); i++) {
         if(FileName[i] == '/') {
-            Directories[j] = (char *)Kernel::MemoryManagement::Allocate(i-PreviousPoint+1);
+            Directories[j] = (char *)MemoryManagement::Allocate(i-PreviousPoint+1);
             strncpy(Directories[j] , FileName+PreviousPoint , i-PreviousPoint);
-            Kernel::printf("Directories[%d] : %s\n" , j , Directories[j]);
+            printf("Directories[%d] : %s\n" , j , Directories[j]);
             PreviousPoint = i+1;
             j++;
         }
     }
-    Directories[j] = (char *)Kernel::MemoryManagement::Allocate(i-PreviousPoint+1);
+    Directories[j] = (char *)MemoryManagement::Allocate(i-PreviousPoint+1);
     strncpy(Directories[j] , FileName+PreviousPoint , i-PreviousPoint);
-    Kernel::printf("Directories[%d] : %s\n" , j , Directories[j]);
+    printf("Directories[%d] : %s\n" , j , Directories[j]);
     return DirectoryCount;
 }
 
 void FAT16::WriteFileInfo(struct FileInfo *FileInfo , struct SFNEntry SFNEntry , const char *FileName , struct VBR *VBR) {
     FileInfo->BlockSize = 512;
-    FileInfo->FileName = (char *)Kernel::MemoryManagement::Allocate(strlen(FileName));
+    FileInfo->FileName = (char *)MemoryManagement::Allocate(strlen(FileName));
     strcpy(FileInfo->FileName , FileName);
     FileInfo->FileSize = SFNEntry.FileSize;
     FileInfo->CreatedDate = SFNEntry.CreatedDate;

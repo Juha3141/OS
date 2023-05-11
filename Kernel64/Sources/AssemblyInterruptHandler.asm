@@ -10,12 +10,12 @@
 SECTION .text
 
 ; Interrupt handler : 
-global _ZN6Kernel3PIT16InterruptHandlerEv                   ; Kernel::PIT::InterruptHandler
-global _ZN6Kernel8Keyboard16InterruptHandlerEv              ; Kernel::Keyboard::InterruptHandler 
-global _ZN6Kernel5Mouse16InterruptHandlerEv                 ; Kernel::Mouse::InterruptHandler
-global _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv       ; Kernel::APIC::Timer::InterruptHandler
-global _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev    ; Kernel::Drivers::PATA::InterruptHandler_IRQ14
-global _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev    ; Kernel::Drivers::PATA::InterruptHandler_IRQ15
+global _ZN3PIT16InterruptHandlerEv                   ; PIT::InterruptHandler
+global _ZN8Keyboard16InterruptHandlerEv              ; Keyboard::InterruptHandler 
+global _ZN5Mouse16InterruptHandlerEv                 ; Mouse::InterruptHandler
+global _ZN9LocalAPIC5Timer16InterruptHandlerEv       ; APIC::Timer::InterruptHandler
+global _ZN7Drivers4PATA22InterruptHandler_IRQ14Ev    ; Drivers::PATA::InterruptHandler_IRQ14
+global _ZN7Drivers4PATA22InterruptHandler_IRQ15Ev    ; Drivers::PATA::InterruptHandler_IRQ15
 
 global DividedByZero
 global Debug
@@ -50,15 +50,15 @@ global VMMCommunicationException
 global SecurityException
 
 ; Functions being called by Interrupt handler(the actual handlers) : 
-extern _ZN6Kernel3PIT20MainInterruptHandlerEv               ; Kernel::PIT::MainInterruptHandler
-extern _ZN6Kernel8Keyboard20MainInterruptHandlerEv          ; Kernel::Keyboard::MainInterruptHandler
-extern _ZN6Kernel5Mouse20MainInterruptHandlerEv             ; Kernel::Mouse::MainInterruptHandler
-extern _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv   ; Kernel::APIC::Timer::MainInterruptHandler
-extern _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb      ; Kernel::Drivers::PATA::MainInterruptHandler
+extern _ZN3PIT20MainInterruptHandlerEv               ; PIT::MainInterruptHandler
+extern _ZN8Keyboard20MainInterruptHandlerEv          ; Keyboard::MainInterruptHandler
+extern _ZN5Mouse20MainInterruptHandlerEv             ; Mouse::MainInterruptHandler
+extern _ZN9LocalAPIC5Timer20MainInterruptHandlerEv   ; APIC::Timer::MainInterruptHandler
+extern _ZN7Drivers4PATA20MainInterruptHandlerEb      ; Drivers::PATA::MainInterruptHandler
 
-extern _ZN6Kernel9LocalAPIC7SendEOIEv                       ; Kernel::LocalAPIC::SendEOI
+extern _ZN9LocalAPIC7SendEOIEv                       ; LocalAPIC::SendEOI
 
-extern _ZN6Kernel10Exceptions17ProcessExceptionsEim
+extern _ZN10Exceptions17ProcessExceptionsEim
 
 %macro SAVE_REGISTERS_TO_STACK 0    ; Save the registers to stack, exactly IST
     push rbp                    ; Save stack base to the stack
@@ -127,7 +127,7 @@ DividedByZero:
 
     mov rdi , 0
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -137,7 +137,7 @@ Debug:
 
     mov rdi , 1
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -147,7 +147,7 @@ NonMaskableInterrupt:
 
     mov rdi , 2
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -157,7 +157,7 @@ Breakpoint:
 
     mov rdi , 3
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -167,7 +167,7 @@ Overflow:
 
     mov rdi , 4
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -177,7 +177,7 @@ BoundRangeExceeded:
 
     mov rdi , 5
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -187,7 +187,7 @@ InvalidOpcode:
 
     mov rdi , 6
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -197,7 +197,7 @@ DeviceNotAvailable:
 
     mov rdi , 7
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -207,7 +207,7 @@ DoubleFault:
 
     mov rdi , 8
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -217,7 +217,7 @@ CorprocessorSegmentOverrun:
 
     mov rdi , 9
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -227,7 +227,7 @@ InvalidTSS:
 
     mov rdi , 10
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -237,7 +237,7 @@ SegmentNotPresent:
 
     mov rdi , 11
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -247,7 +247,7 @@ StackSegmentFault:
 
     mov rdi , 12
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -257,7 +257,7 @@ GeneralProtectionFault:
 
     mov rdi , 13
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -267,7 +267,7 @@ PageFault:
 
     mov rdi , 14
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -277,7 +277,7 @@ Reserved15:
 
     mov rdi , 15
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -287,7 +287,7 @@ x87FloatPointException:
 
     mov rdi , 16
     mov rsi ,  0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -297,7 +297,7 @@ AlignmentCheck:
 
     mov rdi ,  17
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -307,7 +307,7 @@ MachineCheck:
 
     mov rdi , 18
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -317,7 +317,7 @@ SIMDFloatingPointException:
 
     mov rdi , 19
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -327,7 +327,7 @@ VirtualizationException:
 
     mov rdi , 20
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -337,7 +337,7 @@ ControlProtectionException:
 
     mov rdi , 21
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -347,7 +347,7 @@ Reserved22:
 
     mov rdi , 22
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -357,7 +357,7 @@ Reserved23:
 
     mov rdi , 23
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -367,7 +367,7 @@ Reserved24:
 
     mov rdi , 24
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -377,7 +377,7 @@ Reserved25:
 
     mov rdi , 25
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -387,7 +387,7 @@ Reserved26:
 
     mov rdi , 26
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -397,7 +397,7 @@ Reserved27:
 
     mov rdi , 27
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -407,7 +407,7 @@ HypervisorInjectionException:
 
     mov rdi , 28
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -417,7 +417,7 @@ VMMCommunicationException:
 
     mov rdi , 29
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
@@ -427,38 +427,38 @@ SecurityException:
 
     mov rdi , 30
     mov rsi , 0
-    call _ZN6Kernel10Exceptions17ProcessExceptionsEim
+    call _ZN10Exceptions17ProcessExceptionsEim
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
 
 ; Interrupt handler for IRQ #0 (Timer Interrupt)
-_ZN6Kernel3PIT16InterruptHandlerEv:
+_ZN3PIT16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK
 
-    call _ZN6Kernel3PIT20MainInterruptHandlerEv         ; call the main function
+    call _ZN3PIT20MainInterruptHandlerEv         ; call the main function
 
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
 
 ; Interrupt handler for IRQ #1 (Keyboard Interrupt)
-_ZN6Kernel8Keyboard16InterruptHandlerEv:
+_ZN8Keyboard16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK
 
-    call _ZN6Kernel8Keyboard20MainInterruptHandlerEv    ; call the main function
+    call _ZN8Keyboard20MainInterruptHandlerEv    ; call the main function
     
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
 
-_ZN6Kernel5Mouse16InterruptHandlerEv:
+_ZN5Mouse16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK
 
-    call _ZN6Kernel5Mouse20MainInterruptHandlerEv      ; call the main function
+    call _ZN5Mouse20MainInterruptHandlerEv      ; call the main function
     
     LOAD_REGISTERS_FROM_STACK   ; Load the registers
     iretq                       ; Return from the interrupt
 
-_ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
+_ZN9LocalAPIC5Timer16InterruptHandlerEv:
     SAVE_REGISTERS_TO_STACK
     
     ; Get Current APIC ID
@@ -492,27 +492,27 @@ _ZN6Kernel9LocalAPIC5Timer16InterruptHandlerEv:
     test rax , rax
     jnz .DONE
 
-    call _ZN6Kernel9LocalAPIC5Timer20MainInterruptHandlerEv
+    call _ZN9LocalAPIC5Timer20MainInterruptHandlerEv
 .DONE:
-    call _ZN6Kernel9LocalAPIC7SendEOIEv
+    call _ZN9LocalAPIC7SendEOIEv
     
     LOAD_REGISTERS_FROM_STACK
     iretq
 
-_ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev:
+_ZN7Drivers4PATA22InterruptHandler_IRQ14Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 1
-    ; call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
+    ; call _ZN7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq
 
-_ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev:
+_ZN7Drivers4PATA22InterruptHandler_IRQ15Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 0
-    ; call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
+    ; call _ZN7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq

@@ -78,69 +78,62 @@
 #define IOAPIC_IOREDTBL_DELIVERY_MODE_INIT                  0b101 // Trigger Mode : Edge
 #define IOAPIC_IOREDTBL_DELIVERY_MODE_EXTINT                0b111 // Edge
 
-namespace Kernel {
-    namespace LocalAPIC {
-        struct LocalVectorTableRegister {
-            unsigned char VectorNumber;
-            unsigned char NMI:3;
-            unsigned char Reserved1:1;
-            unsigned char InterruptPending:1;
-            unsigned char Polarity:1;
-            unsigned char RemoteIRR:1;
-            unsigned char TriggerMode:1;
-            unsigned char SetToMask;
-            unsigned short Reserved2;
-        };
-        void WriteRegister(unsigned int RegisterAddress , unsigned int Data);
-        void WriteRegister_L(unsigned int RegisterAddress , unsigned long Data);
+namespace LocalAPIC {
+    struct LocalVectorTableRegister {
+        unsigned char VectorNumber;
+        unsigned char NMI:3;
+        unsigned char Reserved1:1;
+        unsigned char InterruptPending:1;
+        unsigned char Polarity:1;
+        unsigned char RemoteIRR:1;
+        unsigned char TriggerMode:1;
+        unsigned char SetToMask;
+        unsigned short Reserved2;
+    };
+    void WriteRegister(unsigned int RegisterAddress , unsigned int Data);
+    void WriteRegister_L(unsigned int RegisterAddress , unsigned long Data);
+    
+    unsigned int ReadRegister(unsigned int RegisterAddress);
+    unsigned long ReadRegister_L(unsigned int RegisterAddress);
+    void GlobalEnableLocalAPIC(void);
+    void EnableLocalAPIC(void);
+    bool CheckBSP(void);
+    void ActivateAPCores(void);
+    bool SendInitSignal(unsigned int APICID);
+    bool SendActivateSignal(unsigned int APICID);
+    unsigned int GetActivatedCoreCount(void);
+    unsigned int GetCurrentAPICID(void);
+    void SendEOI(void);
+    namespace Timer {
+        void Initialize(void);
+        unsigned int GetInitialValue(void);
+        void SetInitialValue(unsigned int Value);
+        void Enable(void);
+        void Disable(void);
+        unsigned int GetTickCount(void);
+        void InterruptHandler(void);
+        void MainInterruptHandler(void);
         
-        unsigned int ReadRegister(unsigned int RegisterAddress);
-        unsigned long ReadRegister_L(unsigned int RegisterAddress);
-
-        void GlobalEnableLocalAPIC(void);
-        void EnableLocalAPIC(void);
-        bool CheckBSP(void);
-        void ActivateAPCores(void);
-        bool SendInitSignal(unsigned int APICID);
-        bool SendActivateSignal(unsigned int APICID);
-
-        unsigned int GetActivatedCoreCount(void);
-        unsigned int GetCurrentAPICID(void);
-
-        void SendEOI(void);
-
-        namespace Timer {
-            void Initialize(void);
-            unsigned int GetInitialValue(void);
-            void SetInitialValue(unsigned int Value);
-            void Enable(void);
-            void Disable(void);
-            unsigned int GetTickCount(void);
-            void InterruptHandler(void);
-            void MainInterruptHandler(void);
-            
-        }
     }
-    namespace IOAPIC {
-        struct IORedirectionTable {
-            unsigned char InterruptVector;
-            unsigned char DeliveryMode:3;
-            unsigned char DestinationMode:1; // 0 : Physical Mode , 0 : Logical Mode
-            unsigned char DeliveryStaus:1; // 0 : Idle , 1 : Send Pending
-            unsigned char InterruptPinPolarity:1; // 0 : High Active , 1 : Low Active
-            unsigned char RemoteIRR:1; // Read Only
-            unsigned char TriggerMode:1; // 0 : Edge sensitive , 1 : Level sensitive
-            unsigned char InterruptMask:1; // 0 : Unmasked , 1 : Masked
-            unsigned long Reserved:39;
-
-            unsigned char DestinationAddress;
-        };
-        void InitializeRedirectionTable(void);
-        void ReadIORedirectionTable(int INTIN , struct IORedirectionTable *RedirectionTable);
-        void WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable);
-        void WriteRegister(unsigned char RegisterAddress , unsigned int Data);
-        unsigned int ReadRegister(unsigned char RegisterAddress);
-    }
+}
+namespace IOAPIC {
+    struct IORedirectionTable {
+        unsigned char InterruptVector;
+        unsigned char DeliveryMode:3;
+        unsigned char DestinationMode:1; // 0 : Physical Mode , 0 : Logical Mode
+        unsigned char DeliveryStaus:1; // 0 : Idle , 1 : Send Pending
+        unsigned char InterruptPinPolarity:1; // 0 : High Active , 1 : Low Active
+        unsigned char RemoteIRR:1; // Read Only
+        unsigned char TriggerMode:1; // 0 : Edge sensitive , 1 : Level sensitive
+        unsigned char InterruptMask:1; // 0 : Unmasked , 1 : Masked
+        unsigned long Reserved:39;
+        unsigned char DestinationAddress;
+    };
+    void InitializeRedirectionTable(void);
+    void ReadIORedirectionTable(int INTIN , struct IORedirectionTable *RedirectionTable);
+    void WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable);
+    void WriteRegister(unsigned char RegisterAddress , unsigned int Data);
+    unsigned int ReadRegister(unsigned char RegisterAddress);
 }
 
 #endif

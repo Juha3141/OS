@@ -13,26 +13,26 @@
 // for C++ standard
 
 void *operator new(unsigned long Size) {
-    return Kernel::MemoryManagement::Allocate(Size);
+    return MemoryManagement::Allocate(Size);
 }
 
 void *operator new[](unsigned long Size) {
-    return Kernel::MemoryManagement::Allocate(Size);
+    return MemoryManagement::Allocate(Size);
 }
 
 void operator delete(void *Pointer) {
-    Kernel::MemoryManagement::Free(Pointer);
+    MemoryManagement::Free(Pointer);
 }
 
-void Kernel::MemoryManagement::Initialize(void) {
+void MemoryManagement::Initialize(void) {
 	int E820EntryCount = 0;
 	unsigned long TotalUsableMemory = 0;
-	Kernel::MemoryManagement::NodeManager *NodeManager;
+	MemoryManagement::NodeManager *NodeManager;
 	// Location of the E820, if you are curioused, check line 36 of the Kernel16.asm
 	QuerySystemAddressMap *E820 = (QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS;
-	NodeManager = (Kernel::MemoryManagement::NodeManager*)MEMORYMANAGEMENT_MEMORY_STARTADDRESS; // Allocate system structure
-	Kernel::printf("Node Manager Location : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
-	Kernel::printf("E820 Address          : 0x%X\n" , MEMORYMANAGEMENT_E820_ADDRESS);
+	NodeManager = (MemoryManagement::NodeManager*)MEMORYMANAGEMENT_MEMORY_STARTADDRESS; // Allocate system structure
+	printf("Node Manager Location : 0x%X\n" , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
+	printf("E820 Address          : 0x%X\n" , MEMORYMANAGEMENT_E820_ADDRESS);
 	/* The problem was that the g++ compiler somehow interpretes the code incorrectly, and made a unintentional codes.
 	 * So, to solve the problem, I just made a new function made out of assembly language.
 	 * 
@@ -47,12 +47,12 @@ void Kernel::MemoryManagement::Initialize(void) {
 		if(E820[E820EntryCount].Type == 0x00) {
 			break;
 		}
-		// Kernel::printf("%X~%X %d\n" , E820[E820EntryCount].Address , E820[E820EntryCount].Address+E820[E820EntryCount].Length , E820[E820EntryCount].Type);
+		// printf("%X~%X %d\n" , E820[E820EntryCount].Address , E820[E820EntryCount].Address+E820[E820EntryCount].Length , E820[E820EntryCount].Type);
 		E820EntryCount += 1;
 	}
 	TotalUsableMemory = GetUsableMemory(MEMORYMANAGEMENT_E820_ADDRESS , MEMORYMANAGEMENT_MEMORY_STARTADDRESS);
 	// Initialize the node manager
-	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS+sizeof(Kernel::MemoryManagement::NodeManager) , TotalUsableMemory
+	NodeManager->Initialize(MEMORYMANAGEMENT_MEMORY_STARTADDRESS+sizeof(MemoryManagement::NodeManager) , TotalUsableMemory
 	                       , (QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS , E820EntryCount);
 	return;
 }
@@ -115,14 +115,14 @@ static bool IsAligned8K(unsigned long Address) {
 	return false;
 }
 
-void *Kernel::MemoryManagement::Allocate(unsigned long Size , Kernel::MemoryManagement::ALIGNMENT Alignment) {
+void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMENT Alignment) {
 	int i;
 	unsigned long Address;
 	unsigned long TotalNodeSize = 0;	// TotalNodeSize : Size of the total node that is going to be used for allocation
 	// Load the NodeManager from the local address
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
+	MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if(Size == 0) {
-		Kernel::printf("Allocation Error #0 : Zero allocated size\n");
+		printf("Allocation Error #0 : Zero allocated size\n");
 		return 0x00;
 	}
 	struct Node *Node = (struct Node *)NodeManager->SearchReasonableNode(Size); // Search available node
@@ -140,9 +140,9 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size , Kernel::MemoryMana
 	else {	// Using already existing node
 		if(Alignment != NO_ALIGN) {
 			// Search New alignable location
-			// Kernel::printf("Alignment : %d\n" , Alignment);
+			// printf("Alignment : %d\n" , Alignment);
 			Node = (struct Node *)NodeManager->SearchAlignedNode(Size , Alignment);
-			// Kernel::printf("Found aligned, new one : 0x%X\n" , Node);
+			// printf("Found aligned, new one : 0x%X\n" , Node);
 			if(Node == 0) {
 				Node = NodeManager->CreateNewNode(Size , Alignment);
 			}
@@ -196,19 +196,19 @@ void *Kernel::MemoryManagement::Allocate(unsigned long Size , Kernel::MemoryMana
 // +--------------------------------------+  +--------------------------------------+         //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Kernel::MemoryManagement::Free(void *Address) {
+void MemoryManagement::Free(void *Address) {
 	unsigned long CurrentNode;
 	unsigned long NextNode;
 	unsigned long PreviousNode;
 	// Load the NodeManager from the local address
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
+	MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if((unsigned long)Address < NodeManager->StartAddress) {
-		Kernel::printf("Deallocation Error #0 : Low Memory Address\n");
+		printf("Deallocation Error #0 : Low Memory Address\n");
 		return;
 	}
 	struct Node *Node = (struct Node *)(((unsigned long)Address)-sizeof(struct Node));  // Address of Node : Address - Size of the node structure
 	if((Node->Using == 0)||(Node->Signature != MEMORYMANAGEMENT_SIGNATURE)) {			// If Node is not using, or not present, print error and leave.
-		Kernel::printf("Deallocation Error #1 : Not Allocated Memory\n");
+		printf("Deallocation Error #1 : Not Allocated Memory\n");
 		return;
 	}
 	// Allocated Size : Location of the next node - Location of current node
@@ -255,31 +255,31 @@ void Kernel::MemoryManagement::Free(void *Address) {
 	}
 }
 
-void Kernel::MemoryManagement::ProtectMemory(unsigned long StartAddress , unsigned long MemorySize) {
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
+void MemoryManagement::ProtectMemory(unsigned long StartAddress , unsigned long MemorySize) {
+	MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	NodeManager->AddUnusableMemory(StartAddress , MemorySize);
-	Kernel::printf("Added to unusable memory list : 0x%X~0x%X\n" , StartAddress , StartAddress+MemorySize);
+	printf("Added to unusable memory list : 0x%X~0x%X\n" , StartAddress , StartAddress+MemorySize);
 }
 
 // Description : Print informations of every node
-void Kernel::MemoryManagement::NodeManager::MapNode(void) {
+void MemoryManagement::NodeManager::MapNode(void) {
 	int i = 0;
 	struct Node *Node = (struct Node *)this->StartAddress;	// Start from StartAddress, 
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
-		Kernel::printf("%02d:%d|%d " , i++ , Node->Using , Node->NextNode-(unsigned long)Node-sizeof(struct Node));
+		printf("%02d:%d|%d " , i++ , Node->Using , Node->NextNode-(unsigned long)Node-sizeof(struct Node));
 		Node = (struct Node *)Node->NextNode;				// Print the information of the node, until the node runs out.
 	}
-	Kernel::printf("\n");
+	printf("\n");
 }
 
 // Description : Initializes the variables
-void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory , QuerySystemAddressMap *E820 , int E820EntryCount) {
+void MemoryManagement::NodeManager::Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory , QuerySystemAddressMap *E820 , int E820EntryCount) {
 	int i;
 	this->StartAddress = StartAddress; 				// StartAddress 	 : The location of the memory pool
 	this->CurrentAddress = StartAddress;			// CurrentAddress    : The location of current position
 	this->LastFreedAddress = 0;						// LastFreedAddress  : The location of lastly freed segment, 0 = There's yet no freed segment
 	this->TotalUsableMemory = TotalUsableMemory;	// TotalUsableMemory : Total available memory to use(Size of the memory pool)
-	Kernel::printf("Unusable Memories List Location : 0x%X\n" , UnusableMemories);
+	printf("Unusable Memories List Location : 0x%X\n" , UnusableMemories);
 	for(i = UnusableMemoryEntryCount = 0; i < E820EntryCount; i++) {
 		if(E820[i].Type != MEMORYMANAGEMENT_E820_USABLE) { // If memory is not usable, put it into unusable memories list
 			memcpy(&(UnusableMemories[UnusableMemoryEntryCount]) , &(E820[i]) , sizeof(QuerySystemAddressMap));
@@ -289,17 +289,17 @@ void Kernel::MemoryManagement::NodeManager::Initialize(unsigned long StartAddres
 }
 
 // Description : Search the node that is bigger than the given size from the argument
-unsigned long Kernel::MemoryManagement::NodeManager::SearchReasonableNode(unsigned long Size) {
+unsigned long MemoryManagement::NodeManager::SearchReasonableNode(unsigned long Size) {
 	struct Node *Node;
 	if(this->CurrentAddress == this->StartAddress) {
-		// Kernel::printf("Returning Start of the memory\n");
+		// printf("Returning Start of the memory\n");
 		// If current address is start of the memory,
 		return this->StartAddress;  // return the start address.
 	}
 	Node = (struct Node *)((this->LastFreedAddress == 0) ? this->CurrentAddress : this->LastFreedAddress);
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		if((Node->Using == 0) && (GetNodeSize(Node) >= Size)) {
-			// Kernel::printf("Free Node Found : At 0x%08X, Size : %d\n" , Node , (Node->NextNode-(unsigned long)Node-sizeof(struct Node)));
+			// printf("Free Node Found : At 0x%08X, Size : %d\n" , Node , (Node->NextNode-(unsigned long)Node-sizeof(struct Node)));
 			return (unsigned long)Node;
 		}
 		Node = (struct Node *)Node->NextNode;
@@ -307,7 +307,7 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchReasonableNode(unsign
 	return 0; // No node available, need to create new node
 }
 
-unsigned long Kernel::MemoryManagement::NodeManager::SearchAlignedNode(unsigned long Size , Kernel::MemoryManagement::ALIGNMENT Alignment) {
+unsigned long MemoryManagement::NodeManager::SearchAlignedNode(unsigned long Size , MemoryManagement::ALIGNMENT Alignment) {
 	struct Node *Node;
 	unsigned long AlignedAddress;
 	Node = (struct Node *)((this->LastFreedAddress == 0) ? this->CurrentAddress : this->LastFreedAddress);
@@ -318,9 +318,9 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchAlignedNode(unsigned 
 				continue;
 			}
 			if(Node->Size >= Size) {
-				// Kernel::printf("Found node , alignable : 0x%X->0x%X\n" , Node , AlignedAddress);
-				// Kernel::printf("Required Size : %d\n" , Size);
-				// Kernel::printf("Calculated Size(A,I) : %d\n" , (((Node->NextNode-AlignedAddress)-sizeof(struct Node))));
+				// printf("Found node , alignable : 0x%X->0x%X\n" , Node , AlignedAddress);
+				// printf("Required Size : %d\n" , Size);
+				// printf("Calculated Size(A,I) : %d\n" , (((Node->NextNode-AlignedAddress)-sizeof(struct Node))));
 				return (unsigned long)(AlignedAddress-sizeof(struct Node));
 			}
 		}
@@ -330,10 +330,10 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchAlignedNode(unsigned 
 }
 
 // Description : Search the location for new node
-unsigned long Kernel::MemoryManagement::NodeManager::SearchNewNodeLocation(void) {
+unsigned long MemoryManagement::NodeManager::SearchNewNodeLocation(void) {
 	struct Node *Node;
 	if(this->CurrentAddress == this->StartAddress) {
-		// Kernel::printf("Returning Start of the memory\n");
+		// printf("Returning Start of the memory\n");
 		// If current address is start of the memory,
 		return this->StartAddress;  // return the start address.
 	}
@@ -346,13 +346,13 @@ unsigned long Kernel::MemoryManagement::NodeManager::SearchNewNodeLocation(void)
 	return (unsigned long)Node;		// Return the location of the last node.
 }
 
-struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::NodeManager::CreateNewNode(unsigned long Size , Kernel::MemoryManagement::ALIGNMENT Alignment) {
-	Kernel::MemoryManagement::NodeManager *NodeManager = (Kernel::MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
+struct MemoryManagement::Node *MemoryManagement::NodeManager::CreateNewNode(unsigned long Size , MemoryManagement::ALIGNMENT Alignment) {
+	MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	struct Node *Node = (struct Node *)SearchNewNodeLocation();	// New node address : CurrentAddress
 	Node = AlignNode(Node , Alignment);
 	if(Alignment != NO_ALIGN) {
-		// Kernel::printf("Aligned Node  : 0x%X\n" , Node);
-		// Kernel::printf("Start Address : 0x%X\n" , ((unsigned long)Node)+sizeof(struct Node));
+		// printf("Aligned Node  : 0x%X\n" , Node);
+		// printf("Start Address : 0x%X\n" , ((unsigned long)Node)+sizeof(struct Node));
 	}
 	// Next node : Offset + Size of the node + Size of the node structure
 	WriteNodeData(Node , 1 , Size , (((unsigned long)Node)+Size+sizeof(struct Node)));
@@ -361,7 +361,7 @@ struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::NodeManager::Cr
 	return Node;
 }
 
-void Kernel::MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , unsigned long NextNode , unsigned long PreviousNode) {
+void MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , unsigned long NextNode , unsigned long PreviousNode) {
 	Node->Using = Using;
 	if(PreviousNode != 0xFFFFFFFFFFFFFFFF) {
 		Node->PreviousNode = PreviousNode;
@@ -379,35 +379,35 @@ void Kernel::MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , un
 	Node->Signature = MEMORYMANAGEMENT_SIGNATURE;   // Write a signature to mark that it's a valid node
 }
 
-int Kernel::MemoryManagement::NodeManager::IsNodeInUnusableMemory(struct Node *Node , Kernel::MemoryManagement::QuerySystemAddressMap *ViolatedMemory) {
+int MemoryManagement::NodeManager::IsNodeInUnusableMemory(struct Node *Node , MemoryManagement::QuerySystemAddressMap *ViolatedMemory) {
 	int i;
 	int ViolatedMemoryCount = 0;
 	for(i = 0; i < UnusableMemoryEntryCount; i++) {
 		if(IsMemoryInside(UnusableMemories[i].Address , UnusableMemories[i].Length , (unsigned long)Node , Node->Size) == true) {
 			memcpy(&(ViolatedMemory[ViolatedMemoryCount++]) , &(UnusableMemories[i]) , sizeof(QuerySystemAddressMap));
-			Kernel::printf("Pre-violation detected!(0x%X~0x%X), Writing..\n" , UnusableMemories[i].Address , UnusableMemories[i].Address+UnusableMemories[i].Length);
+			printf("Pre-violation detected!(0x%X~0x%X), Writing..\n" , UnusableMemories[i].Address , UnusableMemories[i].Address+UnusableMemories[i].Length);
 		}
 	}
 	return ViolatedMemoryCount;
 }
 
-void Kernel::MemoryManagement::NodeManager::AddUnusableMemory(unsigned long StartAddress , unsigned long MemorySize) {
+void MemoryManagement::NodeManager::AddUnusableMemory(unsigned long StartAddress , unsigned long MemorySize) {
 	UnusableMemories[UnusableMemoryEntryCount].Address = StartAddress;
 	UnusableMemories[UnusableMemoryEntryCount].Length = MemorySize;
 	UnusableMemories[UnusableMemoryEntryCount].Type = MEMORYMANAGEMENT_E820_RESERVED;
 	UnusableMemoryEntryCount++;
 }
 
-struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::NodeManager::AdjustNode(struct Kernel::MemoryManagement::Node *Node) {
+struct MemoryManagement::Node *MemoryManagement::NodeManager::AdjustNode(struct MemoryManagement::Node *Node) {
 	int i;
 	int ViolatedMemoryCount;
 	unsigned long StartAddress = 0;
 	unsigned long EndAddress;
 	QuerySystemAddressMap ViolatedMemoryList[UnusableMemoryEntryCount];
 	memset(ViolatedMemoryList , 0 , sizeof(ViolatedMemoryList));
-	//Kernel::printf("Node->Size : %d\n" , Node->Size);
+	//printf("Node->Size : %d\n" , Node->Size);
 	if((ViolatedMemoryCount = IsNodeInUnusableMemory(Node , ViolatedMemoryList)) == 0) {
-		//Kernel::printf("Node is not in reserved memory\n");
+		//printf("Node is not in reserved memory\n");
 		return Node;
 	}
 	StartAddress = ViolatedMemoryList[0].Address;
@@ -416,13 +416,13 @@ struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::NodeManager::Ad
 		StartAddress = MIN(StartAddress , ViolatedMemoryList[i].Address);
 		EndAddress = MAX(EndAddress , (ViolatedMemoryList[i].Address+ViolatedMemoryList[i].Length));
 	}
-	Kernel::printf("Memory Violation Detected , Violated : %d\n" , ViolatedMemoryCount);
-	Kernel::printf("Location : 0x%X~0x%X\n" , StartAddress , EndAddress);
-	Kernel::printf("Violated : 0x%X~0x%X\n" , Node , ((unsigned long)Node)+Node->Size);
+	printf("Memory Violation Detected , Violated : %d\n" , ViolatedMemoryCount);
+	printf("Location : 0x%X~0x%X\n" , StartAddress , EndAddress);
+	printf("Violated : 0x%X~0x%X\n" , Node , ((unsigned long)Node)+Node->Size);
 	return Node;
 }
 
-unsigned long Kernel::MemoryManagement::AlignAddress(unsigned long Address , Kernel::MemoryManagement::ALIGNMENT Alignment) {
+unsigned long MemoryManagement::AlignAddress(unsigned long Address , MemoryManagement::ALIGNMENT Alignment) {
 	if(Alignment == NO_ALIGN) {
 		return Address;
 	}
@@ -432,23 +432,23 @@ unsigned long Kernel::MemoryManagement::AlignAddress(unsigned long Address , Ker
 	return Address;
 }
 
-struct Kernel::MemoryManagement::Node *Kernel::MemoryManagement::AlignNode(struct Kernel::MemoryManagement::Node *Node , Kernel::MemoryManagement::ALIGNMENT Alignment) {
+struct MemoryManagement::Node *MemoryManagement::AlignNode(struct MemoryManagement::Node *Node , MemoryManagement::ALIGNMENT Alignment) {
 	unsigned long AlignedAddress = 0;   // PreviousNodeAddress : Previous Node Address before aligning to 4K
 	AlignedAddress = AlignAddress((((unsigned long)Node)+sizeof(struct Node)) , Alignment); // Get the aligned address
 	if(Alignment != NO_ALIGN) {
 		((struct Node *)(AlignedAddress-sizeof(struct Node)))->PreviousNode = Node->PreviousNode; // Write previous node information to new aligned node
 		Node = (struct Node *)(AlignedAddress-sizeof(struct Node));							      // Relocate node to aligned address
 		((struct Node *)Node->PreviousNode)->NextNode = (AlignedAddress-sizeof(struct Node));	  // Rewrite new node information(new aligned one)
-		// Kernel::printf("Node start address     : 0x%X\n" , Node);
+		// printf("Node start address     : 0x%X\n" , Node);
 	}
 	return Node;
 }
 
-unsigned long Kernel::MemoryManagement::GetNodeSize(struct Kernel::MemoryManagement::Node *Node) {
+unsigned long MemoryManagement::GetNodeSize(struct MemoryManagement::Node *Node) {
 	return ((Node->NextNode-((unsigned long)Node))-sizeof(struct Node));
 } 
 
-bool Kernel::MemoryManagement::IsMemoryInside(unsigned long Source , unsigned long SourceLength , unsigned long Target , unsigned long TargetLength) {
+bool MemoryManagement::IsMemoryInside(unsigned long Source , unsigned long SourceLength , unsigned long Target , unsigned long TargetLength) {
 	if(((Source <= Target) && (Target <= (Source+SourceLength)))
 	|| ((Source <= (Target+TargetLength)) && ((Target+TargetLength) <= Source+SourceLength))) {
 		return true;

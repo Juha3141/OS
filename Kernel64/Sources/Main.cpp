@@ -19,8 +19,6 @@
 #include <FileSystem/ISO9660.hpp>
 #include <FileSystem/FAT16.hpp>
 
-using namespace Kernel;
-
 unsigned long KernelStackBase = 0;
 unsigned long KernelStackSize = 2*1024*1024;
 
@@ -56,7 +54,7 @@ extern "C" void Main(void) {
             CoreInformation->IOAPICID = 0x00;
             CoreInformation->MPUsed = false;
             CoreInformation->CoreCount = 1;
-            Kernel::printf("Using Standard Addresses\n");
+            printf("Using Standard Addresses\n");
         }
     }
     
@@ -69,23 +67,23 @@ extern "C" void Main(void) {
     __asm__ ("sti");
 
     // To-do : Make proper stack system
-    KernelStackBase = (unsigned long)Kernel::MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
+    KernelStackBase = (unsigned long)MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
     KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
 
     FileSystem::Initialize();
-    Kernel::printf("File System Initialized\n");
+    printf("File System Initialized\n");
     StorageSystem::Initialize();
-    Kernel::printf("Storage System Initialized\n");
+    printf("Storage System Initialized\n");
     ISO9660::Register();
     FAT16::Register();
-    Kernel::printf("File System Registered\n");
-    Kernel::printf("RAMDiskDriver::Register : 0x%X\n" , &(RAMDiskDriver::Register));
+    printf("File System Registered\n");
+    printf("RAMDiskDriver::Register : 0x%X\n" , &(RAMDiskDriver::Register));
     
     RAMDiskDriver::Register();
     IDEDriver::Register();
-    Drivers::PCI::Detect();
+    PCI::Detect();
     struct Storage *RAMDiskStorage = RAMDiskDriver::CreateRAMDisk(65536 , 512 , 0x00);
-    Kernel::printf("Registered RAMDisk Storage , Location : 0x%X\n" , RAMDiskStorage->PhysicalInfo.Resources[0]);
+    printf("Registered RAMDisk Storage , Location : 0x%X\n" , RAMDiskStorage->PhysicalInfo.Resources[0]);
     
     // To-do : Create interface
     // AutoFormat_FAT16(Storage);
@@ -94,7 +92,7 @@ extern "C" void Main(void) {
     // To-do : Create function that creates partition
     struct Storage *Storage = StorageSystem::SearchStorage("idehd" , 0);
     if(Storage == 0x00) {
-        Kernel::printf("Not found.\n");
+        printf("Not found.\n");
         while(1) {
             ;
         }
@@ -119,14 +117,14 @@ const unsigned char CommonByteCode[140] = {
 
 void InitializeDrive_MBR(struct Storage *Storage) {
     struct FAT16::VBR VBR;
-    unsigned char *BootSector = (unsigned char *)Kernel::MemoryManagement::Allocate(512);
+    unsigned char *BootSector = (unsigned char *)MemoryManagement::Allocate(512);
     FAT16::WriteVBR(&(VBR) , &(Storage->PhysicalInfo.Geometry) , "POTATOOS" , "NO NAME   " , "FAT16     ");
     memcpy(BootSector , &(VBR) , sizeof(struct FAT16::VBR));
     memcpy(BootSector+sizeof(struct FAT16::VBR) , CommonByteCode , 140);
     BootSector[510] = 0x55;
     BootSector[511] = 0xAA;
     Storage->Driver->WriteSector(Storage , 0 , 1 , BootSector);
-    Kernel::MemoryManagement::Free(BootSector);
+    MemoryManagement::Free(BootSector);
 }
 
 void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , unsigned long StartAddress , unsigned long Size) {
@@ -135,7 +133,7 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     
     struct FAT16::VBR VBR;
     struct Storage *CurrentPartition;
-    unsigned char *BootSector = (unsigned char *)Kernel::MemoryManagement::Allocate(512);
+    unsigned char *BootSector = (unsigned char *)MemoryManagement::Allocate(512);
 
     Partition.StartAddressLBA = StartAddress; // Always starts in this sector
     Partition.EndAddressLBA = StartAddress+Size;
@@ -154,7 +152,7 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     BootSector[510] = 0x55;
     BootSector[511] = 0xAA;
     CurrentPartition->Driver->WriteSector(CurrentPartition , 0 , 1 , BootSector);
-    Kernel::MemoryManagement::Free(BootSector);
+    MemoryManagement::Free(BootSector);
     
     memset(&(VolumeLabelEntry) , 0 , sizeof(struct FAT16::SFNEntry));
     memcpy(VolumeLabelEntry.FileName , VolumeLabel , 11);

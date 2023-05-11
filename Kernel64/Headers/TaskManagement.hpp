@@ -16,138 +16,135 @@
 #define TASK_DEFAULT_DEMAND_TIME      2
 #define TASK_PRIORITY_COUNT           10
 
-namespace Kernel {
-    struct TaskRegisters {
-        unsigned long GS;
-        unsigned long FS;
-        unsigned long ES;
-        unsigned long DS;
+struct TaskRegisters {
+    unsigned long GS;
+    unsigned long FS;
+    unsigned long ES;
+    unsigned long DS;
 
-        unsigned long RAX;
-        unsigned long RBX;
-        unsigned long RCX;
-        unsigned long RDX;
+    unsigned long RAX;
+    unsigned long RBX;
+    unsigned long RCX;
+    unsigned long RDX;
 
-        unsigned long RDI;
-        unsigned long RSI;
+    unsigned long RDI;
+    unsigned long RSI;
 
-        unsigned long R8;
-        unsigned long R9;
-        unsigned long R10;
-        unsigned long R11;
-        unsigned long R12;
-        unsigned long R13;
-        unsigned long R14;
-        unsigned long R15;
-        // Now I get it! If interrupt occurrs, system puts those values to stack
-        // and after interrupt, by iretq instruction, all pushed instructions are put back to 
-        // Original registers! Now I get it!!
-        unsigned long RBP;
-        unsigned long RIP;
-        unsigned long CS;
-        unsigned long RFlags;
-        unsigned long RSP;
-        unsigned long SS;
+    unsigned long R8;
+    unsigned long R9;
+    unsigned long R10;
+    unsigned long R11;
+    unsigned long R12;
+    unsigned long R13;
+    unsigned long R14;
+    unsigned long R15;
+    // Now I get it! If interrupt occurrs, system puts those values to stack
+    // and after interrupt, by iretq instruction, all pushed instructions are put back to 
+    // Original registers! Now I get it!!
+    unsigned long RBP;
+    unsigned long RIP;
+    unsigned long CS;
+    unsigned long RFlags;
+    unsigned long RSP;
+    unsigned long SS;
+};
+namespace TaskManagement {
+    struct Event {
+        char *EventName;
+        int NameLength;
+
+        unsigned long Sender;
+        unsigned long Receiver;
+
+        unsigned long EventID;
+        unsigned long EventResource;
     };
-    namespace TaskManagement {
-        struct Event {
-            char *EventName;
-            int NameLength;
+    struct Task {
+        unsigned long ID;
+        unsigned long Flags;
+        unsigned long Status;
+        unsigned long StackSize;
+        struct TaskRegisters Registers;
+        unsigned long CR3;
 
-            unsigned long Sender;
-            unsigned long Receiver;
+        char Name[32];
+        struct Task *NextTask;
 
-            unsigned long EventID;
-            unsigned long EventResource;
-        };
-        struct Task {
-            unsigned long ID;
-            unsigned long Flags;
-            unsigned long Status;
-            unsigned long StackSize;
+        StructureQueue<struct Event>EventQueue;
 
-            struct TaskRegisters Registers;
-            unsigned long CR3;
+        int DemandTime;
+    };
 
-            char Name[32];
-            struct Task *NextTask;
-
-            StructureQueue<struct Event>EventQueue;
-
-            int DemandTime;
-        };
-
-        class TaskQueue {
-            friend struct SchedulingManager;
-            public:
-                void Initialize(void);
-                void AddTask(struct Task *Task);
-                void RemoveTask(unsigned long TaskID);
-
-                struct Task *GetCurrentTask(void);
-                void SwitchToNextTask(void);
-
-                struct Task *GetTask(unsigned long ID);
-            private:
-                struct Task *StartTask;
-                struct Task *CurrentTask;
-
-                struct Task *NextTaskLinkerToAllocate;
-                int TaskCount;
-        };
-        struct SchedulingManager {
-            friend class TaskQueue;
+    class TaskQueue {
+        friend struct SchedulingManager;
+        public:
             void Initialize(void);
-            struct Task *SwitchTask(void);
-            
-            struct Task *CurrentlyRunningTask;
-            int CurrentMaxAllocatedID;
-            int ExpirationDate;
+            void AddTask(struct Task *Task);
+            void RemoveTask(unsigned long TaskID);
 
-            TaskQueue *Queues[3];
-            int TotalTaskCount;
-        };
-        // to-do : tomorrow or 7-8th period!!
-        class CoreSchedulingManager {
-            friend class SchedulingManager;
-            public:
-                void Initialize(void);
-                unsigned int AddTask(void); // Returns Core Count
-                unsigned int AddTask(unsigned int CoreID);
-                unsigned int RemoveTask(unsigned int CoreID);
+            struct Task *GetCurrentTask(void);
+            void SwitchToNextTask(void);
 
-                static struct CoreSchedulingManager *GetInstance(void) {
-                    static class CoreSchedulingManager *Instance = 0x00;
-                    if(Instance == 0x00) {
-                        Instance = (struct CoreSchedulingManager *)Kernel::SystemStructure::Allocate(sizeof(struct CoreSchedulingManager));
-                        Instance->Initialize();
-                    }
-                    return Instance;
-                }
-            private:
-                // Array type : holds task count per core, index = core ID
-                unsigned int *TaskCountPerCore;
-                unsigned int CoreCount = 0;
+            struct Task *GetTask(unsigned long ID);
+        private:
+            struct Task *StartTask;
+            struct Task *CurrentTask;
 
-                unsigned int CurrentCoreOffset;
-        };
-
+            struct Task *NextTaskLinkerToAllocate;
+            int TaskCount;
+    };
+    struct SchedulingManager {
+        friend class TaskQueue;
         void Initialize(void);
-        unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName);
-        unsigned long TerminateTask(unsigned long TaskID);
-        bool ChangeTaskStatus(unsigned long TaskID , unsigned long Status);
-        void ChangeDemandTime(unsigned long TaskID , unsigned long DemandTime);
-        void SwitchTask(void);
-        void SwitchTaskInTimerInterrupt(void);
-        struct Task *GetCurrentlyRunningTask(void);
-        unsigned long GetCurrentlyRunningTaskID(void);
-        struct Task *GetTask(unsigned long ID);
+        struct Task *SwitchTask(void);
         
-        // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_
-        void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContextToChange);
-        // _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE
-        void SwitchContext(struct Kernel::TaskRegisters *ContextToChange);
-    }
+        struct Task *CurrentlyRunningTask;
+        int CurrentMaxAllocatedID;
+        int ExpirationDate;
+
+        TaskQueue *Queues[3];
+        int TotalTaskCount;
+    };
+    // to-do : tomorrow or 7-8th period!!
+    class CoreSchedulingManager {
+        friend class SchedulingManager;
+        public:
+            void Initialize(void);
+            unsigned int AddTask(void); // Returns Core Count
+            unsigned int AddTask(unsigned int CoreID);
+            unsigned int RemoveTask(unsigned int CoreID);
+
+            static struct CoreSchedulingManager *GetInstance(void) {
+                static class CoreSchedulingManager *Instance = 0x00;
+                if(Instance == 0x00) {
+                    Instance = (struct CoreSchedulingManager *)SystemStructure::Allocate(sizeof(struct CoreSchedulingManager));
+                    Instance->Initialize();
+                }
+                return Instance;
+            }
+        private:
+            // Array type : holds task count per core, index = core ID
+            unsigned int *TaskCountPerCore;
+            unsigned int CoreCount = 0;
+
+            unsigned int CurrentCoreOffset;
+    };
+
+    void Initialize(void);
+    unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName);
+    unsigned long TerminateTask(unsigned long TaskID);
+    bool ChangeTaskStatus(unsigned long TaskID , unsigned long Status);
+    void ChangeDemandTime(unsigned long TaskID , unsigned long DemandTime);
+    void SwitchTask(void);
+    void SwitchTaskInTimerInterrupt(void);
+    struct Task *GetCurrentlyRunningTask(void);
+    unsigned long GetCurrentlyRunningTaskID(void);
+    struct Task *GetTask(unsigned long ID);
+    
+    // _ZN14TaskManagement13SwitchContextEP13TaskRegistersS1_
+    void SwitchContext(struct TaskRegisters *LastContext , struct TaskRegisters *ContextToChange);
+    // _ZN14TaskManagement13SwitchContextEP13TaskRegisters
+    void SwitchContext(struct TaskRegisters *ContextToChange);
 }
 
 #endif

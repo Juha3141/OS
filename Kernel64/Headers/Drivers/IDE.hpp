@@ -47,7 +47,6 @@
 #define IDE_STATUS_READY 0b01000000
 #define IDE_STATUS_BUSY  0b10000000
 
-namespace Kernel {
     struct IDEDriver : StorageDriver {
         bool PreInitialization(void) override;
         unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
@@ -95,6 +94,5 @@ namespace Kernel {
     namespace IDE {
         void MainInterruptHandler(bool Primary);
     }
-}
 
 #endif

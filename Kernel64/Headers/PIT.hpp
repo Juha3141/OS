@@ -43,21 +43,19 @@
 //                   3(0b11)  : Read-back Command                                   //
 //////////////////////////////////////////////////////////////////////////////////////
 
-namespace Kernel {
-    namespace PIT {
-        void Initialize(void);
-        unsigned short ReadPITCounter(unsigned char CounterNumber);
-        
-        unsigned short GetCurrentPITFrequency(void);
-        void DelayByPITCount(unsigned int PITCount);
-        void DelayMilliseconds(unsigned int Milliseconds);
-        void DelayMicroseconds(unsigned int Microseconds);
-        
-        void InterruptHandler(void);
-        void MainInterruptHandler(void);
-        
-        unsigned long GetTickCount(void);
-    }
+namespace PIT {
+    void Initialize(void);
+    unsigned short ReadPITCounter(unsigned char CounterNumber);
+    
+    unsigned short GetCurrentPITFrequency(void);
+    void DelayByPITCount(unsigned int PITCount);
+    void DelayMilliseconds(unsigned int Milliseconds);
+    void DelayMicroseconds(unsigned int Microseconds);
+    
+    void InterruptHandler(void);
+    void MainInterruptHandler(void);
+    
+    unsigned long GetTickCount(void);
 }
 
 

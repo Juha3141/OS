@@ -22,17 +22,17 @@ template <typename T> struct Queue {
         CurrentOffset = 0;
         SelectingOffset = 0;
         TotalLength = QueueSize;
-        QueueList = (T *)Kernel::MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
+        QueueList = (T *)MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
     }
     void DeleteQueue(void) {
-        Kernel::MemoryManagement::Free(QueueList);  // 
+        MemoryManagement::Free(QueueList);  // 
     }
     bool Enqueue(T Data) {                          // Put data to queue
-        // Kernel::printf("Enqueue\n");
-        // Kernel::printf("Data : 0x%X\n" , Data);
+        // printf("Enqueue\n");
+        // printf("Data : 0x%X\n" , Data);
         QueueList[CurrentOffset] = Data;            // Stores data
         CurrentOffset = (CurrentOffset+1)%TotalLength;
-        // Kernel::printf("CurrentOffset : %d\n" , CurrentOffset);
+        // printf("CurrentOffset : %d\n" , CurrentOffset);
         return true;
     }
     bool Dequeue(T *Data) {                               // Remove data from queue
@@ -40,13 +40,13 @@ template <typename T> struct Queue {
         if(IsEmpty() == true) {
             return false;
         }
-        // Kernel::printf("Dequeue\n");
-        // Kernel::printf("CurrentOffset : %d\n" , CurrentOffset);
-        // Kernel::printf("SelectingOffset : %d\n" , SelectingOffset);
+        // printf("Dequeue\n");
+        // printf("CurrentOffset : %d\n" , CurrentOffset);
+        // printf("SelectingOffset : %d\n" , SelectingOffset);
         *Data = QueueList[SelectingOffset];
         SelectingOffset = (SelectingOffset+1)%TotalLength;
-        // Kernel::printf("NewSelectingOffset : %d\n" , SelectingOffset);
-        // Kernel::printf("Data : 0x%X\n" , *Data);
+        // printf("NewSelectingOffset : %d\n" , SelectingOffset);
+        // printf("Data : 0x%X\n" , *Data);
         return true;
     }
     bool IsEmpty(void) {
@@ -66,10 +66,10 @@ template <typename T> struct StructureQueue {
         CurrentOffset = 0;                      // Initialize variables
         SelectingOffset = 0;
         TotalLength = QueueSize;
-        QueueList = (T *)Kernel::MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
+        QueueList = (T *)MemoryManagement::Allocate(QueueSize*sizeof(T));   // Allocate the data array
     }
     void DeleteQueue(void) {
-        Kernel::MemoryManagement::Free(QueueList);
+        MemoryManagement::Free(QueueList);
     }
     bool Enqueue(T Data) {                          // Put data to queue
         memcpy(&(QueueList[CurrentOffset]) , &(Data) , sizeof(T));

@@ -2,27 +2,27 @@
 #include <ResourceAccessManagement.hpp>
 #include <MutualExclusion.hpp>
 
-static Kernel::TaskManagement::SchedulingManager **TaskSchedulingManager;
-static Kernel::MutualExclusion::SpinLock *CommonSpinLock;
+static TaskManagement::SchedulingManager **TaskSchedulingManager;
+static MutualExclusion::SpinLock *CommonSpinLock;
 
-static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigned long StartAddress);
+static void SetTaskRegisters(struct TaskManagement::Task *Task , unsigned long StartAddress);
 
-void Kernel::TaskManagement::Initialize(void) {
+void TaskManagement::Initialize(void) {
     int i;
     class CoreSchedulingManager *CoreSchedulingManager = CoreSchedulingManager::GetInstance();
-    CommonSpinLock = (Kernel::MutualExclusion::SpinLock *)Kernel::MemoryManagement::Allocate(sizeof(Kernel::MutualExclusion::SpinLock));
+    CommonSpinLock = (MutualExclusion::SpinLock *)MemoryManagement::Allocate(sizeof(MutualExclusion::SpinLock));
     // CoreSchedulingManager *CoreManager = (class CoreSchedulingManager *)CoreSchedulingManager::GetInstance();
-    TaskSchedulingManager = (SchedulingManager **)Kernel::SystemStructure::Allocate(sizeof(SchedulingManager *)*CoreInformation::GetInstance()->CoreCount);
+    TaskSchedulingManager = (SchedulingManager **)SystemStructure::Allocate(sizeof(SchedulingManager *)*CoreInformation::GetInstance()->CoreCount);
     for(int i = 0; i < CoreInformation::GetInstance()->CoreCount; i++) {
-        TaskSchedulingManager[i] = (SchedulingManager *)Kernel::SystemStructure::Allocate(sizeof(SchedulingManager));
+        TaskSchedulingManager[i] = (SchedulingManager *)SystemStructure::Allocate(sizeof(SchedulingManager));
         TaskSchedulingManager[i]->Initialize();
     }
     CommonSpinLock->Initialize();
-    Kernel::printf("CommonSpinLock : 0x%X\n" , CommonSpinLock);
+    printf("CommonSpinLock : 0x%X\n" , CommonSpinLock);
 }
 
-static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigned long StartAddress , unsigned long StackSize) {
-    memset(&(Task->Registers) , 0 , sizeof(struct Kernel::TaskRegisters));
+static void SetTaskRegisters(struct TaskManagement::Task *Task , unsigned long StartAddress , unsigned long StackSize) {
+    memset(&(Task->Registers) , 0 , sizeof(struct TaskRegisters));
     switch(Task->Flags & 0x03) {
         case TASK_FLAGS_PRIVILAGE_KERNEL:
             Task->Registers.CS = KERNEL_CS;
@@ -41,19 +41,19 @@ static void SetTaskRegisters(struct Kernel::TaskManagement::Task *Task , unsigne
             Task->Registers.SS = USER_DS;
             break;
     }
-    Task->Registers.RSP = (unsigned long)Kernel::MemoryManagement::Allocate(StackSize)+StackSize-8;
+    Task->Registers.RSP = (unsigned long)MemoryManagement::Allocate(StackSize)+StackSize-8;
     Task->Registers.RBP = Task->Registers.RSP;
     //*((unsigned long *)Task->Registers.RBP) = /*Return Address*/;
     Task->Registers.RFlags = 0x202;
     Task->Registers.RIP = StartAddress;
 }
 
-unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName) {
+unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName) {
     struct Task *Task;
     class CoreSchedulingManager *CoreSchedulingManager = CoreSchedulingManager::GetInstance();
     unsigned int AssignedCoreID = /*CoreSchedulingManager->AddTask();*/0; // Temporarily use BSP.. there's some weird error going on
     CommonSpinLock->Lock();
-    Task = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
+    Task = (struct Task *)MemoryManagement::Allocate(sizeof(struct Task));
     Task->ID = ((TaskSchedulingManager[AssignedCoreID]->CurrentMaxAllocatedID++)|(0x100000000*AssignedCoreID));
     Task->Status = Status;
     Task->Flags = Flags;
@@ -62,12 +62,12 @@ unsigned long Kernel::TaskManagement::CreateTask(unsigned long StartAddress , un
     SetTaskRegisters(Task , StartAddress , StackSize);
     strcpy(Task->Name , TaskName);
     TaskSchedulingManager[AssignedCoreID]->Queues[(Status) & 0b11]->AddTask(Task);
-    Kernel::printf("Assigned Core ID : %d , TaskID : 0x%X\n" , AssignedCoreID , Task->ID);
+    printf("Assigned Core ID : %d , TaskID : 0x%X\n" , AssignedCoreID , Task->ID);
     CommonSpinLock->Unlock();
     return Task->ID;
 }
 
-unsigned long Kernel::TaskManagement::TerminateTask(unsigned long TaskID) {
+unsigned long TaskManagement::TerminateTask(unsigned long TaskID) {
     int i;
     struct Task *Task = GetTask(TaskID);
     if(Task == 0x00) {
@@ -77,7 +77,7 @@ unsigned long Kernel::TaskManagement::TerminateTask(unsigned long TaskID) {
     return true;
 }
 
-bool Kernel::TaskManagement::ChangeTaskStatus(unsigned long TaskID , unsigned long NewStatus) {
+bool TaskManagement::ChangeTaskStatus(unsigned long TaskID , unsigned long NewStatus) {
     int i;
     struct Task *Task = GetTask(TaskID);
     if(Task == 0x00) {
@@ -92,7 +92,7 @@ bool Kernel::TaskManagement::ChangeTaskStatus(unsigned long TaskID , unsigned lo
     return true;
 }
 
-void Kernel::TaskManagement::ChangeDemandTime(unsigned long TaskID , unsigned long DemandTime) {
+void TaskManagement::ChangeDemandTime(unsigned long TaskID , unsigned long DemandTime) {
     int i;
     struct Task *Task = GetTask(TaskID);
     if(Task == 0x00) {
@@ -101,17 +101,17 @@ void Kernel::TaskManagement::ChangeDemandTime(unsigned long TaskID , unsigned lo
     Task->DemandTime = DemandTime;
 }
 
-void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
+void TaskManagement::SchedulingManager::Initialize(void) {
     int i;
     struct Task *MainTask;
     TotalTaskCount = 0;
     CurrentMaxAllocatedID = 0x00;
     for(i = 0; i < 3; i++) {
-        Queues[i] = (TaskManagement::TaskQueue *)Kernel::MemoryManagement::Allocate(sizeof(TaskQueue));
+        Queues[i] = (TaskManagement::TaskQueue *)MemoryManagement::Allocate(sizeof(TaskQueue));
         Queues[i]->Initialize();
     }
     
-    MainTask = (struct Task *)Kernel::MemoryManagement::Allocate(sizeof(struct Task));
+    MainTask = (struct Task *)MemoryManagement::Allocate(sizeof(struct Task));
     MainTask->ID = this->CurrentMaxAllocatedID++;
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL;
 
@@ -121,7 +121,7 @@ void Kernel::TaskManagement::SchedulingManager::Initialize(void) {
     CurrentlyRunningTask = MainTask;
 }
 
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::SchedulingManager::SwitchTask(void) {
+struct TaskManagement::Task *TaskManagement::SchedulingManager::SwitchTask(void) {
     struct Task *Task;
     if(Queues[TASK_STATUS_RUNNING]->TaskCount != 0) {
         Queues[TASK_STATUS_RUNNING]->SwitchToNextTask();
@@ -135,9 +135,9 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::SchedulingManager::
     return Task;
 }
 
-void Kernel::TaskManagement::SwitchTask(void) {
-    struct Kernel::TaskManagement::Task *PreviousTask;
-    struct Kernel::TaskManagement::Task *CurrentTask;
+void TaskManagement::SwitchTask(void) {
+    struct TaskManagement::Task *PreviousTask;
+    struct TaskManagement::Task *CurrentTask;
     CommonSpinLock->Lock();
     PreviousTask = TaskSchedulingManager[LocalAPIC::GetCurrentAPICID()]->CurrentlyRunningTask;
     if(TaskSchedulingManager[LocalAPIC::GetCurrentAPICID()]->ExpirationDate > 0) {
@@ -150,12 +150,12 @@ void Kernel::TaskManagement::SwitchTask(void) {
     SwitchContext(&(PreviousTask->Registers) , &(CurrentTask->Registers));
 }
 
-void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
-    struct Kernel::TaskManagement::Task *PreviousTask;
-    struct Kernel::TaskManagement::Task *CurrentTask;
-    struct Kernel::TaskRegisters *IST;
-    IST = (struct Kernel::TaskRegisters *)(DescriptorTables::GetInterruptStackTable
-          (LocalAPIC::GetCurrentAPICID())-sizeof(struct Kernel::TaskRegisters));
+void TaskManagement::SwitchTaskInTimerInterrupt(void) {
+    struct TaskManagement::Task *PreviousTask;
+    struct TaskManagement::Task *CurrentTask;
+    struct TaskRegisters *IST;
+    IST = (struct TaskRegisters *)(DescriptorTables::GetInterruptStackTable
+          (LocalAPIC::GetCurrentAPICID())-sizeof(struct TaskRegisters));
     CommonSpinLock->Lock();
     if(LocalAPIC::GetCurrentAPICID() != 0) {
         return;
@@ -171,19 +171,19 @@ void Kernel::TaskManagement::SwitchTaskInTimerInterrupt(void) {
     if(PreviousTask->ID == CurrentTask->ID) {
         return;
     }
-    memcpy(&(PreviousTask->Registers) , IST , sizeof(struct Kernel::TaskRegisters));
-    memcpy(IST , &(CurrentTask->Registers) , sizeof(struct Kernel::TaskRegisters));
+    memcpy(&(PreviousTask->Registers) , IST , sizeof(struct TaskRegisters));
+    memcpy(IST , &(CurrentTask->Registers) , sizeof(struct TaskRegisters));
 }
 
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::GetCurrentlyRunningTask(void) {
+struct TaskManagement::Task *TaskManagement::GetCurrentlyRunningTask(void) {
     return TaskSchedulingManager[LocalAPIC::GetCurrentAPICID()]->CurrentlyRunningTask;
 }
 
-unsigned long Kernel::TaskManagement::GetCurrentlyRunningTaskID(void) {
+unsigned long TaskManagement::GetCurrentlyRunningTaskID(void) {
     return TaskSchedulingManager[LocalAPIC::GetCurrentAPICID()]->CurrentlyRunningTask->ID;
 }
 
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::GetTask(unsigned long ID) {
+struct TaskManagement::Task *TaskManagement::GetTask(unsigned long ID) {
     int i;
     int j;
     struct Task *Task;
@@ -197,11 +197,11 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::GetTask(unsigned lo
 
 ////////// PriorityQueue ////////////
 
-void Kernel::TaskManagement::TaskQueue::Initialize(void) {
+void TaskManagement::TaskQueue::Initialize(void) {
     TaskCount = 0;
 }
 
-void Kernel::TaskManagement::TaskQueue::AddTask(struct Task *Task) {
+void TaskManagement::TaskQueue::AddTask(struct Task *Task) {
     if(TaskCount == 0) {
         StartTask = Task;
         StartTask->NextTask = StartTask;
@@ -217,7 +217,7 @@ void Kernel::TaskManagement::TaskQueue::AddTask(struct Task *Task) {
     return;
 }
 
-void Kernel::TaskManagement::TaskQueue::RemoveTask(unsigned long TaskID) {
+void TaskManagement::TaskQueue::RemoveTask(unsigned long TaskID) {
     struct Task *TaskPointer = StartTask;
     struct Task *PreviousPointer = 0x00;
     if(TaskCount == 0) {
@@ -236,15 +236,15 @@ void Kernel::TaskManagement::TaskQueue::RemoveTask(unsigned long TaskID) {
     TaskCount -= 1;
 }
 
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::TaskQueue::GetCurrentTask(void) {
+struct TaskManagement::Task *TaskManagement::TaskQueue::GetCurrentTask(void) {
     return CurrentTask;
 }
 
-void Kernel::TaskManagement::TaskQueue::SwitchToNextTask(void) {
+void TaskManagement::TaskQueue::SwitchToNextTask(void) {
     CurrentTask = CurrentTask->NextTask;
 }
 
-struct Kernel::TaskManagement::Task *Kernel::TaskManagement::TaskQueue::GetTask(unsigned long ID) {
+struct TaskManagement::Task *TaskManagement::TaskQueue::GetTask(unsigned long ID) {
     struct Task *TaskPointer = StartTask;
     if(TaskCount == 0) {
         return 0x00;
@@ -268,9 +268,9 @@ struct Kernel::TaskManagement::Task *Kernel::TaskManagement::TaskQueue::GetTask(
 
 /// @brief Initializes core scheduling manager
 /// @param None
-void Kernel::TaskManagement::CoreSchedulingManager::Initialize(void) {
+void TaskManagement::CoreSchedulingManager::Initialize(void) {
     this->CoreCount = CoreInformation::GetInstance()->CoreCount;
-    TaskCountPerCore = (unsigned int *)Kernel::MemoryManagement::Allocate(this->CoreCount*sizeof(unsigned int));
+    TaskCountPerCore = (unsigned int *)MemoryManagement::Allocate(this->CoreCount*sizeof(unsigned int));
     memset(TaskCountPerCore , 0 , this->CoreCount*sizeof(unsigned int));
     CurrentCoreOffset = 0;
 }
@@ -280,7 +280,7 @@ void Kernel::TaskManagement::CoreSchedulingManager::Initialize(void) {
 ///        uses RR scheduling algorithm
 /// @param None
 /// @return Core ID that's going to handle the task
-unsigned int Kernel::TaskManagement::CoreSchedulingManager::AddTask(void) {
+unsigned int TaskManagement::CoreSchedulingManager::AddTask(void) {
     unsigned int CoreID = (CurrentCoreOffset++)%this->CoreCount; // do some RR scheduling
     TaskCountPerCore[CoreID]++;
     return CoreID;
@@ -289,7 +289,7 @@ unsigned int Kernel::TaskManagement::CoreSchedulingManager::AddTask(void) {
 /// @brief Add task to specific core, not by RR scheduling system
 /// @param CoreID (APIC ID) of the core
 /// @return Core ID that's going to handle the task(= CoreID)
-unsigned int Kernel::TaskManagement::CoreSchedulingManager::AddTask(unsigned int CoreID) {
+unsigned int TaskManagement::CoreSchedulingManager::AddTask(unsigned int CoreID) {
     TaskCountPerCore[CoreID]++;
     return CoreID;
 }
@@ -297,7 +297,7 @@ unsigned int Kernel::TaskManagement::CoreSchedulingManager::AddTask(unsigned int
 /// @brief Remove task from specific core(Logically)
 /// @param CoreID 
 /// @return CoreID
-unsigned int Kernel::TaskManagement::CoreSchedulingManager::RemoveTask(unsigned int CoreID) {
+unsigned int TaskManagement::CoreSchedulingManager::RemoveTask(unsigned int CoreID) {
     if(TaskCountPerCore[CoreID] <= 0) {
         TaskCountPerCore[CoreID] = 0; // Adjust error (If below zero)
         return 0xFFFFFFFF;

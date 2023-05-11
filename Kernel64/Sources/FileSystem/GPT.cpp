@@ -1,26 +1,25 @@
 #include <FileSystem/GPT.hpp>
 
-using namespace Kernel;
 
 bool GPT::Identifier::Detect(void) {
     int i;
     if(Driver == 0x00) {
-        //Kernel::MemoryManagement::Free(Header);
+        //MemoryManagement::Free(Header);
         return false;
     }
     if(Storage->PhysicalInfo.Geometry.BytesPerSector != 512) {
-        //Kernel::MemoryManagement::Free(Header);
+        //MemoryManagement::Free(Header);
         return false;
     }
     if(Storage->Driver->ReadSector(Storage , 1 , 1 , Header) != 512) {
-        //Kernel::MemoryManagement::Free(Header);
+        //MemoryManagement::Free(Header);
         return false;
     }
     if(memcmp(Header->Signature , "EFI PART" , 8) != 0) {
-        //Kernel::MemoryManagement::Free(Header);
+        //MemoryManagement::Free(Header);
         return false;
     }
-    Kernel::printf("GPT Detected\n");
+    printf("GPT Detected\n");
     return true;
 }
 
@@ -32,8 +31,8 @@ struct Partition *GPT::Identifier::GetPartition(void) {
     if((AllocateSize%512) != 0x00) {
         AllocateSize = (((unsigned int)(AllocateSize/512))+1)*512;
     }
-    Partitions = (Partition *)Kernel::MemoryManagement::Allocate(128*sizeof(struct Partition));
-    PartitionTableEntry = (struct PartitionTableEntry *)Kernel::MemoryManagement::Allocate(AllocateSize);
+    Partitions = (Partition *)MemoryManagement::Allocate(128*sizeof(struct Partition));
+    PartitionTableEntry = (struct PartitionTableEntry *)MemoryManagement::Allocate(AllocateSize);
     Storage->Driver->ReadSector(Storage , Header->PartitionTableEntryLBA ,  AllocateSize/512 , PartitionTableEntry);
     if((PartitionTableEntry[0].PartitionTypeGUID[0] == 0) && (PartitionTableEntry[0].PartitionTypeGUID[1] == 0)
     && (PartitionTableEntry[0].PartitionTypeGUID[2] == 0) && (PartitionTableEntry[0].PartitionTypeGUID[3] == 0)) {

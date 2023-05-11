@@ -4,12 +4,12 @@
 
 // To-do : comment
 
-unsigned long Kernel::MPFloatingTable::FindMPFloatingTable(void) {
+unsigned long MPFloatingTable::FindMPFloatingTable(void) {
     int i;
     unsigned long MPFloatingPointerLocation;
     unsigned long EBDAAddress;
     unsigned long SystemBaseMemory;
-    Kernel::printf("Finding MP Floating Pointer : \n");
+    printf("Finding MP Floating Pointer : \n");
     // Actually this was based on the "POINTER value" of this address
     EBDAAddress = *((unsigned short *)0x40E);
     EBDAAddress *= 16;
@@ -17,26 +17,26 @@ unsigned long Kernel::MPFloatingTable::FindMPFloatingTable(void) {
     SystemBaseMemory *= 1024;
     for(MPFloatingPointerLocation = EBDAAddress; MPFloatingPointerLocation <= (EBDAAddress+1024); MPFloatingPointerLocation += 1) {
         if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
-            Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
+            printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
     }
     for(MPFloatingPointerLocation = (SystemBaseMemory-1024); MPFloatingPointerLocation <= SystemBaseMemory; MPFloatingPointerLocation += 1) {
         if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
-            Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
+            printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
     }
     for(MPFloatingPointerLocation = 0xF0000; MPFloatingPointerLocation <= 0xFFFFF; MPFloatingPointerLocation += 1) {
         if(memcmp((unsigned char *)MPFloatingPointerLocation , "_MP_" , 4) == 0) {
-            Kernel::printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
+            printf("Found MP Floating Pointer : 0x%X\n" , MPFloatingPointerLocation);
             return (unsigned long)MPFloatingPointerLocation;
         }
     }
     return 0x00;
 }
 
-bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
+bool MPFloatingTable::SaveCoresInformation(void) {
     int i;
     int j = 0;
     int CoreCount = 0;
@@ -44,7 +44,7 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     unsigned int EDX;
     unsigned long TableAddress;
     char BusName[7];
-    struct Kernel::CoreInformation *CoreInformation = (struct Kernel::CoreInformation *)Kernel::MemoryManagement::Allocate(sizeof(struct Kernel::CoreInformation));
+    struct CoreInformation *CoreInformation = (struct CoreInformation *)MemoryManagement::Allocate(sizeof(struct CoreInformation));
     struct MPFloatingPointer *MPFloatingPointer = (struct MPFloatingPointer *)FindMPFloatingTable();
     struct MPFloatingTableHeader *TableHeader = (struct MPFloatingTableHeader *)MPFloatingPointer->PhysicalAddressPointer;
     
@@ -54,13 +54,13 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     struct Entries::IOInterruptAssignment *IOInterruptAssignmentEntry;
     struct Entries::LocalInterrupt *LocalInterruptEntry;
     
-    Kernel::printf("MP Floating Pointer Address : 0x%X\n" , MPFloatingPointer);
-    Kernel::printf("PhysicalAddressPointer      : 0x%X\n" , MPFloatingPointer->PhysicalAddressPointer);
+    printf("MP Floating Pointer Address : 0x%X\n" , MPFloatingPointer);
+    printf("PhysicalAddressPointer      : 0x%X\n" , MPFloatingPointer->PhysicalAddressPointer);
 
     if(memcmp(TableHeader->Identifier , "PCMP" , 4) != 0) {
         return false;
     }
-    Kernel::printf("MP Floating Table Entry Count : %d\n" , TableHeader->EntryCount);
+    printf("MP Floating Table Entry Count : %d\n" , TableHeader->EntryCount);
     TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTableHeader);
     CoreInformation->ACPIUsed = false;
     CoreInformation->MPUsed = true;
@@ -73,9 +73,9 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
                 break;
         }
     }
-    Kernel::printf("Core count : %d\n" , CoreCount);
-    CoreInformation->LocalAPICID = (unsigned int *)Kernel::MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
-    CoreInformation->LocalAPICProcessorID = (unsigned int *)Kernel::MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
+    printf("Core count : %d\n" , CoreCount);
+    CoreInformation->LocalAPICID = (unsigned int *)MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
+    CoreInformation->LocalAPICProcessorID = (unsigned int *)MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
     CoreInformation->CoreCount = CoreCount;
     TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTableHeader);
     for(i = 0; i < TableHeader->EntryCount; i++) {
@@ -87,29 +87,29 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
                 j++;
                 TableAddress += sizeof(struct Entries::Processor);
                 /*
-                Kernel::printf("Entry : Processor\n");
-                Kernel::printf("CPU Flags           : %d\n" , ProcessorEntry->CPUFlags);
-                Kernel::printf("CPU Signature       : %d\n" , ProcessorEntry->CPUSignature);
-                Kernel::printf("Local APIC ID       : %d\n" , ProcessorEntry->LocalAPICID);
-                Kernel::printf("Local APIC ID Ver.  : %d\n" , ProcessorEntry->LocalAPICVersion);
+                printf("Entry : Processor\n");
+                printf("CPU Flags           : %d\n" , ProcessorEntry->CPUFlags);
+                printf("CPU Signature       : %d\n" , ProcessorEntry->CPUSignature);
+                printf("Local APIC ID       : %d\n" , ProcessorEntry->LocalAPICID);
+                printf("Local APIC ID Ver.  : %d\n" , ProcessorEntry->LocalAPICVersion);
                 */
                 break;
             case 1:
                 /*
                 BUSEntry = (struct Entries::BUS *)TableAddress;
-                Kernel::printf("Entry : Bus\n");
-                Kernel::printf("BUS ID   : %d\n" , BUSEntry->BusID);
+                printf("Entry : Bus\n");
+                printf("BUS ID   : %d\n" , BUSEntry->BusID);
                 memcpy(BusName , BUSEntry->BusTypeString , 6);
                 BusName[6] = 0;
-                Kernel::printf("BUS Type : %d\n"  , BusName);
+                printf("BUS Type : %d\n"  , BusName);
                 */
                 TableAddress += sizeof(struct Entries::BUS);
                 break;
             case 2:
                 IOAPICEntry = (struct Entries::IOAPIC *)TableAddress;
-                Kernel::printf("IOAPIC ID               : 0x%X\n" , IOAPICEntry->IOAPICID);
+                printf("IOAPIC ID               : 0x%X\n" , IOAPICEntry->IOAPICID);
                 TableAddress += sizeof(struct Entries::IOAPIC);
-                Kernel::printf("IOAPIC Register Address : 0x%X\n" , IOAPICEntry->IOAPICRegisterAddress);
+                printf("IOAPIC Register Address : 0x%X\n" , IOAPICEntry->IOAPICRegisterAddress);
                 break;
             case 3:
                 TableAddress += sizeof(struct Entries::IOInterruptAssignment);
@@ -138,7 +138,7 @@ bool Kernel::MPFloatingTable::SaveCoresInformation(void) {
     CoreInformation->LocalAPICAddress = (EDX << 31)|EAX;
     // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
-    Kernel::printf("Local APIC Address from MSR : 0x%X\n" , CoreInformation->LocalAPICAddress);
+    printf("Local APIC Address from MSR : 0x%X\n" , CoreInformation->LocalAPICAddress);
     CoreInformation::SetInstance(CoreInformation);
     return true;
 }

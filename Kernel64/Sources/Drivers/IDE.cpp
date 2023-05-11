@@ -1,7 +1,5 @@
 #include <Drivers/IDE.hpp>
 
-using namespace Kernel;
-
 static bool PrimaryInterruptFlag = false;
 static bool SecondaryInterruptFlag = false;
 
@@ -26,7 +24,7 @@ bool IDEDriver::PreInitialization(void) {
             Master = false;
         }
         if(StorageSystem::RegisterStorage(this , Storages[i]) == false) {
-            Kernel::printf("Device not found in idehd%d\n" , i);
+            printf("Device not found in idehd%d\n" , i);
         }
     }
     Master = true;
@@ -39,7 +37,7 @@ bool IDEDriver::PreInitialization(void) {
             Master = false;
         }
         if(StorageSystem::RegisterStorage(this , Storages[i]) == false) {
-            Kernel::printf("Device not found in idehd%d\n" , i);
+            printf("Device not found in idehd%d\n" , i);
         }
     }
     return true;
@@ -225,7 +223,7 @@ bool IDE_CDDriver::PreInitialization(void) {
         Storages[i]->PhysicalInfo.Flags[0] = Primary;
         Primary = false;
         if(StorageSystem::RegisterStorage(this , Storages[i]) == false) {
-            Kernel::printf("Device not found in idecd%d\n" , i);
+            printf("Device not found in idecd%d\n" , i);
         }
     }
     Primary = true;
@@ -236,7 +234,7 @@ bool IDE_CDDriver::PreInitialization(void) {
         Storages[i]->PhysicalInfo.Flags[0] = Primary;
         Primary = false;
         if(StorageSystem::RegisterStorage(this , Storages[i]) == false) {
-            Kernel::printf("Device not found in idecd%d\n" , i);
+            printf("Device not found in idecd%d\n" , i);
         }
     }
     return true;
@@ -290,7 +288,7 @@ bool IDE_CDDriver::GetGeometry(struct Storage *Storage , struct StorageGeometry 
         Geometry->Model[j++] = Data[27+i] & 0xFF;
     }
     Geometry->Model[j++] = 0x00;
-    Kernel::printf("Model Number : %s\n" , Geometry->Model);
+    printf("Model Number : %s\n" , Geometry->Model);
     if(GetCDROMSize(Storage , Geometry) == false) {
         return false;
     }
@@ -321,8 +319,8 @@ bool IDE_CDDriver::GetCDROMSize(struct Storage *Storage , struct StorageGeometry
     Geometry->TotalSectorCount = (ReceivedData[0] << 24)|(ReceivedData[1] << 16)|(ReceivedData[2] << 8)|ReceivedData[3];
     Geometry->TotalSectorCount++;
     Geometry->BytesPerSector = (ReceivedData[4] << 24)|(ReceivedData[5] << 16)|(ReceivedData[6] << 8)|ReceivedData[7];
-    Kernel::printf("Total sector count : %d\n" , Geometry->TotalSectorCount);
-    Kernel::printf("Bytes per sector   : %d\n" , Geometry->BytesPerSector);
+    printf("Total sector count : %d\n" , Geometry->TotalSectorCount);
+    printf("Bytes per sector   : %d\n" , Geometry->BytesPerSector);
     // ok good now you need to clean this code up
     return true;
 }
@@ -367,7 +365,7 @@ unsigned long IDE_CDDriver::ReadSector(struct Storage *Storage , unsigned long S
             *((unsigned short *)(((unsigned char *)Buffer)+((i*Storage->PhysicalInfo.Geometry.BytesPerSector)+j))) = IO::ReadWord(BasePort+IDE_PORT_DATA);
             // error
         }
-        //Kernel::printf("0x%X " , )
+        //printf("0x%X " , )
     }
     return Count*Storage->PhysicalInfo.Geometry.BytesPerSector;
 }

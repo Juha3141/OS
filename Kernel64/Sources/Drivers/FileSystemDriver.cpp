@@ -1,8 +1,6 @@
 #include <Drivers/FileSystemDriver.hpp>
 #include <Drivers/StorageDriver.hpp>
 
-using namespace Kernel;
-
 void FileSystem::Initialize(void) {
     FileSystemManager::GetInstance()->Initialize();
 }

@@ -4,7 +4,6 @@
 #include <Drivers/StorageDriver.hpp>
 #include <Drivers/FileSystemDriver.hpp>
 
-namespace Kernel {
     // Internal use function
     namespace FAT16 {
         struct Driver : public FileSystemDriver {
@@ -104,6 +103,5 @@ namespace Kernel {
          
         void WriteFileInfo(struct FileInfo *FileInfo , struct SFNEntry SFNEntry , const char *FileName , struct VBR *VBR);
     };
-}
 
 #endif

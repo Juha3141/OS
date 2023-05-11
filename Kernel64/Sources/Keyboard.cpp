@@ -8,7 +8,7 @@
 
 #include <Keyboard.hpp>
 
-static Kernel::Keyboard::DataManager *KeyboardDataManager; // Management structure of the keyboard data
+static Keyboard::DataManager *KeyboardDataManager; // Management structure of the keyboard data
 
 // The map of the PS/2 qwerty keyboard
 // The first map is default keyboard map, and the second one is shifted keyboard map, 
@@ -49,9 +49,9 @@ unsigned char ScanCodeInterpreter[4][0x80] = { // normal , shift , capslock , ca
 };
 
 // Description : Initialize the data manager, and ps/2 keyboard hardware, and unmask the keyboard interrupt.
-void Kernel::Keyboard::Initialize(void) {
+void Keyboard::Initialize(void) {
     unsigned int ID;
-    KeyboardDataManager = (Kernel::Keyboard::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Keyboard::DataManager));    // Allocate the system structure
+    KeyboardDataManager = (Keyboard::DataManager *)SystemStructure::Allocate(sizeof(Keyboard::DataManager));    // Allocate the system structure
     KeyboardDataManager->Initialize();/*
     IO::Write(0x64 , 0xAE); // Send the enable command to status register port
     while(1) {              // If Input buffer state bit in the status register port is 1,
@@ -62,12 +62,12 @@ void Kernel::Keyboard::Initialize(void) {
     }
     IO::Write(0x60 , 0xF4); // Send the enable command to input buffer port
     */
-    //Kernel::PIC::Unmask(33);        // Unmask the keyboard interrupt
-    // Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
+    //PIC::Unmask(33);        // Unmask the keyboard interrupt
+    // printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
 }
 
 // Description : Handler of the keyboard interrupt
-void Kernel::Keyboard::MainInterruptHandler(void) {
+void Keyboard::MainInterruptHandler(void) {
     static int i = 0;
     unsigned char ScanCode;
     const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};  // Spinner(for debugging purpose)
@@ -89,7 +89,7 @@ void Kernel::Keyboard::MainInterruptHandler(void) {
     LocalAPIC::SendEOI();
 }
 
-void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
+void Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
     unsigned char Mode = 0;
     if((SpecialKeys[KEYBOARD_KEYLIST_RIGHTSHIFT] ==  1)||(SpecialKeys[KEYBOARD_KEYLIST_LEFTSHIFT] ==  1)) { // If shift keyboard is being pressed, 
         Mode += 1;  // Increase the mode to 1
@@ -101,7 +101,7 @@ void Kernel::Keyboard::DataManager::InsertDataToQueue(unsigned char ScanCode) {
     this->ScanCodeQueue.Enqueue(ScanCodeInterpreter[Mode][ScanCode]);   // Put the data interpreted by the keyboard map
 }
 
-int Kernel::Keyboard::GetASCIIData(void) {
+int Keyboard::GetASCIIData(void) {
     int Data;
     while(1) {
         if(KeyboardDataManager->ScanCodeQueue.Dequeue(&(Data)) == true) {
@@ -157,7 +157,7 @@ static int GetKeyListIndex(unsigned char ScanCode , char IsRight) {
 
 // Description : Check if the scancode is a special key, and if it is, then change the flag of the special keys.
 // Return 1 if the scancode is a special key, and return 0 if it isn't.
-char Kernel::Keyboard::DataManager::ProcessSpecialKeys(unsigned char ScanCode) {
+char Keyboard::DataManager::ProcessSpecialKeys(unsigned char ScanCode) {
     int i;
     int IsRight = 0;        // Is the key is right sided?
     if(ScanCode == 0xE0) {  // If a scancode is transmitted with 0xE0, then the key is on the right side of the keyboard.
@@ -181,6 +181,6 @@ char Kernel::Keyboard::DataManager::ProcessSpecialKeys(unsigned char ScanCode) {
     return 1;                                               // Job well done.
 }
 
-char Kernel::Keyboard::IsSpecialKeyPressed(int SpecialKeyNumber) {
+char Keyboard::IsSpecialKeyPressed(int SpecialKeyNumber) {
     return KeyboardDataManager->SpecialKeys[SpecialKeyNumber];
 }

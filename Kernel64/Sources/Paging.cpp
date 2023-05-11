@@ -1,6 +1,6 @@
 #include <Paging.hpp>
 
-void Kernel::Paging::SetEntry(struct Kernel::Paging::Entry *PageEntry , unsigned long BaseAddress , unsigned short Flags) {
+void Paging::SetEntry(struct Paging::Entry *PageEntry , unsigned long BaseAddress , unsigned short Flags) {
     PageEntry->BaseAddress = (BaseAddress >> 12);
     if((Flags & (1 << 13)) == (1 << 13)) {  // Set PAT Flag
         PageEntry->BaseAddress |= 0x01;

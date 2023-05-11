@@ -18,7 +18,7 @@
 
 unsigned long *InterruptStackTableAddress;
 
-void Kernel::DescriptorTables::Initialize(void) {
+void DescriptorTables::Initialize(void) {
     unsigned int ID;
     static DescriptorTables::GlobalDescriptorTable *GlobalDescriptorTable;
     static DescriptorTables::InterruptDescriptorTable *InterruptDescriptorTable;
@@ -30,22 +30,22 @@ void Kernel::DescriptorTables::Initialize(void) {
         return;
     }
     // Allocate space for each descriptor respectively
-    GlobalDescriptorTable = (Kernel::DescriptorTables::GlobalDescriptorTable *)Kernel::SystemStructure::Allocate(
-                          sizeof(Kernel::DescriptorTables::GlobalDescriptorTable));
-    InterruptDescriptorTable = (Kernel::DescriptorTables::InterruptDescriptorTable*)Kernel::SystemStructure::Allocate(
-                             sizeof(Kernel::DescriptorTables::InterruptDescriptorTable));
+    GlobalDescriptorTable = (DescriptorTables::GlobalDescriptorTable *)SystemStructure::Allocate(
+                          sizeof(DescriptorTables::GlobalDescriptorTable));
+    InterruptDescriptorTable = (DescriptorTables::InterruptDescriptorTable*)SystemStructure::Allocate(
+                             sizeof(DescriptorTables::InterruptDescriptorTable));
 #ifdef DEBUG
-    Kernel::printf("GDT Management Structure : 0x%X\n" , GlobalDescriptorTable);
-    Kernel::printf("IDT Management Structure : 0x%X\n" , InterruptDescriptorTable);
+    printf("GDT Management Structure : 0x%X\n" , GlobalDescriptorTable);
+    printf("IDT Management Structure : 0x%X\n" , InterruptDescriptorTable);
 #endif
     // Initialize and allocate space for descriptor table entries and registers
-    GlobalDescriptorTable->Initialize(Kernel::SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(struct TSSEntry)))
-                                    , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
-    InterruptDescriptorTable->Initialize(Kernel::SystemStructure::Allocate(IDT_ENTRYCOUNT*sizeof(IDTEntry))
-                                       , Kernel::SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
+    GlobalDescriptorTable->Initialize(SystemStructure::Allocate((GDT_ENTRYCOUNT*sizeof(GDTEntry))+(TSS_ENTRYCOUNT*sizeof(struct TSSEntry)))
+                                    , SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
+    InterruptDescriptorTable->Initialize(SystemStructure::Allocate(IDT_ENTRYCOUNT*sizeof(IDTEntry))
+                                       , SystemStructure::Allocate(sizeof(DescriptorTablesRegister)));
 }
 
-void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long BaseAddress , unsigned long RegisterAddress) {
+void DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long BaseAddress , unsigned long RegisterAddress) {
     // BaseAddress = Location of GDT Entry
     // BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Location of TSS Entry
     // (GDT_ENTRYCOUNT*sizeof(struct GDTEntry))) = Size of GDT Entry
@@ -53,7 +53,7 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     unsigned long ISTStackAddress = IST_STARTADDRESS+IST_SIZE;
     GDTEntry = (struct GDTEntry *)BaseAddress;
     TSSEntry = (struct TSSEntry *)(BaseAddress+(GDT_ENTRYCOUNT*sizeof(struct GDTEntry))); // Note : Always put "()" in the address ****
-    TSS = (struct TSS *)Kernel::SystemStructure::Allocate(sizeof(struct TSS)*TSS_ENTRYCOUNT);
+    TSS = (struct TSS *)SystemStructure::Allocate(sizeof(struct TSS)*TSS_ENTRYCOUNT);
     memset(TSS , 0 , sizeof(struct TSS)*TSS_ENTRYCOUNT);
     GDTR = (struct DescriptorTablesRegister *)RegisterAddress;
     // Size of "struct GDTEntry" : 8 , size of "struct TSSEntry" : 16
@@ -61,10 +61,10 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     GDTR->Address = BaseAddress;
     // Seperated descriptor table
 #ifdef DEBUG
-    Kernel::printf("GDTEntry Structure : 0x%X\n" , GDTEntry);
-    Kernel::printf("TSSEntry Structure : 0x%X\n" , TSSEntry);
-    Kernel::printf("TSS Structure      : 0x%X(%d)\n" , TSS , sizeof(struct TSS));
-    Kernel::printf("Size of GDT+TSS    : %d\n" , GDTR->Size);
+    printf("GDTEntry Structure : 0x%X\n" , GDTEntry);
+    printf("TSSEntry Structure : 0x%X\n" , TSSEntry);
+    printf("TSS Structure      : 0x%X(%d)\n" , TSS , sizeof(struct TSS));
+    printf("Size of GDT+TSS    : %d\n" , GDTR->Size);
 #endif
     SetGDTEntry(0 , 0x00 , 0x00 , 0x00 , 0x00);  // NullSegment, not using, leave it empty.
     // Code Segment : E=1 , DC=0 , RW=1 , P=1 , S=1 , L=1 , G=1
@@ -91,11 +91,11 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     // TSS Segment : Type : 0x09(32bit TSS available) , P=1 , S=0(Becasue it is system segment) , DPL=0 , L=1 , G=1
     // TSS segment's base address is the location of TSS(it must be specified, unlike code, data segments), and its limit is the size of TSS.
     // L bit should be cleared, and G should be set to 1 ******
-    InterruptStackTableAddress = (unsigned long *)Kernel::SystemStructure::Allocate(TSS_ENTRYCOUNT*sizeof(unsigned long));
+    InterruptStackTableAddress = (unsigned long *)SystemStructure::Allocate(TSS_ENTRYCOUNT*sizeof(unsigned long));
     for(i = 0; i < TSS_ENTRYCOUNT; i++) {
         SetTSSEntry(i , (unsigned long)&(TSS[i]) , sizeof(struct TSS)-1 ,  GDT_TYPE_32BIT_TSS_AVAILABLE , GDT_FLAGS_P|GDT_FLAGS_DPL0|GDT_FLAGS_G);
         // Allocate stack for interrupt handler (IST), each core gets 8KB
-        InterruptStackTableAddress[i] = (((unsigned long)Kernel::MemoryManagement::Allocate(IST_SIZE_PER_CORE , MemoryManagement::ALIGN_4K))+IST_SIZE_PER_CORE);
+        InterruptStackTableAddress[i] = (((unsigned long)MemoryManagement::Allocate(IST_SIZE_PER_CORE , MemoryManagement::ALIGN_4K))+IST_SIZE_PER_CORE);
         SetTSS_IST(&(TSS[i]) , 0 , InterruptStackTableAddress[i]); // IST Address : 0x620000 Size of IST : 0x100000
         TSS[i].IOPBOffset = 0xFFFF;              // Allow every port possible to access for user level
     }
@@ -104,7 +104,7 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::Initialize(unsigned long B
     __asm__ ("ltr %0"::"r"((unsigned short)(TSS_SEGMENT)));
 }
 
-void Kernel::DescriptorTables::GlobalDescriptorTable::SetGDTEntry(int Offset , unsigned int BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags) {
+void DescriptorTables::GlobalDescriptorTable::SetGDTEntry(int Offset , unsigned int BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags) {
     // Logical arithmetic for each values
     // Limit : Total 20 bits
     // Base  : Total 32 bits
@@ -119,7 +119,7 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::SetGDTEntry(int Offset , u
     this->GDTEntry[Offset].BaseHigh = (BaseAddress >> 24) & 0xFF;
 }
 
-void Kernel::DescriptorTables::GlobalDescriptorTable::SetTSSEntry(int Offset , unsigned long BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags) {
+void DescriptorTables::GlobalDescriptorTable::SetTSSEntry(int Offset , unsigned long BaseAddress , unsigned int Limit , unsigned char Type , unsigned char Flags) {
     // Limit : Total 20 bits
     // Base  : Total 64 bits (TSS entry needs 64 bits of base address)
     // Type  : Total 4 bits
@@ -133,15 +133,15 @@ void Kernel::DescriptorTables::GlobalDescriptorTable::SetTSSEntry(int Offset , u
     this->TSSEntry[Offset].BaseHigh = BaseAddress >> 24;
 }
 
-void Kernel::DescriptorTables::InterruptDescriptorTable::Initialize(unsigned long BaseAddress , unsigned long RegisterAddress) {
+void DescriptorTables::InterruptDescriptorTable::Initialize(unsigned long BaseAddress , unsigned long RegisterAddress) {
     int i;
     IDTEntry = (struct IDTEntry *)BaseAddress;
     IDTR = (DescriptorTablesRegister *)RegisterAddress;
     IDTR->Size = IDT_ENTRYCOUNT*sizeof(struct IDTEntry);
     IDTR->Address = BaseAddress;
 #ifdef DEBUG
-    Kernel::printf("IDTEntry Structure : 0x%X\n" , IDTEntry);
-    Kernel::printf("IDTR Structure     : 0x%X\n" , IDTR);
+    printf("IDTEntry Structure : 0x%X\n" , IDTEntry);
+    printf("IDTR Structure     : 0x%X\n" , IDTR);
 #endif
     for(i = 0; i < IDT_ENTRYCOUNT; i++) {
         SetIDTEntry(i , 0 , 0 , 0 , 0 , 0);
@@ -180,18 +180,18 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::Initialize(unsigned lon
     SetIDTEntry(29 , (unsigned long)Exceptions::VMMCommunicationException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     SetIDTEntry(30 , (unsigned long)Exceptions::SecurityException , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     
-    SetIDTEntry(32 , (unsigned long)Kernel::PIT::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(33 , (unsigned long)Kernel::Keyboard::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(44 , (unsigned long)Kernel::Mouse::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(41 , (unsigned long)Kernel::LocalAPIC::Timer::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(32 , (unsigned long)PIT::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(33 , (unsigned long)Keyboard::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(44 , (unsigned long)Mouse::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(41 , (unsigned long)LocalAPIC::Timer::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     /*
-    SetIDTEntry(46 , (unsigned long)Kernel::Drivers::PATA::InterruptHandler_IRQ14, 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(47 , (unsigned long)Kernel::Drivers::PATA::InterruptHandler_IRQ15 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(46 , (unsigned long)Drivers::PATA::InterruptHandler_IRQ14, 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(47 , (unsigned long)Drivers::PATA::InterruptHandler_IRQ15 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     */
     __asm__ ("lidt [%0]"::"r"((RegisterAddress)));
 }
 
-void Kernel::DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset , unsigned int BaseAddress , unsigned short Selector , unsigned char Type , unsigned char Flags , unsigned char IST) {
+void DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset , unsigned int BaseAddress , unsigned short Selector , unsigned char Type , unsigned char Flags , unsigned char IST) {
     // Base     : Total 64 bits
     // (There is no limit field in IDT entry, because the base address is a location of handler, not a data)
     // Selector : Total 16 bits
@@ -207,6 +207,6 @@ void Kernel::DescriptorTables::InterruptDescriptorTable::SetIDTEntry(int Offset 
     this->IDTEntry[Offset].Reserved = 0x00;
 }
 
-unsigned long Kernel::DescriptorTables::GetInterruptStackTable(unsigned long CoreID) {
+unsigned long DescriptorTables::GetInterruptStackTable(unsigned long CoreID) {
     return InterruptStackTableAddress[CoreID];
 }

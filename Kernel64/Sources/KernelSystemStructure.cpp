@@ -10,9 +10,9 @@
 #include <KernelSystemStructure.hpp>
 #include <EssentialLibrary.hpp>
 
-static Kernel::SystemStructure::Manager *StructureManager = (Kernel::SystemStructure::Manager*)KERNELSYSTEMSTRUCTURE_LOCATION;
+static SystemStructure::Manager *StructureManager = (SystemStructure::Manager*)KERNELSYSTEMSTRUCTURE_LOCATION;
 
-void Kernel::SystemStructure::Initialize(void) {
+void SystemStructure::Initialize(void) {
     unsigned long Address;
     unsigned char *Error = (unsigned char *)0xB8000;
     // Location of system structure manager       : 0x500000
@@ -29,12 +29,12 @@ void Kernel::SystemStructure::Initialize(void) {
             }
         }
     }
-    StructureManager->CurrentAddress = (KERNELSYSTEMSTRUCTURE_LOCATION+sizeof(Kernel::SystemStructure::Manager));
+    StructureManager->CurrentAddress = (KERNELSYSTEMSTRUCTURE_LOCATION+sizeof(SystemStructure::Manager));
 }
 
 // Description : Allot the memory and head next
 // Pretty simple huh...
-unsigned long Kernel::SystemStructure::Allocate(unsigned int Size) {
+unsigned long SystemStructure::Allocate(unsigned int Size) {
     unsigned long Address = StructureManager->CurrentAddress;
     StructureManager->CurrentAddress += Size;
     return Address;           // Return available address(except for the 8 bytes information area)

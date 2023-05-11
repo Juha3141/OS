@@ -11,14 +11,12 @@
 #define KERNELSYSTEMSTRUCTURE_LOCATION 0x500000           // The location of memory space
 #define KERNELSYSTEMSTRUCTURE_SIZE     0x100000           // Total Size : 0x70000(Approx. 448KB)
 
-namespace Kernel {
-    namespace SystemStructure {
-        struct Manager {
-            unsigned long CurrentAddress; // CurrentAddress : Address to allocate
-        };
-        void Initialize(void);
-        unsigned long Allocate(unsigned int Size);
-    }
+namespace SystemStructure {
+    struct Manager {
+        unsigned long CurrentAddress; // CurrentAddress : Address to allocate
+    };
+    void Initialize(void);
+    unsigned long Allocate(unsigned int Size);
 }
 
 #endif

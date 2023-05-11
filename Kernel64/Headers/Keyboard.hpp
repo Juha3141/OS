@@ -58,44 +58,42 @@
 #define KEYBOARD_KEYLIST_E            9
 #define KEYBOARD_KEYLIST_SUPER        10
 
-namespace Kernel {
-    namespace Keyboard {
-        class DataManager {
-            public:
-                void Initialize(void) {
-                    memset(SpecialKeys , 0 , 11);
-                    ScanCodeQueue.Initialize(2048);
-                }
-                void InsertDataToQueue(unsigned char ScanCode);
-                char ProcessSpecialKeys(unsigned char ScanCode);
-                Queue<int>ScanCodeQueue;
-                /* 
-                 * <Special Key Table>
-                 * CapsLock     - Flag : SpecialKeys[0]
-                 * Insert       - Flag : SpecialKeys[1]
-                 * LeftControl  - Flag : SpecialKeys[2]
-                 * RightControl - Flag : SpecialKeys[3]
-                 * NumLock      - Flag : SpecialKeys[4]
-                 * LeftShift    - Flag : SpecialKeys[5]
-                 * RightShift   - Flag : SpecialKeys[6]
-                 * LeftAlt      - Flag : SpecialKeys[7]
-                 * RightAlt     - Flag : SpecialKeys[8]
-                 * E(0x0E)      - Flag : SpecialKeys[9]
-                 * Super        - Flag : SpecialKeys[10]
-                 */
-                // Stores status of the special keys, 1 is pressed, or on, 0 is not pressed or off.
-                // Each array element stores each special keys - which is at the above table.
-                char SpecialKeys[11];
-            private:
-                inline void ChangeFlags(unsigned char ScanCode);
-        };
-        void Initialize(void);
-        int GetASCIIData(void);
-        char IsSpecialKeyPressed(int SpecialKeyNumber);
-        
-        void InterruptHandler(void);
-        void MainInterruptHandler(void);
-    }
+namespace Keyboard {
+    class DataManager {
+        public:
+            void Initialize(void) {
+                memset(SpecialKeys , 0 , 11);
+                ScanCodeQueue.Initialize(2048);
+            }
+            void InsertDataToQueue(unsigned char ScanCode);
+            char ProcessSpecialKeys(unsigned char ScanCode);
+            Queue<int>ScanCodeQueue;
+            /* 
+             * <Special Key Table>
+             * CapsLock     - Flag : SpecialKeys[0]
+             * Insert       - Flag : SpecialKeys[1]
+             * LeftControl  - Flag : SpecialKeys[2]
+             * RightControl - Flag : SpecialKeys[3]
+             * NumLock      - Flag : SpecialKeys[4]
+             * LeftShift    - Flag : SpecialKeys[5]
+             * RightShift   - Flag : SpecialKeys[6]
+             * LeftAlt      - Flag : SpecialKeys[7]
+             * RightAlt     - Flag : SpecialKeys[8]
+             * E(0x0E)      - Flag : SpecialKeys[9]
+             * Super        - Flag : SpecialKeys[10]
+             */
+            // Stores status of the special keys, 1 is pressed, or on, 0 is not pressed or off.
+            // Each array element stores each special keys - which is at the above table.
+            char SpecialKeys[11];
+        private:
+            inline void ChangeFlags(unsigned char ScanCode);
+    };
+    void Initialize(void);
+    int GetASCIIData(void);
+    char IsSpecialKeyPressed(int SpecialKeyNumber);
+    
+    void InterruptHandler(void);
+    void MainInterruptHandler(void);
 }
 
 #endif

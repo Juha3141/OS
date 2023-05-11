@@ -3,41 +3,41 @@
 #include <TaskManagement.hpp>
 #include <MutualExclusion.hpp>
 
-void Kernel::LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
+void LocalAPIC::WriteRegister(unsigned int RegisterAddress , unsigned int Data) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned int *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
 
-void Kernel::LocalAPIC::WriteRegister_L(unsigned int RegisterAddress , unsigned long Data) {
+void LocalAPIC::WriteRegister_L(unsigned int RegisterAddress , unsigned long Data) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned long *)(CoreInformation->LocalAPICAddress+RegisterAddress)) = Data;
 }
     
-unsigned int Kernel::LocalAPIC::ReadRegister(unsigned int RegisterAddress) {
+unsigned int LocalAPIC::ReadRegister(unsigned int RegisterAddress) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     return *((unsigned int *)(CoreInformation->LocalAPICAddress+RegisterAddress));
 }
 
-unsigned long Kernel::LocalAPIC::ReadRegister_L(unsigned int RegisterAddress) {
+unsigned long LocalAPIC::ReadRegister_L(unsigned int RegisterAddress) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     return *((unsigned long *)(CoreInformation->LocalAPICAddress+RegisterAddress));
 }
 
-void Kernel::IOAPIC::WriteRegister(unsigned char RegisterAddress , unsigned int Data) {
+void IOAPIC::WriteRegister(unsigned char RegisterAddress , unsigned int Data) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned char *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_SELECTOR)) = RegisterAddress;
     *((unsigned int *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_WINDOW)) = Data;
 }
 
-unsigned int Kernel::IOAPIC::ReadRegister(unsigned char RegisterAddress) {
+unsigned int IOAPIC::ReadRegister(unsigned char RegisterAddress) {
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     *((unsigned char *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_SELECTOR)) = RegisterAddress;
     return *((unsigned int *)(CoreInformation->IOAPICAddress+IOAPIC_REGISTER_WINDOW));
 }
 
-static Kernel::MutualExclusion::SpinLock TimerSpinLock;
+static MutualExclusion::SpinLock TimerSpinLock;
 
-void Kernel::LocalAPIC::GlobalEnableLocalAPIC(void) {
+void LocalAPIC::GlobalEnableLocalAPIC(void) {
     // Disable all interrupts
     IO::Write(0x21 , 0xFF);
     IO::Write(0xA1 , 0xFF);
@@ -50,17 +50,17 @@ void Kernel::LocalAPIC::GlobalEnableLocalAPIC(void) {
     __asm__ ("wrmsr");
 }
 
-void Kernel::LocalAPIC::EnableLocalAPIC(void) {
+void LocalAPIC::EnableLocalAPIC(void) {
     unsigned int EAX;
     unsigned int EDX;
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
-    // Kernel::printf("LocalAPIC Register Address from the structure : 0x%X\n" , CoreInformation->LocalAPICAddress);
+    // printf("LocalAPIC Register Address from the structure : 0x%X\n" , CoreInformation->LocalAPICAddress);
     // To enable APIC, set bit 8 in LocalAPIC Spurious interrupt vector register to 1 
     // Currently, we're enabling BSP's Local APIC
     WriteRegister(LAPIC_LVT_SPURIOUS_REGISTER , ReadRegister(LAPIC_LVT_SPURIOUS_REGISTER)|0x100);
 }
 
-bool Kernel::LocalAPIC::CheckBSP(void) {    // Check if current CPU is BSP
+bool LocalAPIC::CheckBSP(void) {    // Check if current CPU is BSP
     unsigned int EAX;
     // MSR 0x1B : APIC_BASE
     // Check if bit 8, which is BSP bit, is enabled.
@@ -78,16 +78,16 @@ bool Kernel::LocalAPIC::CheckBSP(void) {    // Check if current CPU is BSP
 
 unsigned int ActivatedCoreCount = 0;
 
-unsigned int Kernel::LocalAPIC::GetActivatedCoreCount(void) {
+unsigned int LocalAPIC::GetActivatedCoreCount(void) {
     return ActivatedCoreCount;
 }
 
-unsigned int Kernel::LocalAPIC::GetCurrentAPICID(void) {
+unsigned int LocalAPIC::GetCurrentAPICID(void) {
     // Local APIC ID Register contains currently running core's APIC ID, which is in bit 24-31
-    return (unsigned int)(Kernel::LocalAPIC::ReadRegister(LAPIC_ID_REGISTER) >> 24);
+    return (unsigned int)(LocalAPIC::ReadRegister(LAPIC_ID_REGISTER) >> 24);
 }
 
-void Kernel::LocalAPIC::ActivateAPCores(void) {
+void LocalAPIC::ActivateAPCores(void) {
     int i;
     int j;
     int ActivatedCoreCount;
@@ -97,7 +97,7 @@ void Kernel::LocalAPIC::ActivateAPCores(void) {
     unsigned short *RunningCoreCount = (unsigned short *)(LocalAPICBootLoaderLocation+2+1);
     struct CoreInformation *CoreInformation = CoreInformation::GetInstance();
     if(CheckBSP() == 0) {
-        Kernel::printf("The current core is AP core!\n");
+        printf("The current core is AP core!\n");
         return;
     }
     // Local APIC ID Register contains BSP core APIC ID
@@ -115,40 +115,40 @@ void Kernel::LocalAPIC::ActivateAPCores(void) {
     // Wait 10ms for the response
     // If Local APIC status is pending, sending IPI is failed. :/
     while((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
-        // Kernel::printf("Failed sending Init IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
+        // printf("Failed sending Init IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
         // return;
     }
     for(j = 0; j < 2; j++) {
         WriteRegister(LAPIC_ERROR_STATUS_REGISTER , 0x00);
         WriteRegister(LAPIC_INTERRUPT_COMMAND_REGISTER , LAPIC_ICR_SENDING_FOR_EVERYONE_EXCEPT_FOR_ME|LAPIC_ICR_LEVEL_ASSERT|LAPIC_ICR_IPI_STARTUP|0x08);
         while((ReadRegister(LAPIC_INTERRUPT_COMMAND_REGISTER) & LAPIC_ICR_SENT_STATUS_PENDING) == LAPIC_ICR_SENT_STATUS_PENDING) {
-            // Kernel::printf("Failed sending AP Setup IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
+            // printf("Failed sending AP Setup IPI for : LAPIC 0x%X, Processor 0x%X\n" , CoreInformation->LocalAPICID[i] , CoreInformation->LocalAPICProcessorID[i]);
             // return;
         }
     }
     
     while(1) { // Wait until activated core count is equal to number of cores
         ActivatedCoreCount = GetActivatedCoreCount();
-        Kernel::PIT::DelayMilliseconds(10);
+        PIT::DelayMilliseconds(10);
         if(ActivatedCoreCount == GetActivatedCoreCount()) {
             break;
         }
     }
     CoreInformation::GetInstance()->CoreCount = (GetActivatedCoreCount()+1);
-    Kernel::printf("Activated Core Count : %d\n" , CoreInformation::GetInstance()->CoreCount);
+    printf("Activated Core Count : %d\n" , CoreInformation::GetInstance()->CoreCount);
 }
 
-void Kernel::LocalAPIC::SendEOI(void) { // Send End Of Interrupt Signal to APIC
+void LocalAPIC::SendEOI(void) { // Send End Of Interrupt Signal to APIC
     // By setting EOI Register to 0, we can send the EOI signal to APIC.
-    Kernel::LocalAPIC::WriteRegister(LAPIC_EOI_REGISTER , 0);
+    LocalAPIC::WriteRegister(LAPIC_EOI_REGISTER , 0);
 }
 
 ///// Timer //////
 
 volatile unsigned int InitialLocalAPICTickCount;
 
-void Kernel::LocalAPIC::Timer::Initialize(void) {
-    // Kernel::printf("Initializing Timer\n");
+void LocalAPIC::Timer::Initialize(void) {
+    // printf("Initializing Timer\n");
     if(CheckBSP() == true) {
         WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b0011);
         WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , 0xFFFFFFFF); // Initial value of the counter
@@ -159,39 +159,39 @@ void Kernel::LocalAPIC::Timer::Initialize(void) {
     WriteRegister(LAPIC_LVT_TIMER_REGISTER , (0b10 << 16)|41); // LVT Timer Register, determins how interrupt occur.
     WriteRegister(LAPIC_DIVIDE_CONFIG_REGISTER , 0b0011);
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , InitialLocalAPICTickCount); // Initial value of the counter
-    // Kernel::printf("Initial LocalAPIC Tick Count : %d\n" , InitialLocalAPICTickCount);
+    // printf("Initial LocalAPIC Tick Count : %d\n" , InitialLocalAPICTickCount);
     TimerSpinLock.Initialize();
 }
 
-void Kernel::LocalAPIC::Timer::SetInitialValue(unsigned int Value) {
+void LocalAPIC::Timer::SetInitialValue(unsigned int Value) {
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , Value); // Initial value of the counter
 }
 
-void Kernel::LocalAPIC::Timer::Enable(void) {
+void LocalAPIC::Timer::Enable(void) {
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , InitialLocalAPICTickCount);
 }
 
-void Kernel::LocalAPIC::Timer::Disable(void) {
+void LocalAPIC::Timer::Disable(void) {
     WriteRegister(LAPIC_INITIAL_COUNT_REGISTER , 0);
 }
 
-unsigned int Kernel::LocalAPIC::Timer::GetTickCount(void) {
+unsigned int LocalAPIC::Timer::GetTickCount(void) {
     return ReadRegister(LAPIC_CURRENT_COUNT_REGISTER);
 }
 
-unsigned int Kernel::LocalAPIC::Timer::GetInitialValue(void) {
+unsigned int LocalAPIC::Timer::GetInitialValue(void) {
     return InitialLocalAPICTickCount;
 }
 
-void Kernel::LocalAPIC::Timer::MainInterruptHandler(void) {
+void LocalAPIC::Timer::MainInterruptHandler(void) {
     // even I synchronize this it keeps crashing
-    Kernel::TaskManagement::SwitchTaskInTimerInterrupt();
-    // Kernel::LocalAPIC::SendEOI();
+    TaskManagement::SwitchTaskInTimerInterrupt();
+    // LocalAPIC::SendEOI();
 }
 
 /// I/O APIC ///
 
-void Kernel::IOAPIC::InitializeRedirectionTable(void) {
+void IOAPIC::InitializeRedirectionTable(void) {
     int i;
     unsigned long TableAddress;
     struct MPFloatingTable::MPFloatingPointer *MPFloatingPointer = (struct MPFloatingTable::MPFloatingPointer *)MPFloatingTable::FindMPFloatingTable();
@@ -203,12 +203,12 @@ void Kernel::IOAPIC::InitializeRedirectionTable(void) {
     struct IORedirectionTable RedirectionTable;
     memset(&(RedirectionTable) , 0 , sizeof(struct IORedirectionTable));
     if(MPFloatingPointer == 0x00) {
-        Kernel::printf("MP floating pointer not found.\n");
+        printf("MP floating pointer not found.\n");
         while(1) {
             ;
         }
     }
-    Kernel::printf("MP Table Entry Count : %d\n" , TableHeader->EntryCount);
+    printf("MP Table Entry Count : %d\n" , TableHeader->EntryCount);
     TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTable::MPFloatingTableHeader);
     for(i = 0; i < TableHeader->EntryCount; i++) {
         switch(*((unsigned char*)TableAddress)) {
@@ -228,7 +228,7 @@ void Kernel::IOAPIC::InitializeRedirectionTable(void) {
                 RedirectionTable.DestinationAddress = 0x00;
                 RedirectionTable.InterruptVector = IOInterruptAssignmentEntry->SourceBusIRQ+0x20;
                 WriteIORedirectionTable(IOInterruptAssignmentEntry->DestinationIOAPICINTIN , RedirectionTable);
-                // Kernel::printf("INTIN %d -> IRQ %d\n" , IOInterruptAssignmentEntry->DestinationIOAPICINTIN , IOInterruptAssignmentEntry->SourceBusIRQ);
+                // printf("INTIN %d -> IRQ %d\n" , IOInterruptAssignmentEntry->DestinationIOAPICINTIN , IOInterruptAssignmentEntry->SourceBusIRQ);
                 TableAddress += sizeof(struct MPFloatingTable::Entries::IOInterruptAssignment);
                 break;
             case 4:
@@ -241,7 +241,7 @@ void Kernel::IOAPIC::InitializeRedirectionTable(void) {
     }
 }
 
-void Kernel::IOAPIC::WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable) {
+void IOAPIC::WriteIORedirectionTable(int INTIN , struct IORedirectionTable RedirectionTable) {
     unsigned long Data;
     memcpy(&(Data) , &(RedirectionTable) , sizeof(unsigned long));
     IOAPIC::WriteRegister(IOAPIC_REGISTER_IO_REDIRECTION_TABLE+(INTIN*2) , Data & 0xFFFFFFFF);

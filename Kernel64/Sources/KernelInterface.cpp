@@ -1,14 +1,12 @@
 #include <KernelInterface.hpp>
 
-using namespace Kernel;
-
 struct KernelInterface *AssignKernelInterface(const char *FileName , 
         InterfaceAccessorOpenFunction InterfaceAccessorOpen , 
         InterfaceAccessorReadFunction InterfaceAccessorRead , 
         InterfaceAccessorWriteFunction InterfaceAccessorWrite , 
         InterfaceAccessorCloseFunction InterfaceAccessorClose) {
-    struct KernelInterface *Interface = (struct KernelInterface *)Kernel::MemoryManagement::Allocate(sizeof(struct KernelInterface));
-    Interface->FileName = (char *)Kernel::MemoryManagement::Allocate(strlen(FileName)+1);
+    struct KernelInterface *Interface = (struct KernelInterface *)MemoryManagement::Allocate(sizeof(struct KernelInterface));
+    Interface->FileName = (char *)MemoryManagement::Allocate(strlen(FileName)+1);
     strcpy(Interface->FileName , FileName);
 
     Interface->InterfaceAccessorOpen = InterfaceAccessorOpen;

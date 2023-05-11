@@ -1,18 +1,18 @@
 #include <ResourceAccessManagement.hpp>
 
-void Kernel::EnterCriticalSection(void) {
+void EnterCriticalSection(void) {
     __asm__ ("cli");
 }
 
-void Kernel::ExitCriticalSection(void) {
+void ExitCriticalSection(void) {
     __asm__ ("sti");
 }
 
-void Kernel::MutEx::Resource::Initialize(void) {
+void MutEx::Resource::Initialize(void) {
     Locked = 0;
 }
 
-void Kernel::MutEx::Resource::Lock(void) {
+void MutEx::Resource::Lock(void) {
     if(Locked == 1) {
         return;
     }
@@ -20,7 +20,7 @@ void Kernel::MutEx::Resource::Lock(void) {
     Locked = 1;
 }
 
-void Kernel::MutEx::Resource::Unlock(void) {
+void MutEx::Resource::Unlock(void) {
     if(Locked == 0) {
         return;
     }
@@ -28,6 +28,6 @@ void Kernel::MutEx::Resource::Unlock(void) {
     __asm__ ("sti");
 }
 
-void Kernel::SpinLock::Resource::Initialize(void) {
+void SpinLock::Resource::Initialize(void) {
     Locked = 0;
 }

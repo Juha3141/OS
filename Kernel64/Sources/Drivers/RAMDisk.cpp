@@ -1,7 +1,5 @@
 #include <Drivers/RAMDisk.hpp>
 
-using namespace Kernel;
-
 struct Storage *RAMDiskDriver::CreateRAMDisk(unsigned long TotalSectorCount , unsigned long BytesPerSector , unsigned long Address) {
     struct Storage *Storage = StorageSystem::Assign(0 , 2 , 0 , 1 , Storage::StorageType::Physical);
     Storage->PhysicalInfo.Flags[0] = TotalSectorCount;
@@ -11,13 +9,13 @@ struct Storage *RAMDiskDriver::CreateRAMDisk(unsigned long TotalSectorCount , un
     // otherwise your code have potential danger of corrupting memory node.
 
     if(Address == 0x00) {
-        Storage->PhysicalInfo.Resources[0] = (unsigned long)Kernel::MemoryManagement::Allocate(TotalSectorCount*BytesPerSector);
+        Storage->PhysicalInfo.Resources[0] = (unsigned long)MemoryManagement::Allocate(TotalSectorCount*BytesPerSector);
     }
     else {
         Storage->PhysicalInfo.Resources[0] = Address;
     }
     if(StorageSystem::RegisterStorage("rd" , Storage) == false) {
-        Kernel::printf("Failed registering storage\n");
+        printf("Failed registering storage\n");
     }
     return Storage;
 }

@@ -2,10 +2,10 @@
 
 SECTION .text
 
-global _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_ ; void SwitchContext(struct Kernel::TaskRegisters *LastContext , struct Kernel::TaskRegisters *ContetToChange);
-global _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE    ; void SwitchContext(struct Kernel::TaskRegisters *ContextToChange);
+global _ZN14TaskManagement13SwitchContextEP13TaskRegistersS1_ ; void SwitchContext(struct TaskRegisters *LastContext , struct TaskRegisters *ContetToChange);
+global _ZN14TaskManagement13SwitchContextEP13TaskRegisters    ; void SwitchContext(struct TaskRegisters *ContextToChange);
 
-_ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_:
+_ZN14TaskManagement13SwitchContextEP13TaskRegistersS1_:
     ; RDI : CurrentRegisters
     ; RSI : NextRegisters
 
@@ -96,7 +96,7 @@ _ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersES2_:
 
     iretq
 
-_ZN6Kernel14TaskManagement13SwitchContextEPNS_13TaskRegistersE:
+_ZN14TaskManagement13SwitchContextEP13TaskRegisters:
     mov rbx , qword[rdi+8]
     mov rcx , qword[rdi+16]
     mov rdx , qword[rdi+24]

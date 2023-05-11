@@ -1,8 +1,5 @@
 #include <Drivers/PCI.hpp>
 
-using namespace Kernel;
-using namespace Kernel::Drivers;
-
 bool PCI::DeviceManager::AddDevice(unsigned long HeaderPointer , int BusNumber , int SlotNumber , int FunctionNumber) {
     DeviceList[DeviceCount].BusNumber = BusNumber;
     DeviceList[DeviceCount].SlotNumber = SlotNumber;
@@ -32,7 +29,7 @@ int PCI::DeviceManager::GetDeviceByID(unsigned long *Header , unsigned char Clas
         if((((CommonHeader *)DeviceList[i].Header)->ClassCode = ClassID)
         && (((CommonHeader *)DeviceList[i].Header)->Subclass == SubclassID)) {
             *Header = DeviceList[i].Header;
-            Kernel::printf("Header : 0x%X\n" , *Header);
+            printf("Header : 0x%X\n" , *Header);
             return DeviceList[i].HeaderType;
         }
     }
@@ -94,7 +91,7 @@ void *PCI::GetDeviceData(unsigned char BusNumber , unsigned char SlotNumber , un
         return 0x00;
     }
 #ifdef DEBUG
-    Kernel::printf("Bus %d , Slot %d , Function %d\n" , BusNumber , SlotNumber , FunctionNumber);
+    printf("Bus %d , Slot %d , Function %d\n" , BusNumber , SlotNumber , FunctionNumber);
     printf("Vendor ID   : 0x%X\n" , CommonHeader->VendorID);
     printf("Device ID   : 0x%X\n" , CommonHeader->DeviceID);
     printf("Header Type : 0x%X\n" , CommonHeader->HeaderType);
@@ -109,39 +106,39 @@ void *PCI::GetDeviceData(unsigned char BusNumber , unsigned char SlotNumber , un
     }
     switch(CommonHeader->HeaderType & 0b1111111) {
         case 0x00:
-            GeneralDevice = (HeaderType0x00 *)Kernel::MemoryManagement::Allocate(sizeof(HeaderType0x00));
+            GeneralDevice = (HeaderType0x00 *)MemoryManagement::Allocate(sizeof(HeaderType0x00));
             memcpy(GeneralDevice , Data , 256);
     #ifdef DEBUG
-            Kernel::printf("BaseAddress0        : 0x%X\n" , GeneralDevice->BaseAddress[0]);
-            Kernel::printf("BaseAddress1        : 0x%X\n" , GeneralDevice->BaseAddress[1]);
-            Kernel::printf("BaseAddress2        : 0x%X\n" , GeneralDevice->BaseAddress[2]);
-            Kernel::printf("BaseAddress3        : 0x%X\n" , GeneralDevice->BaseAddress[3]);
-            Kernel::printf("BaseAddress4        : 0x%X\n" , GeneralDevice->BaseAddress[4]);
-            Kernel::printf("ExpansionROMAddress : 0x%X\n" , GeneralDevice->ExpansionROMAddress);
-            Kernel::printf("Interrupt Pin  : %d\n" , GeneralDevice->InterruptPin);
-            Kernel::printf("Interrupt Line : %d\n" , GeneralDevice->InterruptLine);
+            printf("BaseAddress0        : 0x%X\n" , GeneralDevice->BaseAddress[0]);
+            printf("BaseAddress1        : 0x%X\n" , GeneralDevice->BaseAddress[1]);
+            printf("BaseAddress2        : 0x%X\n" , GeneralDevice->BaseAddress[2]);
+            printf("BaseAddress3        : 0x%X\n" , GeneralDevice->BaseAddress[3]);
+            printf("BaseAddress4        : 0x%X\n" , GeneralDevice->BaseAddress[4]);
+            printf("ExpansionROMAddress : 0x%X\n" , GeneralDevice->ExpansionROMAddress);
+            printf("Interrupt Pin  : %d\n" , GeneralDevice->InterruptPin);
+            printf("Interrupt Line : %d\n" , GeneralDevice->InterruptLine);
     #endif
             return GeneralDevice;
         case 0x01:
-            PCItoPCIBridge = (HeaderType0x01 *)Kernel::MemoryManagement::Allocate(sizeof(HeaderType0x01));
+            PCItoPCIBridge = (HeaderType0x01 *)MemoryManagement::Allocate(sizeof(HeaderType0x01));
             memcpy(PCItoPCIBridge , Data , 256);
     #ifdef DEBUG
-            Kernel::printf("BaseAddress0  : 0x%X\n" , PCItoPCIBridge->BaseAddress[0]);
-            Kernel::printf("BaseAddress1  : 0x%X\n" , PCItoPCIBridge->BaseAddress[1]);
-            Kernel::printf("MemoryBase    : 0x%X~0x%X\n" , PCItoPCIBridge->MemoryBase , PCItoPCIBridge->MemoryLimit);
-            Kernel::printf("IOAddress     : 0x%X~0x%X\n" , PCItoPCIBridge->IOBase , PCItoPCIBridge->IOLimit);
-            Kernel::printf("Interrupt Pin : %d\n" , PCItoPCIBridge->InterruptPin);
+            printf("BaseAddress0  : 0x%X\n" , PCItoPCIBridge->BaseAddress[0]);
+            printf("BaseAddress1  : 0x%X\n" , PCItoPCIBridge->BaseAddress[1]);
+            printf("MemoryBase    : 0x%X~0x%X\n" , PCItoPCIBridge->MemoryBase , PCItoPCIBridge->MemoryLimit);
+            printf("IOAddress     : 0x%X~0x%X\n" , PCItoPCIBridge->IOBase , PCItoPCIBridge->IOLimit);
+            printf("Interrupt Pin : %d\n" , PCItoPCIBridge->InterruptPin);
     #endif
             return PCItoPCIBridge;
         case 0x02:
-            PCItoCardBusBridge = (HeaderType0x02 *)Kernel::MemoryManagement::Allocate(sizeof(HeaderType0x02));
+            PCItoCardBusBridge = (HeaderType0x02 *)MemoryManagement::Allocate(sizeof(HeaderType0x02));
             memcpy(PCItoCardBusBridge , Data , 256);
     #ifdef DEBUG
-            Kernel::printf("BaseAddress0  : 0x%X~0x%X\n" , PCItoCardBusBridge->MemoryBaseAddress0 , PCItoCardBusBridge->MemoryLimit0);
-            Kernel::printf("BaseAddress1  : 0x%X~0x%X\n" , PCItoCardBusBridge->MemoryBaseAddress1 , PCItoCardBusBridge->MemoryLimit1);
-            Kernel::printf("IOAddress1    : 0x%X~0x%X\n" , PCItoCardBusBridge->IOBaseAddress0 , PCItoCardBusBridge->IOLimit0);
-            Kernel::printf("IOAddress0    : 0x%X~0x%X\n" , PCItoCardBusBridge->IOBaseAddress1 , PCItoCardBusBridge->IOLimit1);
-            Kernel::printf("Interrupt Pin : %d\n" , PCItoCardBusBridge->InterruptPin);
+            printf("BaseAddress0  : 0x%X~0x%X\n" , PCItoCardBusBridge->MemoryBaseAddress0 , PCItoCardBusBridge->MemoryLimit0);
+            printf("BaseAddress1  : 0x%X~0x%X\n" , PCItoCardBusBridge->MemoryBaseAddress1 , PCItoCardBusBridge->MemoryLimit1);
+            printf("IOAddress1    : 0x%X~0x%X\n" , PCItoCardBusBridge->IOBaseAddress0 , PCItoCardBusBridge->IOLimit0);
+            printf("IOAddress0    : 0x%X~0x%X\n" , PCItoCardBusBridge->IOBaseAddress1 , PCItoCardBusBridge->IOLimit1);
+            printf("Interrupt Pin : %d\n" , PCItoCardBusBridge->InterruptPin);
     #endif
             return PCItoCardBusBridge;
     }

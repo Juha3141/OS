@@ -4,7 +4,7 @@
 volatile unsigned short PITFrequency;
 unsigned long TickCount = 0;
 
-void Kernel::PIT::MainInterruptHandler(void) {
+void PIT::MainInterruptHandler(void) {
     const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
     unsigned char *VideoMemory = (unsigned char *)0xB8000;
     VideoMemory[79*2] = Spinner[TickCount%4];
@@ -13,11 +13,11 @@ void Kernel::PIT::MainInterruptHandler(void) {
     LocalAPIC::SendEOI();
 }
 
-unsigned long Kernel::PIT::GetTickCount(void) {
+unsigned long PIT::GetTickCount(void) {
     return TickCount;
 }
 
-void Kernel::PIT::Initialize(void) {
+void PIT::Initialize(void) {
     PITFrequency = PIT_CONVERT_US_TO_HZ(200);          // Do NOT set this value to 100, it might crash
                                                         // the timer system!
     
@@ -29,16 +29,16 @@ void Kernel::PIT::Initialize(void) {
     PIC::Unmask(32);                                   // Unmask timer interrupt(32)
 }
 
-unsigned short Kernel::PIT::GetCurrentPITFrequency(void) {
+unsigned short PIT::GetCurrentPITFrequency(void) {
     return PITFrequency;
 }
 
-unsigned short Kernel::PIT::ReadPITCounter(unsigned char CounterNumber) {
+unsigned short PIT::ReadPITCounter(unsigned char CounterNumber) {
     IO::Write(PIT_MODE_COMMAND_REGISTER , (CounterNumber & 0b11) << 6);
     return IO::Read(PIT_CHANNEL0_DATA+(CounterNumber & 0b11))|(IO::Read(PIT_CHANNEL0_DATA+(CounterNumber & 0b11)) << 8);
 }
 
-void Kernel::PIT::DelayByPITCount(unsigned int PITCount) {
+void PIT::DelayByPITCount(unsigned int PITCount) {
     unsigned short CounterValue = ReadPITCounter(PIT_COUNTER0);
     while(1) {
         if((CounterValue-ReadPITCounter(PIT_COUNTER0)) >= PITCount) {
@@ -47,7 +47,7 @@ void Kernel::PIT::DelayByPITCount(unsigned int PITCount) {
     }
 }
 
-void Kernel::PIT::DelayMilliseconds(unsigned int Milliseconds) {
+void PIT::DelayMilliseconds(unsigned int Milliseconds) {
     int i;
     if(Milliseconds == 0) {
         __asm__ ("nop");
@@ -64,7 +64,7 @@ void Kernel::PIT::DelayMilliseconds(unsigned int Milliseconds) {
     IO::Write(PIT_CHANNEL0_DATA , (PITFrequency >> 8) & 0xFF);
 }
 
-void Kernel::PIT::DelayMicroseconds(unsigned int Microseconds) {
+void PIT::DelayMicroseconds(unsigned int Microseconds) {
     int i;
     if(Microseconds == 0) {
         __asm__ ("nop");

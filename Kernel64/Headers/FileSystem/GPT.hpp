@@ -13,48 +13,45 @@
 #define GPT_PARTITION_HIDDEN	 	   0x62
 #define GPT_PARTITION_NO_DRIVE_LETTEER 0x63
 
-namespace Kernel {
-	namespace GPT {
-		struct GPTHeader {
-			unsigned char Signature[8];
-			unsigned int Revision;
-			unsigned int HeaderSize;
-			unsigned int CRC32Value;
-			unsigned int Reserved1;
-			unsigned long GPTHeaderLBA;
-			unsigned long BackupGPTHeaderLBA;
-			unsigned long AvailablePartitionLBA;
-			unsigned long EndingAvailPartitionLBA;
-			unsigned char DiskGUID[16];
-			unsigned long PartitionTableEntryLBA;
-			unsigned int NumberOfPartitionEntries;
-			unsigned int PartitionTableEntrySize;
-			unsigned PartitionTableCRC32Value;
-			unsigned char Reserved2[420];
-		};
-		struct PartitionTableEntry {
-			unsigned char PartitionTypeGUID[16];
-			unsigned char UniquePartitionGUID[16];
-			unsigned long StartAddressLBA;
-			unsigned long EndAddressLBA;
-			unsigned long AttributeFlag;
-			char PartitionName[72];
-		};
-		class Identifier : public StorageSchemeIdentifier {
-			public:
-				Identifier(struct StorageDriver *StorageDriver_
-				         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
-					Header = (struct GPTHeader *)Kernel::MemoryManagement::Allocate(128);
-				}
-				bool Detect(void);
-				struct Partition *GetPartition(void);
-				bool CreatePartition(struct Partition Partition);
+namespace GPT {
+	struct GPTHeader {
+		unsigned char Signature[8];
+		unsigned int Revision;
+		unsigned int HeaderSize;
+		unsigned int CRC32Value;
+		unsigned int Reserved1;
+		unsigned long GPTHeaderLBA;
+		unsigned long BackupGPTHeaderLBA;
+		unsigned long AvailablePartitionLBA;
+		unsigned long EndingAvailPartitionLBA;
+		unsigned char DiskGUID[16];
+		unsigned long PartitionTableEntryLBA;
+		unsigned int NumberOfPartitionEntries;
+		unsigned int PartitionTableEntrySize;
+		unsigned PartitionTableCRC32Value;
+		unsigned char Reserved2[420];
+	};
+	struct PartitionTableEntry {
+		unsigned char PartitionTypeGUID[16];
+		unsigned char UniquePartitionGUID[16];
+		unsigned long StartAddressLBA;
+		unsigned long EndAddressLBA;
+		unsigned long AttributeFlag;
+		char PartitionName[72];
+	};
+	class Identifier : public StorageSchemeIdentifier {
+		public:
+			Identifier(struct StorageDriver *StorageDriver_
+			         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
+				Header = (struct GPTHeader *)MemoryManagement::Allocate(128);
+			}
+			bool Detect(void);
+			struct Partition *GetPartition(void);
+			bool CreatePartition(struct Partition Partition);
 
-				struct GPTHeader *Header;
-				struct PartitionTableEntry *PartitionTableEntry;
-
-		};
-	}
+			struct GPTHeader *Header;
+			struct PartitionTableEntry *PartitionTableEntry;
+	};
 }
 
 #endif

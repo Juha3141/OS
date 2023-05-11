@@ -1,11 +1,11 @@
 #include <Mouse.hpp>
 
-static Kernel::Mouse::DataManager *MouseDataManager; // Management structure of the mouse data
+static Mouse::DataManager *MouseDataManager; // Management structure of the mouse data
 
-void Kernel::Mouse::Initialize(void) {
+void Mouse::Initialize(void) {
     unsigned int ID;
     unsigned char Output;
-    MouseDataManager = (Kernel::Mouse::DataManager *)Kernel::SystemStructure::Allocate(sizeof(Kernel::Mouse::DataManager));    // Allocate the system structure
+    MouseDataManager = (Mouse::DataManager *)SystemStructure::Allocate(sizeof(Mouse::DataManager));    // Allocate the system structure
     MouseDataManager->Initialize();/*
 
     IO::Write(0x64 , 0xA8);             // Send Mouse Enable command to command port
@@ -16,7 +16,7 @@ void Kernel::Mouse::Initialize(void) {
         }
     }
     IO::Write(0x60 , 0xF4);             // Enable Mouse Enable command to data port
-    Kernel::printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
+    printf("ACK Signal : 0x%X\n" , IO::Read(0x60));
 
     IO::Write(0x64 , 0x20);             // Read command port data
     while(1) {
@@ -33,13 +33,13 @@ void Kernel::Mouse::Initialize(void) {
     }
     IO::Write(0x60 , Output);           // Write command port data
     
-    Kernel::PIC::Unmask(44);            // Unmask IRQ 12(Mouse Interrupt)
+    PIC::Unmask(44);            // Unmask IRQ 12(Mouse Interrupt)
     */
-    Kernel::PIC::Unmask(32+2);          // Unmask IRQ 2(Slave PIC)
-    Kernel::PIC::Unmask(32+9);          // Unmask IRQ 9(Slave PIC)
+    PIC::Unmask(32+2);          // Unmask IRQ 2(Slave PIC)
+    PIC::Unmask(32+9);          // Unmask IRQ 9(Slave PIC)
 }
 
-void Kernel::Mouse::MainInterruptHandler(void) {
+void Mouse::MainInterruptHandler(void) {
     static int i = 0;
     const unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};  // Spinner(for debugging purpose)
     unsigned char *VideoMemory = (unsigned char *)0xB8000;
@@ -52,7 +52,7 @@ void Kernel::Mouse::MainInterruptHandler(void) {
     PIC::SendEOI(44);
 }
 
-void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
+void Mouse::DataManager::ProcessMouseData(unsigned char Data) {
     if(DataPhase == 0) {
         DataPhase++;
         TemporaryMouseData.ButtonData = Data;
@@ -81,10 +81,10 @@ void Kernel::Mouse::DataManager::ProcessMouseData(unsigned char Data) {
     }
 }
 
-bool Kernel::Mouse::IsDataQueueEmpty(void) {
+bool Mouse::IsDataQueueEmpty(void) {
     return MouseDataManager->MouseDataQueue.IsEmpty();
 }
 
-bool Kernel::Mouse::GetMouseDataQueue(struct Kernel::Mouse::MouseData *Data) {
-    return (struct Kernel::Mouse::MouseData *)MouseDataManager->MouseDataQueue.Dequeue(Data);
+bool Mouse::GetMouseDataQueue(struct Mouse::MouseData *Data) {
+    return (struct Mouse::MouseData *)MouseDataManager->MouseDataQueue.Dequeue(Data);
 }

@@ -1,12 +1,12 @@
 #include <MutualExclusion.hpp>
 
-void Kernel::MutualExclusion::SpinLock::Initialize(void)  {
+void MutualExclusion::SpinLock::Initialize(void)  {
     Locked = 0;
     LockedCoreID = 0xFFFFFFFF;
     LockedCount = 0;
 }
 
-void Kernel::MutualExclusion::SpinLock::Lock(void) {
+void MutualExclusion::SpinLock::Lock(void) {
     if(!_cmpxchg(&(Locked) , 0 , 1)) {
         if(LockedCoreID == LocalAPIC::GetCurrentAPICID()) {
             // multiple lock
@@ -24,7 +24,7 @@ void Kernel::MutualExclusion::SpinLock::Lock(void) {
     LockedCoreID = LocalAPIC::GetCurrentAPICID();
 }
 
-void Kernel::MutualExclusion::SpinLock::Unlock(void)  {
+void MutualExclusion::SpinLock::Unlock(void)  {
     if((Locked == 0)||(LockedCoreID != LocalAPIC::GetCurrentAPICID())) {
         return;
     }

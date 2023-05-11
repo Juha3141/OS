@@ -35,19 +35,17 @@
 #define PAGE_PDENTRY_FLAGS_EXB   0b10000000000000
 
 
-namespace Kernel {
-    namespace Paging {
-        typedef struct Entry {
-            unsigned short Flags:12;
-            unsigned long BaseAddress:52; // Note that base address should be 
-                                          // aligned to 4KB
-        }
-        PageEntry , 
-        PageDirectoryPointerEntry , 
-        PageDirectoryEntry , 
-        PageTableEntry;
-        void SetEntry(struct Kernel::Paging::Entry *PageEntry , unsigned long BaseAddress , unsigned short Flags);
+namespace Paging {
+    typedef struct Entry {
+        unsigned short Flags:12;
+        unsigned long BaseAddress:52; // Note that base address should be 
+                                      // aligned to 4KB
     }
+    PageEntry , 
+    PageDirectoryPointerEntry , 
+    PageDirectoryEntry , 
+    PageTableEntry;
+    void SetEntry(struct Paging::Entry *PageEntry , unsigned long BaseAddress , unsigned short Flags);
 }
 
 #endif

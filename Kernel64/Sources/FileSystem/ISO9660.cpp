@@ -1,7 +1,5 @@
 #include <FileSystem/ISO9660.hpp>
 
-using namespace Kernel;
-
 bool ISO9660::Register(void) {
     struct ISO9660::Driver *ISO9660Driver = new ISO9660::Driver;
     return FileSystem::Register(ISO9660Driver , "ISO9660");
@@ -31,15 +29,15 @@ struct FileInfo *ISO9660::Driver::OpenFile(struct Storage  *Storage , const char
     unsigned short Date;
     unsigned short Time;
     struct FileInfo *FileInfo;
-    Kernel::printf("Open File , File name : %s\n" , FileName);
+    printf("Open File , File name : %s\n" , FileName);
     struct DirectoryRecord *DirectoryRecord;
-    DirectoryRecord = (struct DirectoryRecord *)Kernel::MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
+    DirectoryRecord = (struct DirectoryRecord *)MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
     if(GetFileRecord(Storage , GetRootDirectorySector(Storage) , FileName , DirectoryRecord) == false) {
-        Kernel::printf("File not found.\n");
-        Kernel::MemoryManagement::Free(DirectoryRecord);
+        printf("File not found.\n");
+        MemoryManagement::Free(DirectoryRecord);
         return 0x00;
     }
-    FileInfo = (struct FileInfo *)Kernel::MemoryManagement::Allocate(sizeof(struct FileInfo));
+    FileInfo = (struct FileInfo *)MemoryManagement::Allocate(sizeof(struct FileInfo));
     FileInfo->BlockSize = ISO9660_BYTES_PER_SECTOR;
     FileInfo->SectorAddress = DirectoryRecord->LocationL;
     FileInfo->FileType = DirectoryRecord->FileFlags;
@@ -61,22 +59,22 @@ struct FileInfo *ISO9660::Driver::OpenFile(struct Storage  *Storage , const char
     FileInfo->LastWrittenTime = Time;
     FileInfo->StorageID = Storage->ID;
     FileInfo->StorageDriverID = Storage->Driver->DriverID;
-    Kernel::MemoryManagement::Free(DirectoryRecord);
+    MemoryManagement::Free(DirectoryRecord);
     return FileInfo;
 }
 
 int ISO9660::Driver::CloseFile(struct Storage  *Storage , struct FileInfo *FileInfo) {
-    Kernel::printf("Close File\n");
+    printf("Close File\n");
     return 1;
 }
 
 int ISO9660::Driver::RemoveFile(struct Storage  *Storage , struct FileInfo *FileInfo) {
-    Kernel::printf("Remove File\n");
+    printf("Remove File\n");
     return 1;
 }
 
 int ISO9660::Driver::WriteFile(struct Storage  *Storage , struct FileInfo *FileInfo , unsigned long Size , void *Buffer) {
-    Kernel::printf("Write File\n");
+    printf("Write File\n");
     return 1;
 }
 
@@ -84,17 +82,17 @@ int ISO9660::Driver::ReadFile(struct Storage  *Storage , struct FileInfo *FileIn
     unsigned int ReadSize;
     unsigned int SectorAddress = FileInfo->SectorAddress+(FileInfo->FileOffset/FileInfo->BlockSize);
     unsigned int SectorCountToRead = Size/FileInfo->BlockSize+(((Size%FileInfo->BlockSize) == 0) ? 0 : 1);
-    unsigned char *TempBuffer = (unsigned char *)Kernel::MemoryManagement::Allocate(SectorCountToRead*FileInfo->BlockSize);
+    unsigned char *TempBuffer = (unsigned char *)MemoryManagement::Allocate(SectorCountToRead*FileInfo->BlockSize);
     
     if((ReadSize = Storage->Driver->ReadSector(Storage , SectorAddress , SectorCountToRead , TempBuffer)) == (SectorCountToRead*FileInfo->BlockSize)) {
         memcpy(Buffer , TempBuffer , ReadSize);
         FileInfo->FileOffset += ReadSize;
-        Kernel::MemoryManagement::Free(TempBuffer);
+        MemoryManagement::Free(TempBuffer);
         return ReadSize;
     }
     FileInfo->FileOffset += Size;
     memcpy(Buffer , TempBuffer , Size);
-    Kernel::MemoryManagement::Free(TempBuffer);
+    MemoryManagement::Free(TempBuffer);
     return Size;
 }
 
@@ -114,28 +112,28 @@ bool ISO9660::Driver::GetFileRecord(struct Storage  *Storage , unsigned long Dir
     unsigned char Data[ISO9660_BYTES_PER_SECTOR];
     struct PathTableEntry *Directory; // Description->PathTableLocationL
     struct DirectoryRecord *DirectoryFileEntry;
-    Directory = (struct PathTableEntry*)Kernel::MemoryManagement::Allocate(sizeof(struct PathTableEntry));
-    DirectoryFileEntry = (struct DirectoryRecord*)Kernel::MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
+    Directory = (struct PathTableEntry*)MemoryManagement::Allocate(sizeof(struct PathTableEntry));
+    DirectoryFileEntry = (struct DirectoryRecord*)MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
     Storage->Driver->ReadSector(Storage , DirectoryAddress , 1 , Data);
     memcpy(Directory , Data , sizeof(PathTableEntry));
     Storage->Driver->ReadSector(Storage , Directory->Location , 1 , Data);
-    Kernel::printf("File Record Location : %d\n" , Directory->Location);
+    printf("File Record Location : %d\n" , Directory->Location);
     while(1) {
         memcpy(DirectoryFileEntry , Data+Offset , sizeof(struct DirectoryRecord));
         if(DirectoryFileEntry->VolumeSequenceNumberL != 1) {
             break;
         }
-        // Kernel::printf("File List : %s\n" , (const char*)(Data+Offset+sizeof(struct DirectoryRecord)));
+        // printf("File List : %s\n" , (const char*)(Data+Offset+sizeof(struct DirectoryRecord)));
         if(memcmp((const char*)(Data+Offset+sizeof(struct DirectoryRecord)) , Name , DirectoryFileEntry->DirectoryLength-sizeof(struct DirectoryRecord)) == 0) {
             memcpy(DirectoryRecord , DirectoryFileEntry , sizeof(struct DirectoryRecord));
-            Kernel::MemoryManagement::Free(Directory);
-            Kernel::MemoryManagement::Free(DirectoryFileEntry);
+            MemoryManagement::Free(Directory);
+            MemoryManagement::Free(DirectoryFileEntry);
             return true;
         }
         Offset += DirectoryFileEntry->DirectoryLength;
     }
-    Kernel::MemoryManagement::Free(Directory);
-    Kernel::MemoryManagement::Free(DirectoryFileEntry);
+    MemoryManagement::Free(Directory);
+    MemoryManagement::Free(DirectoryFileEntry);
     return false;
 }
 
