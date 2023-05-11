@@ -503,7 +503,7 @@ _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ14Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 1
-    call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
+    ; call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq
@@ -512,7 +512,7 @@ _ZN6Kernel7Drivers4PATA22InterruptHandler_IRQ15Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 0
-    call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
+    ; call _ZN6Kernel7Drivers4PATA20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq
