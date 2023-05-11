@@ -5,7 +5,6 @@
 // How ridiculous..
 
 #include <Kernel.hpp>
-#include <Drivers/DeviceDriver.hpp>
 
 #define STORAGESYSTEM_MAXCOUNT 512
 
@@ -13,112 +12,271 @@
 #define STORAGESYSTEM_GPT 0x02
 #define STORAGESYSTEM_ETC 0x03
 
+#define STORAGESYSTEM_INVALIDID 0xFFFFFFFFFFFFFFFF
+
+#define PARTITIONID_PHYSICALDRIVE 0xFFFFFFFF
+
 namespace Kernel {
-    namespace FileSystem {
-        struct Standard;
+    class FileSystemDriver;
+    struct StorageGeometry { // StorageGeometry
+        unsigned long CylindersCount;
+        unsigned long TracksPerCylinder;
+        unsigned long SectorsPerTrack;
+        unsigned long BytesPerTrack;
+        
+        unsigned long BytesPerSector;
+        unsigned long TotalSectorCount;
+
+        unsigned char Model[41];
+        unsigned char Manufacturer[24];
+
+        // Used when the storage is logical.
+        unsigned long StartingLBA;
+        unsigned long EndingLBA;
+    };
+
+    struct Partition { // to - do : Detect file system & implement it
+        unsigned long StartAddressLBA;
+        unsigned long EndAddressLBA;
+        unsigned int PartitionType;
+        bool IsBootable;
+
+        char PartitionName[72];
+
+        unsigned char PartitionTypeGUID[16];
+        unsigned char UniquePartitionGUID[16];
+    };
+
+    struct PhysicalStorageInfo {
+        // Contains physical information of storage
+        unsigned short *Ports;
+        int PortsCount;
+
+        unsigned int *IRQs; // if there is no IRQ, this value is -1
+        int IRQsCount;
+
+        unsigned long *Flags;
+        int FlagsCount;
+            
+        unsigned long *Resources;
+        int ResourcesCount;
+
+        struct StorageGeometry Geometry;
+    };
+
+    struct StorageDriver;
+    class StorageManager;
+
+    struct Storage {
+        // For identification
+        // ID of the Storage, all same for same storage
+        unsigned long ID;
+        // If it's physical drive : PARTITIONID_PHYSICALDRIVE
+        unsigned long PartitionID;
+
+        StorageDriver *Driver;
+        struct FileSystemDriver *FileSystem;
+        char FileSystemString[24];
+        
+        struct PhysicalStorageInfo PhysicalInfo;
+        
+        unsigned char PartitionScheme; // MBR or GPT?
+        enum StorageType { Physical , Logical } Type;
+
+        // If this storage is a physical storage, use information here : 
+        StorageManager *LogicalStorages;
+        // If it's logical storage or there's no partition, leave it zero
+        // If this is a logical storage, use information here : 
+        Partition LogicalPartitionInfo;
+    };
+
+    struct StorageDriver {
+        friend class StorageDriverManager;
+        virtual bool PreInitialization(void) = 0; 
+        virtual unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) = 0;
+        virtual unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) = 0;
+        virtual bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) = 0;
+        
+        class StorageManager *StorageManager;
+
+        unsigned int DriverID;
+        char DriverName[24];
+    };
+    
+    // Driver that universally handle partition storage.
+    // Doesn't registered to storage driver manager
+    // But it's stored in [Driver] pointer in partition storage.
+    template <typename T>class ObjectManager { // Manages [Pointer of] some object
+        public:
+            virtual void Initialize(int MaxCount) {
+                MaxObjectCount = MaxCount;
+            }
+            virtual unsigned long Register(T *Object) { // returns ID
+                unsigned int i;
+                if(ObjectContainer == 0x00) {
+                    Kernel::printf("Error : ObjectContainer yet not initialized\n");
+                    return STORAGESYSTEM_INVALIDID;
+                }
+                if(CurrentObjectCount >= MaxObjectCount) {
+                    return STORAGESYSTEM_INVALIDID;
+                }
+                for(i = 0; i < MaxObjectCount; i++) {
+                    if(ObjectContainer[i].Using == false) {
+                        break;
+                    }
+                }
+                ObjectContainer[i].Using = true;
+                if(i >= MaxObjectCount) {
+                    return STORAGESYSTEM_INVALIDID; // all object is occupied;
+                }
+                ObjectContainer[i].Object = Object;
+                CurrentObjectCount++;
+                return i;
+            }
+            virtual unsigned long Deregister(T *Object) {
+                unsigned int i;
+                for(i = 0; i < CurrentObjectCount; i++) {
+                    if(ObjectContainer[i].Object == Object) {
+                        return i;
+                    }
+                }
+                return STORAGESYSTEM_INVALIDID;
+            }
+            virtual T *GetObject(unsigned long ID) {
+                if(ObjectContainer[ID].Using == false) {
+                    return 0x00;
+                }
+                if(ID >= MaxObjectCount) {
+                    return 0x00;
+                }
+                return ObjectContainer[ID].Object;
+            }
+
+            unsigned int MaxObjectCount = 0;
+            unsigned int CurrentObjectCount = 0;
+        protected:
+            struct ObjectContainer {
+                T *Object;
+                bool Using = false;
+            }*ObjectContainer = 0x00;
+    };
+
+    class StorageDriverManager : public ObjectManager<StorageDriver> {
+        public:
+            static StorageDriverManager *GetInstance(void) {
+                static class StorageDriverManager *Instance;
+                if(Instance == 0x00) {
+                    // to-do : change everything to new plz
+                    Instance = new StorageDriverManager; // (class StorageDriverManager *)Kernel::MemoryManagement::Allocate(sizeof(StorageDriverManager));
+                }
+                return Instance;
+            }
+            void Initialize(void) {
+                ObjectManager<StorageDriver>::Initialize(256);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)Kernel::MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+            }
+            unsigned long Register(StorageDriver *Driver) {
+                Driver->DriverID = ObjectManager<StorageDriver>::Register(Driver);
+                return Driver->DriverID;
+            }
+            StorageDriver *GetObjectByName(const char *DriverName) {
+                int i;
+                for(i = 0; i < MaxObjectCount; i++) {
+                    if(strlen(ObjectContainer[i].Object->DriverName) != strlen(DriverName)) {
+                        continue;
+                    }
+                    if(memcmp(ObjectContainer[i].Object->DriverName , DriverName , strlen(ObjectContainer[i].Object->DriverName)) == 0) {
+                        return ObjectContainer[i].Object;
+                    }
+                }
+                return 0x00;
+            }
+    };
+
+    class StorageManager : public ObjectManager<struct Storage> {
+        public:
+            void Initialize(void) {
+                ObjectManager<struct Storage>::Initialize(256);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)Kernel::MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+            }
+    };
+
+    namespace StorageSystem {
+        // should we just remove this part and use Singleton object???
+        // no just use for convenience
+        /////////////////////////////////////////////////////////////////////////////////
+        void Initialize(void);
+        bool RegisterDriver(StorageDriver *Driver , const char *DriverName);
+        StorageDriver *SearchDriver(const char *DriverName);
+        StorageDriver *SearchDriver(unsigned long ID);
+        unsigned long DeregisterDriver(const char *DriverName);
+        unsigned long DeregisterDriver(unsigned long ID);
+        /////////////////////////////////////////////////////////////////////////////////
+        
+        bool RegisterStorage(struct StorageDriver *Driver , struct Storage *Storage);
+        bool RegisterStorage(unsigned long DriverID , struct Storage *Storage);
+        bool RegisterStorage(const char *DriverName , Storage *Storage);
+        struct Storage *SearchStorage(const char *DriverName , unsigned long StorageID);
+        struct Storage *SearchStorage(unsigned long DriverID , unsigned long StorageID);
+        bool DeregisterStorage(const char *DriverName , unsigned long StorgeID);
+        
+        struct Storage *Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount , enum Storage::StorageType Type);
+        void AddLogicalDrive(StorageDriver *Driver , struct Storage *Storage , struct Partition *Partitions , int PartitionCount);
     }
-    namespace Drivers {
-        namespace StorageSystem {
-            struct Partition { // to - do : Detect file system & implement it
-                unsigned long StartAddressLBA;
-                unsigned long EndAddressLBA;
-                unsigned int PartitionType;
-                bool IsBootable;
 
-                char PartitionName[72];
-
-                unsigned char PartitionTypeGUID[16];
-                unsigned char UniquePartitionGUID[16];
-            };
-            struct StorageGeometry { // StorageGeometry
-                unsigned long CylindersCount;
-                unsigned long TracksPerCylinder;
-                unsigned long SectorsPerTrack;
-                unsigned long BytesPerTrack;
-                
-                unsigned long BytesPerSector;
-                unsigned long TotalSectorCount;
-
-                unsigned char Model[41];
-                unsigned char Manufacturer[24];
-
-                // Used when the storage is logical.
-                unsigned long StartingLBA;
-                unsigned long EndingLBA;
-            };
-            struct Driver;
-            struct Storage {
-                // Common
-                unsigned short *Ports;
-                int PortsCount;
-                
-                unsigned int *IRQs; // if there is no IRQ, this value is -1
-                int IRQsCount;
-
-                unsigned long *Flags;
-                int FlagsCount;
-
-                unsigned long *Resources;
-                int ResourcesCount;
-
-                unsigned short ID; // Storage ID
-
-                struct StorageGeometry Geometry;
-
-                char FileSystemString[24];
-                struct FileSystem::Standard *FileSystem;
-                struct StorageSystem::Driver *Driver;
-
-                // For Identifying whether it's physical or logical
-                unsigned char StorageType; // 0x00 : Physical , 0x01 : Logical
-
-                // For Logical Storage
-                Partition LogicalPartitionInfo;
-
-                // For Physical Storage
-                Storage **LogicalStorages;
-                int PartitionCount;
-                unsigned char PartitionScheme;
-            };
-            typedef bool (*StandardPreInitializationFunction)(Driver *Driver);
-            typedef unsigned long (*StandardReadSectorFunction)(Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
-            typedef unsigned long (*StandardWriteSectorFunction)(Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer);
-            typedef bool (*StandardGetGeometryFunction)(Storage *Storage , StorageSystem::StorageGeometry *Geometry);
-            struct Driver { // Only One storage driver exist.
-                StandardPreInitializationFunction PreInitialization;
-                StandardReadSectorFunction ReadSectorFunction;
-                StandardWriteSectorFunction WriteSectorFunction;
-                StandardGetGeometryFunction GetGeometryFunction;
-                
-                char DriverName[24]; // IDE, RAMDisk, USB, or etc..
-                DriverSystemManager *StoragesManager;
-
-                unsigned int ID;    // Storage Driver** ID
-            };
-            // Register Storager while booting -> Start Initialization
-            // Initialization : Searches devices and registers it **
-            // ReadSector & WriteSector
-            // Etc..
-            void Initialize(void);
-            StorageSystem::Driver *AssignDriver(
-            StandardPreInitializationFunction PreInitialization , 
-            StandardReadSectorFunction ReadSectorFunction , 
-            StandardWriteSectorFunction WriteSectorFunction , 
-            StandardGetGeometryFunction GetGeometryFunction);
-            bool RegisterStorageDriver(StorageSystem::Driver *StorageDriver , const char *DriverName);
-            StorageSystem::Driver *SearchStorageDriver(const char *DriverName);
-            StorageSystem::Driver *SearchStorageDriver(unsigned long ID);
-            StorageSystem::Driver *DeregisterStorageDriver(const char *DriverName);
-            StorageSystem::Driver *DeregisterStorageDriver(unsigned long ID);
-
-            StorageSystem::Storage *AssignStorage(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount);
-            void AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount);
-            bool RegisterStorage(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage);
-            bool RegisterStorage(const char *DriverName , Storage *Storage);
-            StorageSystem::Storage *SearchStorage(const char *DriverName , unsigned long StorageID);
-            bool DeregisterStorage(const char *DriverName , unsigned long StorgeID);
+    struct PartitionDriver : public StorageDriver {
+        void SetSuperDriver(struct StorageDriver *Driver) {
+            SuperDriver = Driver;
         }
-    }
+        bool PreInitialization(void) { 
+            Kernel::printf("It's not allowed to do this!\n");
+            return false;
+        };
+        unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
+            struct Storage *PhysicalStorage;
+            if(Storage->Type == Storage::StorageType::Physical) {
+                Kernel::printf("This can't be happening!\n");
+                return 0x00;
+            }
+            if(Storage->Type == Storage::StorageType::Logical) {
+                SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+            }
+            if(Storage->Driver->DriverID == STORAGESYSTEM_INVALIDID) {
+                return 0x00;
+            }
+            PhysicalStorage = SuperDriver->StorageManager->GetObject(Storage->ID);
+            if(PhysicalStorage == 0x00) {
+                return 0x00;
+            }
+            return PhysicalStorage->Driver->ReadSector(PhysicalStorage , SectorAddress , Count , Buffer);
+        }
+        unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
+            struct Storage *PhysicalStorage;
+            if(Storage->Type == Storage::StorageType::Physical) {
+                Kernel::printf("This can't be happening!\n");
+                return 0x00;
+            }
+            if(Storage->Type == Storage::StorageType::Logical) {
+                SectorAddress += Storage->LogicalPartitionInfo.StartAddressLBA;
+            }
+            if(Storage->Driver->DriverID == STORAGESYSTEM_INVALIDID) {
+                return 0x00;
+            }
+            PhysicalStorage = SuperDriver->StorageManager->GetObject(Storage->ID);
+            if(PhysicalStorage == 0x00) {
+                return 0x00;
+            }
+            return PhysicalStorage->Driver->WriteSector(Storage , SectorAddress , Count , Buffer);
+        }
+        bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) {
+            if(SuperDriver == 0x00) {
+                Kernel::printf("Warning : SuperDriver yet initialized!\n");
+                return false;
+            }
+            return SuperDriver->GetGeometry(Storage , Geometry);
+        }
+        struct StorageDriver *SuperDriver;
+    };
 }
 
 #endif

@@ -1,4 +1,3 @@
-#include <Drivers/DeviceDriver.hpp>
 #include <Drivers/StorageDriver.hpp>
 #include <Drivers/FileSystemDriver.hpp>
 
@@ -6,97 +5,147 @@
 #include <FileSystem/GPT.hpp>
 
 using namespace Kernel;
-using namespace Kernel::Drivers;
-
-struct DriverSystemManager *StorageDriverManager;
 
 void StorageSystem::Initialize(void) {
-    StorageDriverManager = (struct DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager));
-    StorageDriverManager->Initialize();
+    StorageDriverManager::GetInstance()->Initialize();
+    // StorageManager::GetInstance()->Initialize();
+    // Revision 2-2 : Implement indivisual storage manager for indivisual drivers.
 }
 
-Kernel::Drivers::StorageSystem::Driver *Kernel::Drivers::StorageSystem::AssignDriver(
-StandardPreInitializationFunction PreInitialization , 
-StandardReadSectorFunction ReadSectorFunction , 
-StandardWriteSectorFunction WriteSectorFunction , 
-StandardGetGeometryFunction GetGeometryFunction) {
-    StorageSystem::Driver *StorageDriver = (StorageSystem::Driver *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Driver));
-    StorageDriver->PreInitialization = PreInitialization;
-    StorageDriver->ReadSectorFunction = ReadSectorFunction;
-    StorageDriver->WriteSectorFunction = WriteSectorFunction;
-    StorageDriver->GetGeometryFunction = GetGeometryFunction;
-    return StorageDriver;
-}
-
-bool StorageSystem::RegisterStorageDriver(StorageSystem::Driver *StorageDriver , const char *DriverName) {
-    int i;
-    unsigned long ID;
-    if((ID = StorageDriverManager->Register((unsigned long)StorageDriver)) == DRIVERSYSTEM_INVALIDID) {
-        Kernel::printf("Failed registering storage system.\n");
+// Interface of StorageDriverManager
+bool StorageSystem::RegisterDriver(StorageDriver *Driver , const char *DriverName) {
+    StorageDriverManager *DriverManager = StorageDriverManager::GetInstance();
+    Kernel::printf("DriverManager : 0x%X\n" , DriverManager);
+    Kernel::printf("Driver : 0x%X\n" , Driver);
+    if(DriverManager->Register(Driver) == STORAGESYSTEM_INVALIDID) {
         return false;
     }
-    StorageDriver->StoragesManager = (struct DriverSystemManager *)Kernel::MemoryManagement::Allocate(sizeof(struct DriverSystemManager));
-    StorageDriver->StoragesManager->Initialize();
-    StorageDriver->ID = ID;
-    strcpy(StorageDriver->DriverName , DriverName);
-    if(StorageDriver->PreInitialization(StorageDriver) == false) { // Detect and register the storage system
-        Kernel::printf("Pre-initialization failed\n");
-        return false;
-    }
+    Driver->StorageManager = new class StorageManager;
+    Driver->StorageManager->Initialize();
+    strcpy(Driver->DriverName , DriverName);
+    Kernel::printf("Registered driver info. : ID %d , registered as name \"%s\"\n" , Driver->DriverID , Driver->DriverName);
+    Driver->PreInitialization();
     return true;
 }
 
-StorageSystem::Driver *StorageSystem::SearchStorageDriver(const char *DriverName) {
+StorageDriver *StorageSystem::SearchDriver(const char *DriverName) {
+    return StorageDriverManager::GetInstance()->GetObjectByName(DriverName);
+}
+
+StorageDriver *StorageSystem::SearchDriver(unsigned long ID) {
+    return StorageDriverManager::GetInstance()->GetObject(ID);
+}
+
+unsigned long StorageSystem::DeregisterDriver(const char *DriverName) {
+    return StorageDriverManager::GetInstance()->Deregister(
+        StorageDriverManager::GetInstance()->GetObjectByName(DriverName)
+    );
+}
+
+unsigned long StorageSystem::DeregisterDriver(unsigned long ID) {
+    return StorageDriverManager::GetInstance()->Deregister(
+        StorageDriverManager::GetInstance()->GetObject(ID)
+    );
+}
+
+bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storage *Storage) {
     int i;
-    if(StorageDriverManager->SystemCount == 0x00) {
-        return 0;
+    StorageDriverManager *DriverManager = StorageDriverManager::GetInstance();
+    
+    struct LogicalStorage *LogicalStorage;
+    struct Partition *Partitions;
+
+    StorageSchemeIdentifier *StorageIdentifier[2];
+    FileSystemDriver *FileSystem;
+    if(Driver == 0x00) {
+        return false;
     }
-    for(i = 0; i < StorageDriverManager->SystemCount; i++) {
-        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName)) == 0) {
-            return (StorageSystem::Driver *)StorageDriverManager->SystemList[i];
+    if(Storage->Type == Storage::StorageType::Physical) {
+        if(Driver->GetGeometry(Storage , &(Storage->PhysicalInfo.Geometry)) == false) {
+            return false;
+        }
+        Storage->ID = Driver->StorageManager->Register(Storage); // call superclass
+        if(Storage->ID == STORAGESYSTEM_INVALIDID) {
+            return false;
+        }
+        Kernel::printf("Registered Physical Storage System , ID : %d(%s)\n" , Storage->ID , (Storage->Type == Storage::StorageType::Physical) ? "Physical" : "Logical");
+        Storage->PartitionID = PARTITIONID_PHYSICALDRIVE;
+        Storage->Driver = Driver;
+    }
+    else {
+        Storage->Driver = new PartitionDriver;
+        ((PartitionDriver *)Storage->Driver)->SetSuperDriver(Driver);
+        
+    }
+    // If it's logical storage, do not register to storage manager
+    
+    StorageIdentifier[0] = new MBR::Identifier(Driver , Storage);
+    StorageIdentifier[1] = new GPT::Identifier(Driver , Storage);
+    
+    // Storage is dependent to StorageDriver. We need to seperate them, and create universal storage info container system.
+    // Goal : Create indivisual partition
+    Storage->PartitionScheme = STORAGESYSTEM_ETC;
+    for(int i = 0; i < 2; i++) {
+        if(StorageIdentifier[i]->Detect() == true) {
+            Partitions = StorageIdentifier[i]->GetPartition();
+            Storage->PartitionScheme = (i+1); // 1 : MBR , 2 : GPT
+            
+            Storage->LogicalStorages = new struct StorageManager;
+            Storage->LogicalStorages->Initialize();
+            
+            AddLogicalDrive(Driver , Storage , Partitions , StorageIdentifier[i]->PartitionCount);
+            break;
         }
     }
-    return 0; // can't find storage
-}
 
-StorageSystem::Driver *StorageSystem::SearchStorageDriver(unsigned long ID) {
-    return (StorageSystem::Driver *)StorageDriverManager->GetSystem(ID);
-}
-
-StorageSystem::Driver *StorageSystem::DeregisterStorageDriver(const char *DriverName) {
-    int i;
-    for(i = 0; i < StorageDriverManager->SystemCount; i++) {
-        if(memcmp(((StorageSystem::Driver *)StorageDriverManager->SystemList[i])->DriverName , DriverName , strlen(DriverName)) == 0) {
-            return (StorageSystem::Driver *)StorageDriverManager->Deregister(i);
+    FileSystem = FileSystem::DetectFileSystem(Storage);
+    if(FileSystem == 0x00) {
+        Storage->FileSystem = 0x00;
+        strcpy(Storage->FileSystemString , "NONE");
+        Kernel::printf("%s%d" , Driver->DriverName , Storage->ID);
+        if(Storage->PartitionID != PARTITIONID_PHYSICALDRIVE) {
+            Kernel::printf(",part%d" , Storage->PartitionID);
         }
+        Kernel::printf(" : No file system\n");
+        return true;
     }
-    return 0; // can't find storage
+    Storage->FileSystem = FileSystem;
+    strcpy(Storage->FileSystemString , FileSystem->FileSystemString);
+    
+    Kernel::printf("%s%d : File System Detected : %s\n" , Driver->DriverName , Storage->ID , Storage->FileSystemString);
+    return true;
 }
 
-StorageSystem::Driver *StorageSystem::DeregisterStorageDriver(unsigned long ID) {
-    return (StorageSystem::Driver *)StorageDriverManager->Deregister(ID);
+bool StorageSystem::RegisterStorage(unsigned long DriverID , struct Storage *Storage) {
+    StorageDriver *Driver = SearchDriver(DriverID);
+    if(Driver == 0x00) {
+        return false;
+    }
+    return RegisterStorage(Driver , Storage);
 }
 
-StorageSystem::Storage *StorageSystem::AssignStorage(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
-    StorageSystem::Storage *Storage;
-    Storage = (StorageSystem::Storage *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Storage));
-    if(PortsCount != 0x00) {
-        Storage->Ports = (unsigned short *)Kernel::MemoryManagement::Allocate(PortsCount*sizeof(unsigned short));
-        Storage->PortsCount = PortsCount;
+bool StorageSystem::RegisterStorage(const char *DriverName , struct Storage *Storage) {
+    StorageDriver *Driver = SearchDriver(DriverName);
+    if(Driver == 0x00) {
+        return false;
     }
-    if(FlagsCount != 0x00) {
-        Storage->Flags = (unsigned long *)Kernel::MemoryManagement::Allocate(FlagsCount*sizeof(unsigned long));
-        Storage->FlagsCount = FlagsCount;
+    return RegisterStorage(Driver , Storage);
+}
+
+struct Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned long StorageID) {
+    struct StorageDriver *StorageDriver = SearchDriver(DriverName);
+    if(StorageDriver == 0x00) {
+        return 0x00;
     }
-    if(IRQsCount != 0x00) {
-        Storage->IRQs = (unsigned int *)Kernel::MemoryManagement::Allocate(IRQsCount*sizeof(unsigned int));
-        Storage->IRQsCount = IRQsCount;
+    return (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
+}
+
+struct Storage *StorageSystem::SearchStorage(unsigned long DriverID , unsigned long StorageID) {
+    struct StorageDriver *StorageDriver = SearchDriver(DriverID);
+    if(StorageDriver == 0x00) {
+        return 0x00;
     }
-    if(ResourcesCount != 0x00) {
-        Storage->Resources = (unsigned long *)Kernel::MemoryManagement::Allocate(ResourcesCount*sizeof(unsigned long));
-        Storage->ResourcesCount = ResourcesCount;
-    }
-    return Storage;
+    return (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
 }
 
 /// @brief Add logical drive to Storage (Disclaimer : This function doesn't calculate how full the storage is)
@@ -105,99 +154,60 @@ StorageSystem::Storage *StorageSystem::AssignStorage(int PortsCount , int FlagsC
 /// @param Storage Physical Storage
 /// @param Partitions List of partitions
 /// @param PartitionCount number of partition to add 
-void StorageSystem::AddLogicalDrive(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage , StorageSystem::Partition *Partitions , int PartitionCount) {
+void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Storage , struct Partition *Partitions , int PartitionCount) {
     int i;
     int j = 0;
-    if(Storage->PartitionCount == 0) {
-        Storage->LogicalStorages = (StorageSystem::Storage **)Kernel::MemoryManagement::Allocate(PartitionCount*sizeof(StorageSystem::Storage *));
+    int CurrentPartitionCount;
+    struct Storage *LogicalStorage;
+    if(Storage->LogicalStorages == 0x00) {
+        Storage->LogicalStorages = new struct StorageManager;
+        Storage->LogicalStorages->Initialize();
     }
-    if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->PartitionCount == 4)) {
+    CurrentPartitionCount = Storage->LogicalStorages->CurrentObjectCount;
+    if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->LogicalStorages->CurrentObjectCount == 4)) {
         return;
     }
+    Kernel::printf("PartitionCount : %d\n" , PartitionCount);
+    for(i = CurrentPartitionCount; i < CurrentPartitionCount+PartitionCount; i++) {
+        LogicalStorage = (struct Storage *)Kernel::MemoryManagement::Allocate(sizeof(struct Storage));
+        // Write info of parent storage
+        LogicalStorage->ID = Storage->ID;
+        LogicalStorage->Type = Storage::StorageType::Logical;
+
+        memcpy(&(LogicalStorage->PhysicalInfo) , &(Storage->PhysicalInfo) , sizeof(struct PhysicalStorageInfo));
+        memcpy(&(LogicalStorage->LogicalPartitionInfo) , &(Partitions[j++]) , sizeof(struct Partition));
+        // to-do : fix infinite loop error
+        LogicalStorage->PartitionID = Storage->LogicalStorages->Register(LogicalStorage);
+        Kernel::printf("LogicalStorage->PartitionID : %d\n" , LogicalStorage->PartitionID);
+        Kernel::printf("Partition %d : %d~%d\n" , i-CurrentPartitionCount , LogicalStorage->LogicalPartitionInfo.StartAddressLBA , LogicalStorage->LogicalPartitionInfo.StartAddressLBA+LogicalStorage->LogicalPartitionInfo.EndAddressLBA);
+        RegisterStorage(Driver , LogicalStorage);
+    }
     Kernel::printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
-    Kernel::printf("Storage->PartitionCount : %d\n" , Storage->PartitionCount);
-    for(i = Storage->PartitionCount-1; i < PartitionCount; i++) {
-        Storage->LogicalStorages[i] = (StorageSystem::Storage *)Kernel::MemoryManagement::Allocate(sizeof(StorageSystem::Storage));
-        memcpy(&(Storage->LogicalStorages[i]->Geometry) , &(Storage->Geometry) , sizeof(StorageSystem::StorageGeometry));
-        Storage->LogicalStorages[i]->Ports = Storage->Ports;
-        Storage->LogicalStorages[i]->PortsCount = Storage->PortsCount;
-        Storage->LogicalStorages[i]->IRQs = Storage->IRQs;
-        Storage->LogicalStorages[i]->IRQsCount = Storage->IRQsCount;
-        Storage->LogicalStorages[i]->Flags = Storage->Flags;
-        Storage->LogicalStorages[i]->FlagsCount = Storage->FlagsCount;
-        Storage->LogicalStorages[i]->Resources = Storage->Resources;
-        Storage->LogicalStorages[i]->ResourcesCount = Storage->ResourcesCount;
-        Storage->LogicalStorages[i]->StorageType = 0x01;
-        memcpy(&(Storage->LogicalStorages[i]->LogicalPartitionInfo) , &(Partitions[j++]) , sizeof(StorageSystem::Partition));
-        RegisterStorage(StorageDriver , Storage->LogicalStorages[i]);
+    Kernel::printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->CurrentObjectCount);
+}
+
+static void AssignPhysicalInfo(Storage *Storage , int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
+    if(PortsCount != 0x00) {
+        Storage->PhysicalInfo.Ports = (unsigned short *)Kernel::MemoryManagement::Allocate(PortsCount*sizeof(unsigned short));
+        Storage->PhysicalInfo.PortsCount = PortsCount;
+    }
+    if(FlagsCount != 0x00) {
+        Storage->PhysicalInfo.Flags = (unsigned long *)Kernel::MemoryManagement::Allocate(FlagsCount*sizeof(unsigned long));
+        Storage->PhysicalInfo.FlagsCount = FlagsCount;
+    }
+    if(IRQsCount != 0x00) {
+        Storage->PhysicalInfo.IRQs = (unsigned int *)Kernel::MemoryManagement::Allocate(IRQsCount*sizeof(unsigned int));
+        Storage->PhysicalInfo.IRQsCount = IRQsCount;
+    }
+    if(ResourcesCount != 0x00) {
+        Storage->PhysicalInfo.Resources = (unsigned long *)Kernel::MemoryManagement::Allocate(ResourcesCount*sizeof(unsigned long));
+        Storage->PhysicalInfo.ResourcesCount = ResourcesCount;
     }
 }
 
-bool StorageSystem::RegisterStorage(StorageSystem::Driver *StorageDriver , StorageSystem::Storage *Storage) {
-    int i;
-    StorageSystem::Storage *LogicalStorage;
-    FileSystem::Standard *FileSystem;
-    Partition *Partitions;
-    if(StorageDriver == 0x00) {
-        return false;
-    }
-    MBR::Identifier MBRIdentifier(StorageDriver , Storage);
-    GPT::Identifier GPTIdentifier(StorageDriver , Storage);
-    if(Storage->StorageType == 0x00) {
-        if(StorageDriver->GetGeometryFunction(Storage , &(Storage->Geometry)) == false) {
-            return false;
-        }
-    }
-    Storage->Driver = StorageDriver;
-    // Storage is dependent to StorageDriver. We need to seperate them, and create universal storage info container system.
-    Storage->ID = StorageDriver->StoragesManager->Register((unsigned long)Storage); // StorageDriver***
-    if(Storage->ID == DRIVERSYSTEM_INVALIDID) {
-        return false;
-    }
-    Kernel::printf("Registered Storage System , ID : %d(%s)\n" , Storage->ID , (Storage->StorageType == 0x00) ? "Physical" : "Logical");
-    // Goal : Create indivisual partition
-    if(MBRIdentifier.Detect() == true) {
-        Partitions = MBRIdentifier.GetPartition();
-        Storage->PartitionCount = MBRIdentifier.PartitionCount;
-        Storage->PartitionScheme = STORAGESYSTEM_MBR;
-        AddLogicalDrive(StorageDriver , Storage , Partitions , MBRIdentifier.PartitionCount);
-    }
-    else {
-        if(GPTIdentifier.Detect() == true) {
-            Partitions = GPTIdentifier.GetPartition();
-            Storage->PartitionCount = GPTIdentifier.PartitionCount;
-            Storage->PartitionScheme = STORAGESYSTEM_GPT;
-            AddLogicalDrive(StorageDriver , Storage , Partitions , GPTIdentifier.PartitionCount);
-        }
-        else {
-            Storage->PartitionScheme = STORAGESYSTEM_ETC;
-        }
-    }
-    FileSystem = FileSystem::DetectFileSystem(Storage);
-    if(FileSystem == 0x00) {
-        Storage->FileSystem = 0x00;
-        strcpy(Storage->FileSystemString , "NONE");
-        Kernel::printf("No file system\n");
-        return true;
-    }
-    Storage->FileSystem = FileSystem;
-    Kernel::printf("File System Detected : %s\n" , FileSystem->FileSystemString);
-    strcpy(Storage->FileSystemString , FileSystem->FileSystemString);
-    return true;
-}
-
-bool StorageSystem::RegisterStorage(const char *DriverName , StorageSystem::Storage *Storage) {
-    return RegisterStorage(SearchStorageDriver(DriverName) , Storage);
-}
-
-StorageSystem::Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned long StorageID) {
-    StorageSystem::Driver *StorageDriver = SearchStorageDriver(DriverName);
-    if(StorageDriver == 0x00) {
-        return 0x00;
-    }
-    return (StorageSystem::Storage *)StorageDriver->StoragesManager->GetSystem(StorageID);
-}
-
-bool StorageSystem::DeregisterStorage(const char *DriverName , unsigned long StorgeID) {
-    return true;
+struct Storage *StorageSystem::Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount , enum Storage::StorageType Type) {
+    struct Storage *Storage = (struct Storage *)Kernel::MemoryManagement::Allocate(sizeof(struct Storage));
+    AssignPhysicalInfo((struct Storage *)Storage , PortsCount , FlagsCount , IRQsCount , ResourcesCount);
+    Storage->Type = Type;
+    return Storage;
 }
