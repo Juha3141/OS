@@ -3,4 +3,7 @@ BochsBoot.txt
 .vscode/*
 stub/
 stub
+backup
+backup/
+Blank.img
 FAT32-TEMP.img
