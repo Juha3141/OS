@@ -74,6 +74,8 @@ void Main(void) {
 		}
 	}
 	BIOSINT_printf("Done\r\n");
+	// There's some weird phenomenon that the data still exists after rebooting the machine...
+	// So I made a makeshift heap initializer.
 	BIOSINT_printf("Loading Kernel ... ");
 	LoadSectorToMemory(KERNEL64_ADDRESS , KernelSectorLocation , KernelSectorSize);
 	BIOSINT_printf("Done\r\n");
