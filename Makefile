@@ -14,6 +14,9 @@ TARGET = OS.iso
 
 windows: prepare BuildLoaders BuildKernel32
 
+rebuild:
+	qemu-img create Disk.img 128M -f raw
+
 all: prepare BuildLoaders BuildKernel32 BuildKernel64 $(TARGET)
 
 prepare:
@@ -42,10 +45,10 @@ clean:
 run: virtualbox
 
 qemurun:
-	$(QEMU) -cdrom $(TARGET) -hda Blank.img -m 8192 -rtc base=localtime -M pc -boot d
+	$(QEMU) -cdrom $(TARGET) -hda Disk.img -m 8192 -rtc base=localtime -M pc -boot d
 
 debugrun: 
-	$(QEMU) -cdrom $(TARGET) -hda Blank.img -m 8192 -rtc base=localtime -M pc -boot d -s -S -serial stdio
+	$(QEMU) -cdrom $(TARGET) -hda Disk.img -m 8192 -rtc base=localtime -M pc -boot d -s -S -serial stdio
 
 virtualbox:
 	vboxmanage startvm "OS" -E VBOX_GUI_DBG_AUTO_SHOW=true -E VBOX_GUI_DBG_ENABLED=truesw
