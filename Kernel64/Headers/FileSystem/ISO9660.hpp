@@ -89,16 +89,16 @@ namespace ISO9660 {
         
         bool CreateFile(struct Storage *Storage , const char *FileName);
         bool CreateDir(struct Storage *Storage , const char *DirectoryName);
-        struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName);
-        int CloseFile(struct Storage *Storage , struct FileInfo *FileInfo);
-        int RemoveFile(struct Storage *Storage , struct FileInfo *FileInfo);
+        struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName , int OpenOption);
+        int CloseFile(struct FileInfo *FileInfo);
+        int RemoveFile(struct FileInfo *FileInfo);
         
-        int WriteFile(struct Storage *Storage , struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        int ReadFile(struct Storage *Storage , struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        int ReadDirectory(struct Storage *Storage , struct FileInfo *FileInfo , struct FileInfo *FileList);
-        int GetFileCountInDirectory(struct Storage *Storage , struct FileInfo *FileInfo);
+        int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
+        int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
+        int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList);
+        int GetFileCountInDirectory(struct FileInfo *FileInfo);
         
-        int WriteDirectoryData(struct Storage *Storage , struct FileInfo *FileInfo);
+        int WriteDirectoryData(struct FileInfo *FileInfo);
         bool GetFileRecord(struct Storage *Storage , unsigned long DirectoryAddress , const char *FileName , struct DirectoryRecord *DirectoryRecord);
         unsigned int GetRootDirectorySector(struct Storage *StorageSystem);
     };
