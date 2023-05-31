@@ -8,7 +8,7 @@ MAINKERNELTEMPORARYFOLDER = $(TEMPORARYFOLDER)/Kernel64
 CC = x86_64-elf-g++
 OBJCOPY = objcopy
 
-CCOPTIONS = -g -O0 -ffreestanding -fpack-struct=1 -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -Werror=return-type -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
+CCOPTIONS = -g -ffreestanding -fpack-struct=1 -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -Werror=return-type -fno-use-cxa-atexit -fno-threadsafe-statics -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
 #  -fomit-frame-pointer -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
 LDOPTIONS = -m elf_x86_64
 LINKERSCRIPT = Linker.ld
