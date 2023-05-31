@@ -80,7 +80,7 @@ struct KernelInterface *KernelInterfaceManager::GetInterface(const char *FileNam
 }
 
 bool KernelInterfaceManager::IsFileInterface(struct FileInfo *FileInfo) {
-    if(Storage->ID != FileInfo->StorageID) {
+    if(Storage->ID != FileInfo->Storage->ID) {
         return false;
     }
     // later!
