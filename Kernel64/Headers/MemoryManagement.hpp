@@ -20,8 +20,8 @@
 
 namespace MemoryManagement {
     struct Node {
-        unsigned long NextNode;
-        unsigned long PreviousNode;
+        struct Node *Next;
+        struct Node *Previous;
         unsigned long Size;
         unsigned char Using:1;
         unsigned short Signature:15; // 0x3141
@@ -40,9 +40,9 @@ namespace MemoryManagement {
     class NodeManager {
         public:
             void Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory , QuerySystemAddressMap *E820 , int E820EntryCount);
-            unsigned long SearchReasonableNode(unsigned long Size);
-            unsigned long SearchAlignedNode(unsigned long Size , ALIGNMENT Alignment);
-            unsigned long SearchNewNodeLocation(void);
+            struct Node *SearchReasonableNode(unsigned long Size);
+            struct Node *SearchAlignedNode(unsigned long Size , ALIGNMENT Alignment);
+            struct Node *SearchNewNodeLocation(unsigned long *PreviousNode);
             
             struct Node *CreateNewNode(unsigned long Size , ALIGNMENT Alignment);
             void WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , unsigned long NextNode=0xFFFFFFFFFFFFFFFF , unsigned long PreviousNode=0xFFFFFFFFFFFFFFFF);
@@ -54,9 +54,9 @@ namespace MemoryManagement {
             
             void MapNode(void);
             
-            unsigned long StartAddress;
-            unsigned long CurrentAddress; // Next address of lastly allocated node
-            unsigned long LastFreedAddress;
+            struct Node *StartNode;
+            struct Node *CurrentNode; // Next address of lastly allocated node
+            struct Node *LastlyFreedNode;
             unsigned long TotalUsableMemory;
         private:
             
