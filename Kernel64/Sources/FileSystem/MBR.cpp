@@ -81,6 +81,15 @@ bool MBR::Identifier::CreatePartition(struct Partition Partition) {
     PartitionTable->Entries[PartitionCount].StartingLBA = Partition.StartAddressLBA;
     PartitionTable->Entries[PartitionCount].SizeInSector = Partition.EndAddressLBA-Partition.StartAddressLBA;
     PartitionTable->Entries[PartitionCount].PartitionType = Partition.PartitionType;
+    // Later
+    PartitionTable->Entries[PartitionCount].StartingCHS[0] = (Partition.StartAddressLBA)/(Storage->PhysicalInfo.Geometry.CHS_Heads*Storage->PhysicalInfo.Geometry.CHS_Sectors);
+    PartitionTable->Entries[PartitionCount].StartingCHS[1] = ((Partition.StartAddressLBA)/Storage->PhysicalInfo.Geometry.CHS_Sectors)/Storage->PhysicalInfo.Geometry.CHS_Heads;
+    PartitionTable->Entries[PartitionCount].StartingCHS[2] = ((Partition.StartAddressLBA)%Storage->PhysicalInfo.Geometry.CHS_Sectors)+1;
+
+    PartitionTable->Entries[PartitionCount].EndingCHS[0] = (Partition.EndAddressLBA)/(Storage->PhysicalInfo.Geometry.CHS_Heads*Storage->PhysicalInfo.Geometry.CHS_Sectors);
+    PartitionTable->Entries[PartitionCount].EndingCHS[1] = ((Partition.EndAddressLBA)/Storage->PhysicalInfo.Geometry.CHS_Sectors)/Storage->PhysicalInfo.Geometry.CHS_Heads;
+    PartitionTable->Entries[PartitionCount].EndingCHS[2] = ((Partition.EndAddressLBA)%Storage->PhysicalInfo.Geometry.CHS_Sectors)+1;
+    
     if(Driver->WriteSector(Storage , 0 , 1 , PartitionTable) != 512) {
         return false;
     }

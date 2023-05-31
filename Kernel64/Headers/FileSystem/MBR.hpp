@@ -3,6 +3,7 @@
 
 #include <Kernel.hpp>
 #include <Drivers/StorageDriver.hpp>
+#include <MemoryManagement.hpp>
 
 #define MBR_STARTADDRESS 446
 
@@ -12,10 +13,13 @@ class StorageSchemeIdentifier {
 		         , struct Storage *Storage_)
 				 : Driver(StorageDriver_)
 				 , Storage(Storage_)
-				 , PartitionCount(0) {
+				 , PartitionCount(0)
+				 , Partitions(0x00) {
 		}
 		~StorageSchemeIdentifier(void) {
-			printf("Removing StorageSchemeIdentifier\n");
+			if(Partitions != 0x00) {
+				MemoryManagement::Free(Partitions);
+			}
 		}
 		virtual bool Detect(void) = 0;
 		virtual struct Partition *GetPartition(void) = 0;
