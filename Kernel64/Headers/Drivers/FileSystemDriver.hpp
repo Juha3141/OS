@@ -10,12 +10,22 @@
 #define FILESYSTEM_FILETYPE_REMOVED     4
 #define FILESYSTEM_FILETYPE_HIDDEN      5
 
+#define FILESYSTEM_OPEN_NEW                1 // Just create entirely new file and write
+#define FILESYSTEM_OPEN_OVERWRITE          2 // Overwrite from the current offset
+#define FILESYSTEM_OPEN_READ               3 // Read only
+
+#define FILESYSTEM_OFFSET_SET               1 // Set the offset to given offset
+#define FILESYSTEM_OFFSET_INCREASE          2 // Increase offset by given offset
+#define FILESYSTEM_OFFSET_END               3 // 
+
 struct FileInfo {
     char *FileName;
-    unsigned long SectorAddress;        // Essential(Location)
-    unsigned long BlockSize;      // Bytes Per Sector
+    unsigned long Location;             // Essential(Location)
+    unsigned long SubdirectoryLocation;
 
-    unsigned char FileType;       // File Type
+    unsigned long BlockSize;            // Bytes Per Sector
+    unsigned char FileType;             // File Type
+    unsigned char OpenOption;
 
     unsigned short CreatedTime;     // Follows FAT32 date/time format
     unsigned short CreatedDate;
@@ -26,8 +36,7 @@ struct FileInfo {
     unsigned long FileSize;
     unsigned long FileOffset;
 
-    unsigned int StorageID;
-    unsigned int StorageDriverID;
+    struct Storage *Storage;
 };
 struct FileSystemDriver {
     friend class FileSystemDriverManager;
@@ -35,15 +44,36 @@ struct FileSystemDriver {
     virtual bool CreateFile(struct Storage *Storage , const char *FileName) = 0; // true : The storage has this file system, false : The storage has different file system.
     virtual bool CreateDir(struct Storage *Storage , const char *DirectoryName) = 0;
 
-    virtual struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName) = 0;
-    virtual int CloseFile(struct Storage *Storage , struct FileInfo *FileInfo) = 0;
-    virtual int RemoveFile(struct Storage *Storage , struct FileInfo *FileInfo) = 0;
+    virtual void SetOffset(struct FileInfo *FileInfo , int Offset , int OffsetOption) {
+        switch(OffsetOption) {
+            case FILESYSTEM_OFFSET_SET:
+                FileInfo->FileOffset = Offset;
+                break;
+            case FILESYSTEM_OFFSET_INCREASE:
+                if(FileInfo->FileOffset+Offset > FileInfo->FileSize) {
+                    FileInfo->FileOffset = FileInfo->FileSize-1;
+                    break;
+                }
+                if(FileInfo->FileOffset+Offset < 0) {
+                    FileInfo->FileOffset = 0;
+                }
+                FileInfo->FileOffset += Offset;
+                break;
+            case FILESYSTEM_OFFSET_END:
+                FileInfo->FileOffset = FileInfo->FileSize-1;
+                break;
+        }
+    }
+
+    virtual struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName , int OpenOption) = 0;
+    virtual int CloseFile(struct FileInfo *FileInfo) = 0;
+    virtual int RemoveFile(struct FileInfo *FileInfo) = 0;
         
-    virtual int WriteFile(struct Storage *Storage , struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
-    virtual int ReadFile(struct Storage *Storage , struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
+    virtual int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
+    virtual int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
         
-    virtual int ReadDirectory(struct Storage *Storage , struct FileInfo *FileInfo , struct FileInfo *FileList) = 0;
-    virtual int GetFileCountInDirectory(struct Storage *Storage , struct FileInfo *FileInfo) = 0;
+    virtual int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList) = 0;
+    virtual int GetFileCountInDirectory(struct FileInfo *FileInfo) = 0;
 
     char FileSystemString[32];
 };
