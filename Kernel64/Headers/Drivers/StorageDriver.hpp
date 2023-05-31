@@ -1,5 +1,5 @@
-#ifndef _STORAGEStorageR_HPP_
-#define _STORAGEStorageR_HPP_
+#ifndef _STORAGEDRIVER_HPP_
+#define _STORAGEDRIVER_HPP_
 
 // I didn't know what block device Storager was, so I named it "Storage Storager".
 // How ridiculous..
@@ -17,21 +17,18 @@
 #define PARTITIONID_PHYSICALDRIVE 0xFFFFFFFF
 
     class FileSystemDriver;
-    struct StorageGeometry { // StorageGeometry
-        unsigned long CylindersCount;
-        unsigned long TracksPerCylinder;
-        unsigned long SectorsPerTrack;
-        unsigned long BytesPerTrack;
+    struct StorageGeometry {
+        // For CHS
+        unsigned long CHS_Cylinders;
+        unsigned long CHS_Heads;
+        unsigned long CHS_Sectors;
         
+        // For LBA
         unsigned long BytesPerSector;
         unsigned long TotalSectorCount;
 
         unsigned char Model[41];
         unsigned char Manufacturer[24];
-
-        // Used when the storage is logical.
-        unsigned long StartingLBA;
-        unsigned long EndingLBA;
     };
 
     struct Partition { // to - do : Detect file system & implement it
@@ -81,6 +78,8 @@
         
         unsigned char PartitionScheme; // MBR or GPT?
         enum StorageType { Physical , Logical } Type;
+
+        // You have to go now...
 
         // If this storage is a physical storage, use information here : 
         StorageManager *LogicalStorages;
@@ -150,7 +149,6 @@
                 }
                 return ObjectContainer[ID].Object;
             }
-
             unsigned int MaxObjectCount = 0;
             unsigned int CurrentObjectCount = 0;
         protected:
@@ -234,7 +232,6 @@
         unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
             struct Storage *PhysicalStorage;
             if(Storage->Type == Storage::StorageType::Physical) {
-                printf("This can't be happening!\n");
                 return 0x00;
             }
             if(Storage->Type == Storage::StorageType::Logical) {
@@ -243,6 +240,7 @@
             if(Storage->Driver->DriverID == STORAGESYSTEM_INVALIDID) {
                 return 0x00;
             }
+            // Get physical storage pointer of logical storage
             PhysicalStorage = SuperDriver->StorageManager->GetObject(Storage->ID);
             if(PhysicalStorage == 0x00) {
                 return 0x00;
@@ -252,7 +250,6 @@
         unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) {
             struct Storage *PhysicalStorage;
             if(Storage->Type == Storage::StorageType::Physical) {
-                printf("This can't be happening!\n");
                 return 0x00;
             }
             if(Storage->Type == Storage::StorageType::Logical) {
