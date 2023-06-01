@@ -37,8 +37,8 @@ extern "C" void Main(void) {
     TextScreen80x25::Initialize(); // good
     MemoryManagement::Initialize();
     DescriptorTables::Initialize();
-    // PIT::Initialize();
-    Keyboard::Initialize();
+
+    Keyboard::Initialize(); // ps/2 (temporary integrated keyboard driver.. I guess.)
     Mouse::Initialize();
     if(ACPI::Initialize() == false) {
         printf("Failed gathering information from ACPI\n");
@@ -59,11 +59,13 @@ extern "C" void Main(void) {
     }
 
     TaskManagement::Initialize();
-    LocalAPIC::Timer::Initialize();/*
+    LocalAPIC::Timer::Initialize();
+    IO::Write(0x22 , 0x70);
+    IO::Write(0x23 , 0x71);
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
     IOAPIC::InitializeRedirectionTable();
-    LocalAPIC::ActivateAPCores();*/
+    LocalAPIC::ActivateAPCores();
     __asm__ ("sti");
 
     // To-do : Make proper stack system
@@ -83,45 +85,6 @@ extern "C" void Main(void) {
     RAMDiskDriver::Register();
     IDEDriver::Register();
     PCI::Detect();
-    
-    struct Storage *RAMDiskStorage = RAMDiskDriver::CreateRAMDisk(65536 , 512 , 0x00);
-    printf("Registered RAMDisk Storage , Location : 0x%X\n" , RAMDiskStorage->PhysicalInfo.Resources[0]);
-
-    // To-do : Create interface
-    // AutoFormat_FAT16(Storage);
-    
-    // Let's do some cleaning
-    // To-do : Create function that creates partition
-    struct Storage *Storage = StorageSystem::SearchStorage("idehd" , 0);
-    if(Storage == 0x00) {
-        printf("Not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    InitializeDrive_MBR(Storage);
-    CreatePartition_FAT16(Storage , "MAIN" , 128 , (100*1024*1024)/512); // 100MiB
-    // There's chance that the error was because the faulty initialization code
-    // (especially WriteClusterInfo. It's sus.)
-    // LogicalStorage 0
-    class FileSystemDriver *FileSystemDriver = Storage->LogicalStorages->GetObject(0)->FileSystem;
-    // FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "hello this is testing long file name.txt" , 0);
-    
-    FileSystemDriver->CreateDir(Storage->LogicalStorages->GetObject(0) , "Test directory");
-    FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt");
-    struct FileInfo *TestingFile = FileSystemDriver->OpenFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt" , FILESYSTEM_OPEN_OVERWRITE);
-    if(TestingFile == 0x00) {
-        printf("File not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    else {
-        printf("Found file!\n");
-        printf("Sector address : %d\n" , TestingFile->Location);
-    }
-    FileSystemDriver->WriteFile(TestingFile , 45 , (void *)"All work and no play makes Jack a dull boy.\r\n");
-    printf("Done.\n");
     while(1) {
         ;
     }
@@ -215,3 +178,49 @@ extern "C" void APStartup(void) {
 
 // To-do : More reliable way to detect core
 // To-do : Change driver to Polymorphism.
+
+/*
+{
+    struct Storage *RAMDiskStorage = RAMDiskDriver::CreateRAMDisk(65536 , 512 , 0x00);
+    printf("Registered RAMDisk Storage , Location : 0x%X\n" , RAMDiskStorage->PhysicalInfo.Resources[0]);
+
+    // To-do : Create interface
+    // AutoFormat_FAT16(Storage);
+    
+    // Let's do some cleaning
+    // To-do : Create function that creates partition
+    struct Storage *Storage = StorageSystem::SearchStorage("idehd" , 0);
+    if(Storage == 0x00) {
+        printf("Not found.\n");
+        while(1) {
+            ;
+        }
+    }
+    while(1) {
+        printf("%c" , Keyboard::GetASCIIData());
+    }
+    InitializeDrive_MBR(Storage);
+    CreatePartition_FAT16(Storage , "MAIN" , 128 , (100*1024*1024)/512); // 100MiB
+    // There's chance that the error was because the faulty initialization code
+    // (especially WriteClusterInfo. It's sus.)
+    // LogicalStorage 0
+    class FileSystemDriver *FileSystemDriver = Storage->LogicalStorages->GetObject(0)->FileSystem;
+    // FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "hello this is testing long file name.txt" , 0);
+    
+    FileSystemDriver->CreateDir(Storage->LogicalStorages->GetObject(0) , "Test directory");
+    FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt");
+    struct FileInfo *TestingFile = FileSystemDriver->OpenFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt" , FILESYSTEM_OPEN_OVERWRITE);
+    if(TestingFile == 0x00) {
+        printf("File not found.\n");
+        while(1) {
+            ;
+        }
+    }
+    else {
+        printf("Found file!\n");
+        printf("Sector address : %d\n" , TestingFile->Location);
+    }
+    FileSystemDriver->WriteFile(TestingFile , 45 , (void *)"All work and no play makes Jack a dull boy.\r\n");
+    printf("Done.\n");
+}
+*/
