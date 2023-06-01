@@ -48,6 +48,10 @@ void LocalAPIC::GlobalEnableLocalAPIC(void) {
     __asm__ ("rdmsr");
     __asm__ ("or eax , 0b100000000000");    // E(APIC Global Enable flag) = 1
     __asm__ ("wrmsr");
+    WriteRegister(LAPIC_LVT_THERMAL_SENSOR_REGISTER , ReadRegister(LAPIC_LVT_THERMAL_SENSOR_REGISTER)|LAPIC_LVT_MASKED);
+    WriteRegister(LAPIC_LVT_LINT0_REGISTER , ReadRegister(LAPIC_ERROR_STATUS_REGISTER)|LAPIC_LVT_MASKED);
+    WriteRegister(LAPIC_ERROR_STATUS_REGISTER , ReadRegister(LAPIC_ERROR_STATUS_REGISTER)|LAPIC_LVT_MASKED);
+    WriteRegister(LAPIC_LVT_PERFORMANCE_MONITORING_COUNTERS_REGISTER , ReadRegister(LAPIC_LVT_PERFORMANCE_MONITORING_COUNTERS_REGISTER)|LAPIC_LVT_MASKED);
 }
 
 void LocalAPIC::EnableLocalAPIC(void) {
@@ -228,7 +232,7 @@ void IOAPIC::InitializeRedirectionTable(void) {
                 RedirectionTable.DestinationAddress = 0x00;
                 RedirectionTable.InterruptVector = IOInterruptAssignmentEntry->SourceBusIRQ+0x20;
                 WriteIORedirectionTable(IOInterruptAssignmentEntry->DestinationIOAPICINTIN , RedirectionTable);
-                // printf("INTIN %d -> IRQ %d\n" , IOInterruptAssignmentEntry->DestinationIOAPICINTIN , IOInterruptAssignmentEntry->SourceBusIRQ);
+                printf("INTIN %d -> IRQ %d\n" , IOInterruptAssignmentEntry->DestinationIOAPICINTIN , IOInterruptAssignmentEntry->SourceBusIRQ);
                 TableAddress += sizeof(struct MPFloatingTable::Entries::IOInterruptAssignment);
                 break;
             case 4:
