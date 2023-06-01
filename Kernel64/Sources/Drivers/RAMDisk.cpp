@@ -72,7 +72,7 @@ bool RAMDiskDriver::GetGeometry(struct Storage *Storage , struct StorageGeometry
     Geometry->TotalSectorCount = Storage->PhysicalInfo.Flags[0];
     Geometry->BytesPerSector = Storage->PhysicalInfo.Flags[1];
     Geometry->CHS_Cylinders   = 1024;
-    Geometry->CHS_Heads       = 256;
+    Geometry->CHS_Heads       = 16;
     Geometry->CHS_Sectors     = 63;
     memcpy(Geometry->Manufacturer , "SHECKLEBERG BY ALLISON" , 22);
     memcpy(Geometry->Model , "INFAMOUS VIRTUAL RAM DISK" , 25);

@@ -98,7 +98,7 @@ bool IDEDriver::GetGeometry(struct Storage *Storage , StorageGeometry *Geometry)
     Geometry->Model[41] = 0x00;
     Geometry->BytesPerSector = 512;
     Geometry->CHS_Cylinders = 1024;
-    Geometry->CHS_Heads = 256;
+    Geometry->CHS_Heads = 16;
     Geometry->CHS_Sectors = 63;
     Geometry->TotalSectorCount = IDEGeometry.TotalSectors;
     return true;
