@@ -107,9 +107,9 @@ extern "C" void Main(void) {
     class FileSystemDriver *FileSystemDriver = Storage->LogicalStorages->GetObject(0)->FileSystem;
     // FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "hello this is testing long file name.txt" , 0);
     
-    FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "blank file.txt");
-    
-    struct FileInfo *TestingFile = FileSystemDriver->OpenFile(Storage->LogicalStorages->GetObject(0) , "blank file.txt" , FILESYSTEM_OPEN_OVERWRITE);
+    FileSystemDriver->CreateDir(Storage->LogicalStorages->GetObject(0) , "Test directory");
+    FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt");
+    struct FileInfo *TestingFile = FileSystemDriver->OpenFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt" , FILESYSTEM_OPEN_OVERWRITE);
     if(TestingFile == 0x00) {
         printf("File not found.\n");
         while(1) {
