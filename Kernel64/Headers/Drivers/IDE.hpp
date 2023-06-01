@@ -47,52 +47,53 @@
 #define IDE_STATUS_READY 0b01000000
 #define IDE_STATUS_BUSY  0b10000000
 
-    struct IDEDriver : StorageDriver {
-        bool PreInitialization(void) override;
-        unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
-        unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
-        bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) override;
-
-        static bool Wait(unsigned short BasePort);
-        static void Register(void);
-        static bool PrimaryInterruptFlag;
-        static bool SecondaryInterruptFlag;
-
-    };
-    class IDE_CDDriver : StorageDriver { // inherit from IDEDriver or StorageDriver??
-        static void Register(void);
-        
-        bool PreInitialization(void) override;
-        unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
-        unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
-        bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) override;
-
-        static bool SendCommand(unsigned short BasePort , unsigned char *Command);
-        static bool GetCDROMSize(struct Storage *Storage , struct StorageGeometry *Geometry);
-    };
+struct IDEDriver : StorageDriver {
+    bool PreInitialization(void) override;
+    unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
+    unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
+    bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) override;
+    static bool Wait(unsigned short BasePort);
+    static void Register(void);
+    static bool PrimaryInterruptFlag;
+    static bool SecondaryInterruptFlag;
+};
+class IDE_CDDriver : StorageDriver { // inherit from IDEDriver or StorageDriver??
+    static void Register(void);
     
-    struct IDEGeometry {
-        unsigned short Config;
-        unsigned short Reserved1[9];
-        unsigned short Serial[10];
-        unsigned short Reserved2[3];
-        unsigned short Firmware[4];
-        unsigned short Model[20];
-        unsigned short Reserved3[13];
-        unsigned int TotalSectors;
-        unsigned short Reserved4[196];
-    };
-    struct CDGeometry {
-        unsigned short Config;
-        unsigned short Reserved1[9];
-        unsigned short Serial[10];
-        unsigned short Reserved2[3];
-        unsigned short Firmware[4];
-        unsigned short Model[20];
-        unsigned short Reserved3[210];
-    };
-    namespace IDE {
-        void MainInterruptHandler(bool Primary);
-    }
+    bool PreInitialization(void) override;
+    unsigned long ReadSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
+    unsigned long WriteSector(struct Storage *Storage , unsigned long SectorAddress , unsigned long Count , void *Buffer) override;
+    bool GetGeometry(struct Storage *Storage , struct StorageGeometry *Geometry) override;
+    static bool SendCommand(unsigned short BasePort , unsigned char *Command);
+    static bool GetCDROMSize(struct Storage *Storage , struct StorageGeometry *Geometry);
+};
+
+struct IDEGeometry {
+    unsigned short Config;
+    unsigned short Reserved1[9];
+    unsigned short Serial[10];
+    unsigned short Reserved2[3];
+    unsigned short Firmware[4];
+    unsigned short Model[20];
+    unsigned short Reserved3[13];
+    unsigned int TotalSectors;
+    unsigned short Reserved4[196];
+};
+struct CDGeometry {
+    unsigned short Config;
+    unsigned short Reserved1[9];
+    unsigned short Serial[10];
+    unsigned short Reserved2[3];
+    unsigned short Firmware[4];
+    unsigned short Model[20];
+    unsigned short Reserved3[210];
+};
+
+namespace IDE {
+    void InterruptHandler_IRQ14(void);
+    void InterruptHandler_IRQ15(void);
+    
+    void MainInterruptHandler(bool Primary);
+}
 
 #endif
