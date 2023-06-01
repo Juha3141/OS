@@ -27,9 +27,13 @@ bool FAT16::Driver::Check(struct Storage *Storage) {
 /// @return If successed, return true, if not, return false.
 bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     int i;
+    int j = 0;
+    int k;
+    int DotIndex = 0;
     int DirCountFromName = 0;
     unsigned char Data[512];
     char SFNName[13];
+    char *LastName;
     struct VBR VBR;
     struct SFNEntry SFNEntry;
     unsigned int EmptyClusterLocation = FindFirstEmptyCluster(Storage); // Get the first usable cluster(Empty cluster)
@@ -41,9 +45,25 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     // Initialize SFN Entry
     memset(&(SFNEntry) , 0 , sizeof(struct SFNEntry));
     // Create SFN Name (Ex : HELLOW~1.TXT)
-    CreateSFNName(SFNName , FileName , 1);
-    strncpy((char *)SFNEntry.FileName , SFNName , 11);
 
+    printf("FileName : %s\n" , FileName);
+    LastName = (char *)MemoryManagement::Allocate(strlen(FileName)+1);
+    k = strlen(FileName);
+    for(i = 0; i < k-1; i++) {
+        if(FileName[i] == '/') {
+            DotIndex = i;
+            break;
+        }
+    }
+    for(i = strlen(FileName)-1; i >= 0; i--) {
+        if(FileName[i] == '/') {
+            break;
+        }
+        LastName[j++] = FileName[strlen(FileName)-i+DotIndex];
+    }
+    LastName[j] = 0;
+    CreateSFNName(SFNName , LastName , 1);
+    strncpy((char *)SFNEntry.FileName , SFNName , 11);
     // Write data to SFN Entry
     SFNEntry.FileSize = 0;     // Set file size to zero for now.
     SFNEntry.Attribute = 0x20; // normal file
@@ -59,7 +79,8 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     }
 
     // Write file entry to directory address, LFN comes before SFN.
-    WriteLFNEntry(Storage , DirectoryLocation , FileName);
+    printf("Directory Location -> : %d\n" , DirectoryLocation);
+    WriteLFNEntry(Storage , DirectoryLocation , LastName);
     WriteSFNEntry(Storage , DirectoryLocation , &(SFNEntry));
     
     printf("Directory Location : %d\n" , GetRootDirectoryLocation(&(VBR)));
@@ -72,8 +93,64 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
 }
 
 bool FAT16::Driver::CreateDir(struct Storage *Storage , const char *DirectoryName) {
-    CreateFile(Storage , DirectoryName);
-    // later
+    int i;
+    int DirCountFromName = 0;
+    unsigned char Data[512];
+    char SFNName[13];
+    struct VBR VBR;
+    struct SFNEntry SFNEntry;
+    unsigned int EmptyClusterLocation = FindFirstEmptyCluster(Storage); // Get the first usable cluster(Empty cluster)
+    unsigned int DirectoryLocation;
+    // Location of directory that's contains the file
+    // Get VBR(First sector of the physical/logical storage)
+    GetVBR(Storage , &(VBR));
+    WriteClusterInfo(Storage , EmptyClusterLocation , 0xFFFF , &(VBR));
+    // Initialize SFN Entry
+    memset(&(SFNEntry) , 0 , sizeof(struct SFNEntry));
+    // Create SFN Name (Ex : HELLOW~1.TXT)
+    CreateSFNName(SFNName , DirectoryName , 1);
+    memcpy(SFNEntry.FileName , SFNName , 12);
+
+    // Write data to SFN Entry
+    SFNEntry.FileSize = 0;     // Set file size to zero for now.
+    SFNEntry.Attribute = 0x10; // normal file
+    SFNEntry.StartingClusterLow = EmptyClusterLocation & 0xFFFF;
+    SFNEntry.StartingClusterHigh = (EmptyClusterLocation << 16) & 0xFFFF;
+    // To-do : Create universal clock for entire operating system
+    // Get location of the directory that contains the file - which is get by name of the file
+    DirectoryLocation = GetDirectoryLocation(Storage , DirectoryName);
+    
+    // If the directory is not found, process error
+    if(DirectoryLocation == 0xFFFFFFFF) {
+        return false;
+    }
+
+    // Write file entry to directory address, LFN comes before SFN.
+    WriteLFNEntry(Storage , DirectoryLocation , DirectoryName);
+    WriteSFNEntry(Storage , DirectoryLocation , &(SFNEntry));
+    SFNEntry.Attribute = 0x10;
+    memcpy(SFNEntry.FileName , ".          " , 11);
+    SFNEntry.FileSize = 0;
+    SFNEntry.LastAccessedDate = 0;
+    SFNEntry.LastWrittenDate = 0;
+    SFNEntry.LastWrittenTime = 0;
+    SFNEntry.CreatedDate = 0;
+    SFNEntry.CreateTime = 0;
+    SFNEntry.Reserved = 0;
+    WriteSFNEntry(Storage , ClusterToSector(EmptyClusterLocation , &(VBR)) , &(SFNEntry));
+    memset(&(SFNEntry) , 0 , sizeof(struct SFNEntry));
+    SFNEntry.Attribute = 0x10;
+    memcpy(SFNEntry.FileName , "..         " , 11);
+    SFNEntry.LastAccessedDate = 0;
+    SFNEntry.LastWrittenDate = 0;
+    SFNEntry.LastWrittenTime = 0;
+    SFNEntry.CreatedDate = 0;
+    SFNEntry.CreateTime = 0;
+    if(DirectoryLocation != GetRootDirectoryLocation(&(VBR))) {
+        SFNEntry.StartingClusterLow = SectorToCluster(DirectoryLocation , &(VBR)) & 0xFFFF;
+        SFNEntry.StartingClusterHigh = (SectorToCluster(DirectoryLocation , &(VBR)) << 16) & 0xFFFF;
+    }
+    WriteSFNEntry(Storage , ClusterToSector(EmptyClusterLocation , &(VBR)) , &(SFNEntry));
     return false;
 }
 
@@ -147,6 +224,8 @@ int FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
 int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) {
     int i = 0;
     int j = 0;
+    int DotIndex;
+    int k;
     unsigned int CurrentCluster; // Final Cluster of the file
     unsigned short NextCluster;
     unsigned short StartingCluster = 0;
@@ -202,12 +281,19 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
         FileInfo->FileSize = FileInfo->FileOffset+Size;
     }
     FileInfo->FileOffset += Size;
-    LastName = (char *)MemoryManagement::Allocate(strlen(FileInfo->FileName)+1);;
+    LastName = (char *)MemoryManagement::Allocate(strlen(FileInfo->FileName)+1);
+    k = strlen(FileInfo->FileName);
+    for(i = 0; i < k-1; i++) {
+        if(FileInfo->FileName[i] == '/') {
+            DotIndex = i;
+            break;
+        }
+    }
     for(i = strlen(FileInfo->FileName)-1; i >= 0; i--) {
         if(FileInfo->FileName[i] == '/') {
             break;
         }
-        LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-1-i];
+        LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-i+DotIndex];
     }
     LastName[j] = 0;
     DirectoryLocation = GetDirectoryLocation(FileInfo->Storage , FileInfo->FileName);
@@ -563,7 +649,7 @@ void FAT16::ExtendCluster(struct Storage *Storage , unsigned int EndCluster , un
 void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
     int i;
     int j;
-    int DotIndex = 0;
+    int DotIndex = strlen(LFNName)-1;
     char *Buffer;
     char NumberString[32];
     // Get index of dot
@@ -571,7 +657,7 @@ void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
         return;
     }
     Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName));
-    memset(SFNName , ' ' , 8);
+    memset(SFNName , ' ' , 11);
     for(i = j = 0; i < strlen(LFNName); i++) {
         if(LFNName[i] != ' ') {
             Buffer[j++] = LFNName[i]; // Remove space
@@ -601,7 +687,14 @@ void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
         }
         SFNName[8] = 0x00;
     }
-    strcat(SFNName , Buffer+DotIndex+1);
+    if(DotIndex != strlen(LFNName)-1) {
+        strcat(SFNName , Buffer+DotIndex+1);
+    }
+    else {
+        for(i = 0; i < 13-strlen(SFNName); i++) {
+            strcat(SFNName , " ");
+        }
+    }
     MemoryManagement::Free(Buffer);
 }
 
@@ -724,6 +817,8 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     unsigned int ClusterAddress;
     unsigned int ClusterNumber;
     unsigned int ClusterCount;
+
+    unsigned int NextCluster;
     unsigned int DirectoryClusterSize;
     int DirectoryEntryCount;
     struct VBR VBR;
@@ -758,6 +853,7 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     printf("Directory Entry Count : %d\n" , DirectoryEntryCount);
     printf("LFNEntry              : 0x%X~0x%X\n" , LFNEntry , ((unsigned long)LFNEntry)+(RequiredLFNEntry*sizeof(struct LFNEntry)));
     printf("LFNEntry[0].Attribute : 0x%X\n" , LFNEntry[0].Attribute);
+    printf("Directory Address that's gonna be... : %d\n" , DirectoryAddress);
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress , &(DirectoryClusterSize));
     // If root directory, take care of it differently. 
     if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
@@ -778,13 +874,19 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
         ClusterNumber = (DirectoryEntryCount*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster);
         ClusterCount = ((RequiredLFNEntry*sizeof(struct SFNEntry))/(VBR.BytesPerSector*VBR.SectorsPerCluster))
                      +(((RequiredLFNEntry*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster) == 0) ? 0 : 1);
-
         Cluster = (unsigned char *)MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*ClusterCount);
-        ReadCluster(Storage , ClusterNumber , ClusterCount , Cluster , &(VBR));
+        for(i = 0; i < ClusterNumber; i++) {
+            NextCluster = FAT16::FindNextCluster(Storage , ClusterAddress , &(VBR));
+            if(NextCluster == 0xFFFF) {
+                break;
+            }
+            ClusterAddress = NextCluster;
+        }
+        ReadCluster(Storage , ClusterAddress , ClusterCount , Cluster , &(VBR));
         
         memcpy(&(Cluster[(DirectoryEntryCount*sizeof(struct SFNEntry))%(VBR.BytesPerSector*VBR.SectorsPerCluster)]) , 
         LFNEntry , sizeof(struct SFNEntry)*RequiredLFNEntry);
-        WriteCluster(Storage , ClusterNumber , ClusterCount , Cluster , &(VBR));
+        WriteCluster(Storage , ClusterAddress , ClusterCount , Cluster , &(VBR));
     }
     MemoryManagement::Free(LFNEntry);
     return true;
