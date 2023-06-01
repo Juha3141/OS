@@ -14,6 +14,8 @@
 #include <Keyboard.hpp>
 #include <Mouse.hpp>
 
+#include <Drivers/IDE.hpp>
+
 // #include <Drivers/PATA.hpp>
 
 unsigned long *InterruptStackTableAddress;
@@ -184,10 +186,10 @@ void DescriptorTables::InterruptDescriptorTable::Initialize(unsigned long BaseAd
     SetIDTEntry(33 , (unsigned long)Keyboard::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     SetIDTEntry(44 , (unsigned long)Mouse::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
     SetIDTEntry(41 , (unsigned long)LocalAPIC::Timer::InterruptHandler , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    /*
-    SetIDTEntry(46 , (unsigned long)Drivers::PATA::InterruptHandler_IRQ14, 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    SetIDTEntry(47 , (unsigned long)Drivers::PATA::InterruptHandler_IRQ15 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
-    */
+    
+    SetIDTEntry(46 , (unsigned long)IDE::InterruptHandler_IRQ14, 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    SetIDTEntry(47 , (unsigned long)IDE::InterruptHandler_IRQ15 , 0x08 , IDT_TYPE_32BIT_INTERRUPT_GATE , IDT_FLAGS_P|IDT_FLAGS_DPL0 , 0x01);
+    
     __asm__ ("lidt [%0]"::"r"((RegisterAddress)));
 }
 

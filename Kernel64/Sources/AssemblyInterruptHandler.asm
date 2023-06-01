@@ -14,8 +14,8 @@ global _ZN3PIT16InterruptHandlerEv                   ; PIT::InterruptHandler
 global _ZN8Keyboard16InterruptHandlerEv              ; Keyboard::InterruptHandler 
 global _ZN5Mouse16InterruptHandlerEv                 ; Mouse::InterruptHandler
 global _ZN9LocalAPIC5Timer16InterruptHandlerEv       ; APIC::Timer::InterruptHandler
-global _ZN7Drivers4PATA22InterruptHandler_IRQ14Ev    ; Drivers::PATA::InterruptHandler_IRQ14
-global _ZN7Drivers4PATA22InterruptHandler_IRQ15Ev    ; Drivers::PATA::InterruptHandler_IRQ15
+global _ZN3IDE22InterruptHandler_IRQ14Ev             ; IDE::InterruptHandler_IRQ14
+global _ZN3IDE22InterruptHandler_IRQ15Ev             ; IDE::InterruptHandler_IRQ15
 
 global DividedByZero
 global Debug
@@ -54,7 +54,7 @@ extern _ZN3PIT20MainInterruptHandlerEv               ; PIT::MainInterruptHandler
 extern _ZN8Keyboard20MainInterruptHandlerEv          ; Keyboard::MainInterruptHandler
 extern _ZN5Mouse20MainInterruptHandlerEv             ; Mouse::MainInterruptHandler
 extern _ZN9LocalAPIC5Timer20MainInterruptHandlerEv   ; APIC::Timer::MainInterruptHandler
-extern _ZN7Drivers4PATA20MainInterruptHandlerEb      ; Drivers::PATA::MainInterruptHandler
+extern _ZN3IDE20MainInterruptHandlerEb               ; IDE::MainInterruptHandler
 
 extern _ZN9LocalAPIC7SendEOIEv                       ; LocalAPIC::SendEOI
 
@@ -499,20 +499,20 @@ _ZN9LocalAPIC5Timer16InterruptHandlerEv:
     LOAD_REGISTERS_FROM_STACK
     iretq
 
-_ZN7Drivers4PATA22InterruptHandler_IRQ14Ev:
+_ZN3IDE22InterruptHandler_IRQ14Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 1
-    ; call _ZN7Drivers4PATA20MainInterruptHandlerEb
+    call _ZN3IDE20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq
 
-_ZN7Drivers4PATA22InterruptHandler_IRQ15Ev:
+_ZN3IDE22InterruptHandler_IRQ15Ev:
     SAVE_REGISTERS_TO_STACK
 
     mov rdi , 0
-    ; call _ZN7Drivers4PATA20MainInterruptHandlerEb
+    call _ZN3IDE20MainInterruptHandlerEb
 
     LOAD_REGISTERS_FROM_STACK
     iretq
