@@ -110,6 +110,7 @@ bool MPFloatingTable::SaveCoresInformation(void) {
                 printf("IOAPIC ID               : 0x%X\n" , IOAPICEntry->IOAPICID);
                 TableAddress += sizeof(struct Entries::IOAPIC);
                 printf("IOAPIC Register Address : 0x%X\n" , IOAPICEntry->IOAPICRegisterAddress);
+                CoreInformation->IOAPICAddress = IOAPICEntry->IOAPICRegisterAddress;
                 break;
             case 3:
                 TableAddress += sizeof(struct Entries::IOInterruptAssignment);
