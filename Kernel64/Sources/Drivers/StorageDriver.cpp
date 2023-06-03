@@ -59,6 +59,7 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
         return false;
     }
     if(Storage->Type == Storage::StorageType::Physical) {
+        Storage->LogicalStorages = 0x00;
         if(Driver->GetGeometry(Storage , &(Storage->PhysicalInfo.Geometry)) == false) {
             return false;
         }
@@ -77,13 +78,15 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
     }
     // If it's logical storage, do not register to storage manager
     
-    StorageIdentifier[0] = new MBR::Identifier(Driver , Storage);
-    StorageIdentifier[1] = new GPT::Identifier(Driver , Storage);
-    
+    // ===== error ===== //
+    StorageIdentifier[0] = new MBR::Identifier;
+    StorageIdentifier[1] = new GPT::Identifier;
+
     // Storage is dependent to StorageDriver. We need to seperate them, and create universal storage info container system.
     // Goal : Create indivisual partition
     Storage->PartitionScheme = STORAGESYSTEM_ETC;
     for(int i = 0; i < 2; i++) {
+        StorageIdentifier[i]->WriteStorageInfo(Driver , Storage);
         if(StorageIdentifier[i]->Detect() == true) {
             Partitions = StorageIdentifier[i]->GetPartition();
             Storage->PartitionScheme = (i+1); // 1 : MBR , 2 : GPT
@@ -95,8 +98,8 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
             break;
         }
     }
-
     FileSystem = FileSystem::DetectFileSystem(Storage);
+    printf("FileSystem : 0x%X\n" , FileSystem);
     if(FileSystem == 0x00) {
         Storage->FileSystem = 0x00;
         strcpy(Storage->FileSystemString , "NONE");
@@ -138,12 +141,38 @@ struct Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned l
     return (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
 }
 
+struct Storage *StorageSystem::SearchStorage(const char *DriverName , unsigned long StorageID , unsigned long PartitionID) {
+    struct StorageDriver *StorageDriver = SearchDriver(DriverName);
+    struct Storage *Storage;
+    if(StorageDriver == 0x00) {
+        return 0x00;
+    }
+    Storage = (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
+    if((Storage->Type == Storage::StorageType::Physical) && (Storage->LogicalStorages == 0x00)) {
+        return 0x00;
+    }
+    return Storage->LogicalStorages->GetObject(PartitionID);
+}
+
 struct Storage *StorageSystem::SearchStorage(unsigned long DriverID , unsigned long StorageID) {
     struct StorageDriver *StorageDriver = SearchDriver(DriverID);
     if(StorageDriver == 0x00) {
         return 0x00;
     }
     return (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
+}
+
+struct Storage *StorageSystem::SearchStorage(unsigned long DriverID , unsigned long StorageID , unsigned long PartitionID) {
+    struct StorageDriver *StorageDriver = SearchDriver(DriverID);
+    struct Storage *Storage;
+    if(StorageDriver == 0x00) {
+        return 0x00;
+    }
+    Storage = (struct Storage *)StorageDriver->StorageManager->GetObject(StorageID);
+    if((Storage->Type == Storage::StorageType::Physical) && (Storage->LogicalStorages == 0x00)) {
+        return 0x00;
+    }
+    return Storage->LogicalStorages->GetObject(PartitionID);
 }
 
 /// @brief Add logical drive to Storage (Disclaimer : This function doesn't calculate how full the storage is)
@@ -161,8 +190,8 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
         Storage->LogicalStorages = new struct StorageManager;
         Storage->LogicalStorages->Initialize();
     }
-    CurrentPartitionCount = Storage->LogicalStorages->CurrentObjectCount;
-    if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->LogicalStorages->CurrentObjectCount == 4)) {
+    CurrentPartitionCount = Storage->LogicalStorages->Count;
+    if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->LogicalStorages->Count == 4)) {
         return;
     }
     printf("PartitionCount : %d\n" , PartitionCount);
@@ -181,7 +210,7 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
         RegisterStorage(Driver , LogicalStorage);
     }
     printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
-    printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->CurrentObjectCount);
+    printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->Count);
 }
 
 static void AssignPhysicalInfo(Storage *Storage , int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
@@ -205,6 +234,7 @@ static void AssignPhysicalInfo(Storage *Storage , int PortsCount , int FlagsCoun
 
 struct Storage *StorageSystem::Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount , enum Storage::StorageType Type) {
     struct Storage *Storage = (struct Storage *)MemoryManagement::Allocate(sizeof(struct Storage));
+    memset(Storage , 0 , sizeof(struct Storage));
     AssignPhysicalInfo((struct Storage *)Storage , PortsCount , FlagsCount , IRQsCount , ResourcesCount);
     Storage->Type = Type;
     return Storage;
