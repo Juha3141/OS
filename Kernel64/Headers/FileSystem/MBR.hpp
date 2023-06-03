@@ -9,17 +9,10 @@
 
 class StorageSchemeIdentifier {
 	public:
-		StorageSchemeIdentifier(struct StorageDriver *StorageDriver_
-		         , struct Storage *Storage_)
-				 : Driver(StorageDriver_)
-				 , Storage(Storage_)
-				 , PartitionCount(0)
-				 , Partitions(0x00) {
-		}
-		~StorageSchemeIdentifier(void) {
-			if(Partitions != 0x00) {
-				MemoryManagement::Free(Partitions);
-			}
+		void WriteStorageInfo(struct StorageDriver *_Driver , struct Storage *_Storage) {
+			Driver = _Driver;
+			Storage = _Storage;
+			PartitionCount = 0;
 		}
 		virtual bool Detect(void) = 0;
 		virtual struct Partition *GetPartition(void) = 0;
@@ -49,10 +42,6 @@ namespace MBR {
 	};
 	class Identifier : public StorageSchemeIdentifier {
 		public:
-			Identifier(struct StorageDriver *StorageDriver_
-			         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
-				PartitionTable = (struct PartitionTable *)MemoryManagement::Allocate(512);
-			}
 			bool Detect(void);
 			struct Partition *GetPartition(void);
 			bool CreatePartition(struct Partition Partition);

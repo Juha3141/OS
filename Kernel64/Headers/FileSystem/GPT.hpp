@@ -41,10 +41,6 @@ namespace GPT {
 	};
 	class Identifier : public StorageSchemeIdentifier {
 		public:
-			Identifier(struct StorageDriver *StorageDriver_
-			         , struct Storage *Storage_) : StorageSchemeIdentifier(StorageDriver_ , Storage_) {
-				Header = (struct GPTHeader *)MemoryManagement::Allocate(128);
-			}
 			bool Detect(void);
 			struct Partition *GetPartition(void);
 			bool CreatePartition(struct Partition Partition);
