@@ -106,8 +106,8 @@
     // But it's stored in [Driver] pointer in partition storage.
     template <typename T>class ObjectManager { // Manages [Pointer of] some object
         public:
-            virtual void Initialize(int MaxCount) {
-                MaxObjectCount = MaxCount;
+            virtual void Initialize(int MaxObjectCount) {
+                MaxCount = MaxObjectCount;
             }
             virtual unsigned long Register(T *Object) { // returns ID
                 unsigned int i;
@@ -115,25 +115,25 @@
                     printf("Error : ObjectContainer yet not initialized\n");
                     return STORAGESYSTEM_INVALIDID;
                 }
-                if(CurrentObjectCount >= MaxObjectCount) {
+                if(Count >= MaxCount) {
                     return STORAGESYSTEM_INVALIDID;
                 }
-                for(i = 0; i < MaxObjectCount; i++) {
+                for(i = 0; i < MaxCount; i++) {
                     if(ObjectContainer[i].Using == false) {
                         break;
                     }
                 }
                 ObjectContainer[i].Using = true;
-                if(i >= MaxObjectCount) {
+                if(i >= MaxCount) {
                     return STORAGESYSTEM_INVALIDID; // all object is occupied;
                 }
                 ObjectContainer[i].Object = Object;
-                CurrentObjectCount++;
+                Count++;
                 return i;
             }
             virtual unsigned long Deregister(T *Object) {
                 unsigned int i;
-                for(i = 0; i < CurrentObjectCount; i++) {
+                for(i = 0; i < Count; i++) {
                     if(ObjectContainer[i].Object == Object) {
                         return i;
                     }
@@ -144,13 +144,13 @@
                 if(ObjectContainer[ID].Using == false) {
                     return 0x00;
                 }
-                if(ID >= MaxObjectCount) {
+                if(ID >= MaxCount) {
                     return 0x00;
                 }
                 return ObjectContainer[ID].Object;
             }
-            unsigned int MaxObjectCount = 0;
-            unsigned int CurrentObjectCount = 0;
+            unsigned int MaxCount = 0;
+            unsigned int Count = 0;
         protected:
             struct ObjectContainer {
                 T *Object;
@@ -170,7 +170,7 @@
             }
             void Initialize(void) {
                 ObjectManager<StorageDriver>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
             }
             unsigned long Register(StorageDriver *Driver) {
                 Driver->DriverID = ObjectManager<StorageDriver>::Register(Driver);
@@ -178,7 +178,7 @@
             }
             StorageDriver *GetObjectByName(const char *DriverName) {
                 int i;
-                for(i = 0; i < MaxObjectCount; i++) {
+                for(i = 0; i < MaxCount; i++) {
                     if(strlen(ObjectContainer[i].Object->DriverName) != strlen(DriverName)) {
                         continue;
                     }
@@ -194,7 +194,7 @@
         public:
             void Initialize(void) {
                 ObjectManager<struct Storage>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
             }
     };
 
@@ -214,7 +214,9 @@
         bool RegisterStorage(unsigned long DriverID , struct Storage *Storage);
         bool RegisterStorage(const char *DriverName , Storage *Storage);
         struct Storage *SearchStorage(const char *DriverName , unsigned long StorageID);
+        struct Storage *SearchStorage(const char *DriverName , unsigned long StorageID , unsigned long PartitionID);
         struct Storage *SearchStorage(unsigned long DriverID , unsigned long StorageID);
+        struct Storage *SearchStorage(unsigned long DriverID , unsigned long StorageID , unsigned long PartitionID);
         bool DeregisterStorage(const char *DriverName , unsigned long StorgeID);
         
         struct Storage *Assign(int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount , enum Storage::StorageType Type);
