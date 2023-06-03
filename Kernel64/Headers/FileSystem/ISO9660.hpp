@@ -95,7 +95,7 @@ namespace ISO9660 {
         
         int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
         int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
-        int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList);
+        int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList);
         int GetFileCountInDirectory(struct FileInfo *FileInfo);
         
         int WriteDirectoryData(struct FileInfo *FileInfo);
