@@ -4,15 +4,13 @@
 bool GPT::Identifier::Detect(void) {
     int i;
     if(Driver == 0x00) {
-        //MemoryManagement::Free(Header);
         return false;
     }
     if(Storage->PhysicalInfo.Geometry.BytesPerSector != 512) {
-        //MemoryManagement::Free(Header);
         return false;
     }
+	Header = (struct GPTHeader *)MemoryManagement::Allocate(128);
     if(Storage->Driver->ReadSector(Storage , 1 , 1 , Header) != 512) {
-        //MemoryManagement::Free(Header);
         return false;
     }
     if(memcmp(Header->Signature , "EFI PART" , 8) != 0) {

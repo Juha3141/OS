@@ -13,6 +13,7 @@ bool MBR::Identifier::Detect(void) {
         //MemoryManagement::Free(PartitionTable);
         return false;
     }
+	PartitionTable = (struct PartitionTable *)MemoryManagement::Allocate(512);
     if(Storage->Driver->ReadSector(Storage , 0 , 1 , PartitionTable) != 512) {
         //MemoryManagement::Free(PartitionTable);
         return false;
