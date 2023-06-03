@@ -55,13 +55,14 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
             break;
         }
     }
-    for(i = strlen(FileName)-1; i >= 0; i--) {
+    for(i = strlen(FileName); i > 0; i--) {
         if(FileName[i] == '/') {
             break;
         }
         LastName[j++] = FileName[strlen(FileName)-i+DotIndex];
     }
     LastName[j] = 0;
+    printf("Last name : %s\n" , LastName);
     CreateSFNName(SFNName , LastName , 1);
     strncpy((char *)SFNEntry.FileName , SFNName , 11);
     // Write data to SFN Entry
@@ -128,6 +129,9 @@ bool FAT16::Driver::CreateDir(struct Storage *Storage , const char *DirectoryNam
     // Write file entry to directory address, LFN comes before SFN.
     WriteLFNEntry(Storage , DirectoryLocation , DirectoryName);
     WriteSFNEntry(Storage , DirectoryLocation , &(SFNEntry));
+    
+    printf("[!] SFN name : %s\n" , SFNName);
+    printf("[!] Directory name : %s\n" , DirectoryName);
     SFNEntry.Attribute = 0x10;
     memcpy(SFNEntry.FileName , ".          " , 11);
     SFNEntry.FileSize = 0;
@@ -171,6 +175,18 @@ struct FileInfo *FAT16::Driver::OpenFile(struct Storage *Storage , const char *F
     DirectoryCount = GetDirectoryCount(FileName);
     DirectoryLocation = GetRootDirectoryLocation(&(VBR)); // Default directory location(Root Directory)
     // If directory count is zero, set first directory as the file name
+    if(strlen(FileName) == 0) {
+        FileInfo = (struct FileInfo *)MemoryManagement::Allocate(sizeof(struct FileInfo));
+        memset(FileInfo , 0 , sizeof(struct FileInfo));
+        FileInfo->Location = DirectoryLocation;
+        FileInfo->FileType = FILESYSTEM_FILETYPE_DIRECTORY;
+        FileInfo->FileOffset = 0;
+        FileInfo->FileSize = 0;
+        FileInfo->Storage = Storage;
+        FileInfo->SubdirectoryLocation = 0;
+        FileInfo->OpenOption = OpenOption;
+        return FileInfo;
+    }
     if(DirectoryCount == 0) {
         if(GetSFNEntry(Storage , DirectoryLocation , FileName , &(SFNEntry)) == false) {
             return 0x00;
@@ -334,12 +350,161 @@ int FAT16::Driver::ReadFile(struct FileInfo *FileInfo , unsigned long Size , voi
     return Size;
 }
 
-int FAT16::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList) {
-    return 0;
+static void RemoveUnnecessarySpaces(char *String) {
+    int i;
+    int j;
+    if(String[strlen(String)-1] == ' ') {
+        for(i = strlen(String)-1; String[i] == ' '; i--) {
+            String[i] = 0x00;
+        }
+    }
+    if(String[0] == ' ') {
+        for(i = 0; String[i] == ' '; i++) {
+            String[i] = 0x00;
+        }
+        memcpy(String , String+i , strlen(String));
+    }
+    for(i = 0; i < strlen(String); i++) {
+        if(String[i] == ' ') {
+            if(String[i+1] == ' ') {
+                while(String[i+1] == ' ') {
+                    memcpy(String+i , String+i+1 , strlen(String)-i);
+                }
+            }
+        }
+    }
+}
+
+/// @brief Read lists of the file from the directory, save it to FileList argument
+/// @param FileInfo FileInfo of the directory
+/// @param FileList List
+/// @return Number of the file
+int FAT16::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList) {
+    int i;
+    int Offset = 0;
+    int EntryCount;
+    int FileCount = 0;
+    int LFNEntryCount = 0;
+
+    unsigned int DirectoryClusterSize;
+    struct SFNEntry *SFNEntry;
+    struct LFNEntry *LFNEntry;
+    struct VBR VBR;
+    unsigned char *Directory;
+    char *TemporaryFileName;
+    char *RealFileName;
+    EntryCount = GetDirectoryInfo(FileInfo->Storage , FileInfo->Location , &(DirectoryClusterSize));
+    GetVBR(FileInfo->Storage , &(VBR));
+    Directory = (unsigned char *)MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
+    if(FileInfo->Location == GetRootDirectoryLocation(&(VBR))) {
+        FileInfo->Storage->Driver->ReadSector(FileInfo->Storage , FileInfo->Location , GetRootDirectorySize(&(VBR)) , Directory);
+    }
+    else {
+        ReadCluster(FileInfo->Storage , SectorToCluster(FileInfo->Location , &(VBR)) , DirectoryClusterSize , Directory , &(VBR));
+    }
+    for(i = 0; i < EntryCount; i++) {
+        SFNEntry = (struct SFNEntry *)(Directory+Offset);
+        LFNEntry = (struct LFNEntry *)(Directory+Offset);
+        if(SFNEntry->FileName[0] == FAT16_FILENAME_REMOVED) { // Skip removed files
+            Offset += sizeof(struct SFNEntry);
+            continue;
+        }
+        if(SFNEntry->Attribute == FAT16_ATTRIBUTE_LFN) {
+            LFNEntryCount = LFNEntry->SequenceNumber^0x40;
+            TemporaryFileName = (char *)MemoryManagement::Allocate(LFNEntryCount*(5+6+2));
+            if(GetFileNameFromLFN(TemporaryFileName , LFNEntry) == 0) {
+                Offset += sizeof(SFNEntry);
+                continue;
+            }
+            RealFileName = (char *)MemoryManagement::Allocate(strlen(FileInfo->FileName)+1+LFNEntryCount*(5+6+2));
+            strcpy(RealFileName , "");
+            if(FileInfo->Location != GetRootDirectoryLocation(&(VBR))) {
+                strcpy(RealFileName , FileInfo->FileName);
+                strcat(RealFileName , "/");
+            }
+            strcat(RealFileName , TemporaryFileName);
+            Offset += LFNEntryCount*sizeof(struct SFNEntry);
+            SFNEntry = (struct SFNEntry *)(Directory+Offset);
+        }
+        else {
+            if(SFNEntry->Attribute == 0x08) {
+                Offset += sizeof(struct SFNEntry);
+                continue;
+            }
+            if(SFNEntry->Attribute == 0x00) {
+                break;
+            }
+            TemporaryFileName = (char *)MemoryManagement::Allocate(12);
+            strncpy(TemporaryFileName , (const char *)SFNEntry->FileName , 8);
+            RemoveUnnecessarySpaces(TemporaryFileName);
+            
+            if((SFNEntry->Attribute == 0x10)||(SFNEntry->Attribute == 0x16)) {
+                if(memcmp(SFNEntry->Extension  , "   " , 3) != 0) {
+                    strcat(TemporaryFileName , ".");
+                    strncat(TemporaryFileName , (const char*)(SFNEntry->Extension) , 3);
+                }
+            }
+            else {
+                strcat(TemporaryFileName , ".");
+                strncat(TemporaryFileName , (const char*)(SFNEntry->Extension) , 3);
+            }
+            printf("TempFileName : %s\n" , TemporaryFileName);
+        }
+        FileList[FileCount] = (struct FileInfo *)MemoryManagement::Allocate(sizeof(struct FileInfo));
+        WriteFileInfo(FileList[FileCount] , *(SFNEntry) , RealFileName , FileInfo->Location , &(VBR) , FileInfo->Storage , 0);
+        Offset += sizeof(struct SFNEntry);
+        FileCount++;
+        MemoryManagement::Free(RealFileName);
+    }
+    MemoryManagement::Free(Directory);
+    return false;
 }
 
 int FAT16::Driver::GetFileCountInDirectory(struct FileInfo *FileInfo) {
-    return 0;
+    int i;
+    int Offset = 0;
+    int EntryCount;
+    int FileCount = 0;
+
+    unsigned int DirectoryClusterSize;
+    struct SFNEntry *SFNEntry;
+    struct LFNEntry *LFNEntry;
+    struct VBR VBR;  
+    unsigned char *Directory;
+    char *TemporaryFileName;
+    char *RealFileName;
+    EntryCount = GetDirectoryInfo(FileInfo->Storage , FileInfo->Location , &(DirectoryClusterSize));
+    GetVBR(FileInfo->Storage , &(VBR));
+    Directory = (unsigned char *)MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
+    if(FileInfo->Location == GetRootDirectoryLocation(&(VBR))) {
+        FileInfo->Storage->Driver->ReadSector(FileInfo->Storage , FileInfo->Location , GetRootDirectorySize(&(VBR)) , Directory);
+    }
+    else {
+        ReadCluster(FileInfo->Storage , SectorToCluster(FileInfo->Location , &(VBR)) , DirectoryClusterSize , Directory , &(VBR));
+    }
+    for(i = 0; i < EntryCount; i++) {
+        SFNEntry = (struct SFNEntry *)(Directory+Offset);
+        LFNEntry = (struct LFNEntry *)(Directory+Offset);
+        if(SFNEntry->Attribute == 0) {
+            break;
+        }
+        if(SFNEntry->Attribute == FAT16_ATTRIBUTE_LFN) { // LFN entry
+            Offset += sizeof(struct SFNEntry);
+            continue; 
+        }
+        else if(SFNEntry->Attribute == FAT16_ATTRIBUTE_VOLUMELABEL) { // volume label
+            Offset += sizeof(struct SFNEntry);
+            continue;
+        }
+        else if(SFNEntry->FileName[0] == FAT16_FILENAME_REMOVED) { // 0xE5 : removed file
+            Offset += sizeof(struct SFNEntry);
+            continue;
+        }
+        Offset += sizeof(struct SFNEntry);
+        FileCount++;
+    }
+    MemoryManagement::Free(Directory);
+    return FileCount;
 }
 
 int FAT16::Driver::WriteDirectoryData(struct FileInfo *FileInfo) {
@@ -550,7 +715,7 @@ unsigned int FAT16::GetDirectoryInfo(struct Storage *Storage , unsigned int Dire
             }
             Entry = (SFNEntry *)((unsigned long)(Directory+Offset));
             if(Entry->Attribute == 0) {
-                break;
+                break; 
             }
             EntryCount++;
             Offset += sizeof(SFNEntry);
@@ -835,9 +1000,6 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     // Create LFN Entries
     printf("SFN file name   : %s\n" , SFNName);
     printf("LFN Entry count : %d\n" , RequiredLFNEntry);
-    if(RequiredLFNEntry == 1) {
-        return false;
-    }
     LFNEntry = (struct LFNEntry *)MemoryManagement::Allocate((RequiredLFNEntry*sizeof(struct LFNEntry)));
     memset(LFNEntry , 0 , RequiredLFNEntry*sizeof(struct LFNEntry));
     for(i = RequiredLFNEntry-1; i >= 0; i--) {
@@ -974,7 +1136,6 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
     char TemporaryFileName[EntryCount*(5+6+2)];
     if((strlen(FileName) <= 11)) {
         CreateSFNName(TemporaryFileName , FileName , 1);
-        printf("8.3 file name : %s\n" , TemporaryFileName);
         for(i = 0; i < EntryCount; i++) {
             SFNEntry = (struct SFNEntry *)(Directory+Offset);
             if(memcmp(TemporaryFileName , SFNEntry->FileName , 11) == 0) {
@@ -990,7 +1151,7 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
     for(i = 0; i < EntryCount; i++) {
         SFNEntry = (struct SFNEntry *)(Directory+Offset);
         LFNEntry = (struct LFNEntry *)(Directory+Offset);
-        if(LFNEntry->Attribute == 0x0F) {
+        if(LFNEntry->Attribute == FAT16_ATTRIBUTE_LFN) {
             LFNEntryCount = LFNEntry->SequenceNumber^0x40;
             if(GetFileNameFromLFN(TemporaryFileName , LFNEntry) == 0) {
                 Offset += sizeof(struct SFNEntry);
@@ -1046,7 +1207,7 @@ int FAT16::GetDirectoryCount(const char *FileName) {
     int DirectoryCount = 0;
     for(i = 0; i < strlen(FileName); i++) {
         if(FileName[i] == '/') {
-            DirectoryCount++;
+            DirectoryCount++;  
         }
     }
     return DirectoryCount;
@@ -1120,7 +1281,7 @@ unsigned int FAT16::GetDirectoryLocation(struct Storage *Storage , const char *F
 }
 
 void FAT16::WriteFileInfo(struct FileInfo *FileInfo , struct SFNEntry SFNEntry , const char *FileName , unsigned int SubdirectoryLocation , struct VBR *VBR , struct Storage *Storage , int OpenOption) {
-    FileInfo->BlockSize = 512;
+    FileInfo->BlockSize = VBR->BytesPerSector;
     FileInfo->FileName = (char *)MemoryManagement::Allocate(strlen(FileName)+1);
     strcpy(FileInfo->FileName , FileName);
     FileInfo->FileSize = SFNEntry.FileSize;
@@ -1133,17 +1294,23 @@ void FAT16::WriteFileInfo(struct FileInfo *FileInfo , struct SFNEntry SFNEntry ,
     FileInfo->SubdirectoryLocation = SubdirectoryLocation;
     FileInfo->FileOffset = 0x00;
     switch(SFNEntry.Attribute) {
-        case 0x01:
+        case FAT16_ATTRIBUTE_READONLY:
             FileInfo->FileType = FILESYSTEM_FILETYPE_READONLY;
             break;
-        case 0x02:
+        case FAT16_ATTRIBUTE_HIDDEN:
             FileInfo->FileType = FILESYSTEM_FILETYPE_HIDDEN;
             break;
-        case 0x04:
+        case FAT16_ATTRIBUTE_SYSTEM:
             FileInfo->FileType = FILESYSTEM_FILETYPE_SYSTEM;
             break;
-        case 0x20:
+        case FAT16_ATTRIBUTE_SYSTEMDIR:
+            FileInfo->FileType = FILESYSTEM_FILETYPE_SYSDIR;
+            break;
+        case FAT16_ATTRIBUTE_NORMAL:
             FileInfo->FileType = FILESYSTEM_FILETYPE_PRESENT;
+            break;
+        case FAT16_ATTRIBUTE_DIRECTORY:
+            FileInfo->FileType = FILESYSTEM_FILETYPE_DIRECTORY;
             break;
     };
     FileInfo->Storage = Storage;
