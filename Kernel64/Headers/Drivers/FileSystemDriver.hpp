@@ -7,8 +7,10 @@
 #define FILESYSTEM_FILETYPE_PRESENT     1
 #define FILESYSTEM_FILETYPE_READONLY    2
 #define FILESYSTEM_FILETYPE_SYSTEM      3
-#define FILESYSTEM_FILETYPE_REMOVED     4
-#define FILESYSTEM_FILETYPE_HIDDEN      5
+#define FILESYSTEM_FILETYPE_SYSDIR      4
+#define FILESYSTEM_FILETYPE_REMOVED     5
+#define FILESYSTEM_FILETYPE_HIDDEN      6
+#define FILESYSTEM_FILETYPE_DIRECTORY   7
 
 #define FILESYSTEM_OPEN_NEW                1 // Just create entirely new file and write
 #define FILESYSTEM_OPEN_OVERWRITE          2 // Overwrite from the current offset
@@ -38,6 +40,24 @@ struct FileInfo {
 
     struct Storage *Storage;
 };
+
+struct DirectoryInfo {
+    char *DirectoryName;
+    unsigned long Location;
+    unsigned long SubdirectoryLocation;
+
+    unsigned short CreatedTime;     // Follows FAT32 date/time format
+    unsigned short CreatedDate;
+    unsigned short LastAccessedDate;
+    unsigned short LastWrittenTime;
+    unsigned short LastWrittenDate;
+
+    unsigned long FileSize;
+    unsigned long FileOffset;
+
+    struct Storage *Storage;
+};
+
 struct FileSystemDriver {
     friend class FileSystemDriverManager;
     virtual bool Check(struct Storage *Storage) = 0; // true : The storage has this file system, false : The storage has different file system.
@@ -72,7 +92,7 @@ struct FileSystemDriver {
     virtual int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
     virtual int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
         
-    virtual int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList) = 0;
+    virtual int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList) = 0;
     virtual int GetFileCountInDirectory(struct FileInfo *FileInfo) = 0;
 
     char FileSystemString[32];
@@ -88,12 +108,12 @@ class FileSystemManager : public ObjectManager<struct FileSystemDriver> {
         }
         void Initialize(void) {
             ObjectManager<struct FileSystemDriver>::Initialize(256);
-            ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+            ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
         }
 
         FileSystemDriver *GetObjectByName(const char *FileSystemString) {
             int i;
-            for(i = 0; i < MaxObjectCount; i++) {
+            for(i = 0; i < MaxCount; i++) {
                 if(strlen(ObjectContainer[i].Object->FileSystemString) != strlen(FileSystemString)) {
                     continue;
                 }
@@ -107,14 +127,14 @@ class FileSystemManager : public ObjectManager<struct FileSystemDriver> {
             if(ObjectContainer[ID].Using == false) {
                 return false;
             }
-            if(ID >= MaxObjectCount) {
+            if(ID >= MaxCount) {
                 return false;
             }
             return ObjectContainer[ID].Object->Check(Storage);
         }
 
         unsigned int GetDriverCount(void) {
-            return CurrentObjectCount;
+            return Count;
         }
 };
 
