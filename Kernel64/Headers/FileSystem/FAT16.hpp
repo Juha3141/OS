@@ -4,6 +4,17 @@
 #include <Drivers/StorageDriver.hpp>
 #include <Drivers/FileSystemDriver.hpp>
 
+#define FAT16_ATTRIBUTE_READONLY    0x01
+#define FAT16_ATTRIBUTE_HIDDEN      0x02
+#define FAT16_ATTRIBUTE_SYSTEM      0x04
+#define FAT16_ATTRIBUTE_VOLUMELABEL 0x08
+#define FAT16_ATTRIBUTE_LFN         0x0F
+#define FAT16_ATTRIBUTE_DIRECTORY   0x10
+#define FAT16_ATTRIBUTE_SYSTEMDIR   0x16
+#define FAT16_ATTRIBUTE_NORMAL      0x20
+
+#define FAT16_FILENAME_REMOVED      0xE5
+
 // Internal use function
 namespace FAT16 {
     struct Driver : public FileSystemDriver {
@@ -17,7 +28,7 @@ namespace FAT16 {
         int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
         int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
         
-        int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList);
+        int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList);
         int GetFileCountInDirectory(struct FileInfo *FileInfo);
             
         int WriteDirectoryData(struct FileInfo *FileInfo);
