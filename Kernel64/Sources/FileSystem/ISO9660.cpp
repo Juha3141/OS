@@ -30,27 +30,26 @@ struct FileInfo *ISO9660::Driver::OpenFile(struct Storage  *Storage , const char
     unsigned short Time;
     struct FileInfo *FileInfo;
     printf("Open File , File name : %s\n" , FileName);
-    struct DirectoryRecord *DirectoryRecord;
-    DirectoryRecord = (struct DirectoryRecord *)MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
-    if(GetFileRecord(Storage , GetRootDirectorySector(Storage) , FileName , DirectoryRecord) == false) {
+    struct DirectoryRecord DirectoryRecord;
+    // Error : GetFileRecord
+    if(GetFileRecord(Storage , GetRootDirectorySector(Storage) , FileName , &(DirectoryRecord)) == false) {
         printf("File not found.\n");
-        MemoryManagement::Free(DirectoryRecord);
         return 0x00;
     }
     FileInfo = (struct FileInfo *)MemoryManagement::Allocate(sizeof(struct FileInfo));
     FileInfo->BlockSize = ISO9660_BYTES_PER_SECTOR;
-    FileInfo->Location = DirectoryRecord->LocationL;
-    FileInfo->FileType = DirectoryRecord->FileFlags;
-    FileInfo->FileSize = DirectoryRecord->DataLengthL;
+    FileInfo->Location = DirectoryRecord.LocationL;
+    FileInfo->FileType = DirectoryRecord.FileFlags;
+    FileInfo->FileSize = DirectoryRecord.DataLengthL;
     FileInfo->FileOffset = 0x00;
 
-    Date = ((DirectoryRecord->Year+1900-1980) & 0b111111) << (4+5);
-    Date |= (DirectoryRecord->Month & 0b1111) << 5;
-    Date |= DirectoryRecord->Day & 0b11111;
+    Date = ((DirectoryRecord.Year+1900-1980) & 0b111111) << (4+5);
+    Date |= (DirectoryRecord.Month & 0b1111) << 5;
+    Date |= DirectoryRecord.Day & 0b11111;
 
-    Time = (DirectoryRecord->Hour & 0b11111) << (6+5);
-    Time |= (DirectoryRecord->Minute & 0b111111) << 5;
-    Time |= (DirectoryRecord->Second & 0b11111);
+    Time = (DirectoryRecord.Hour & 0b11111) << (6+5);
+    Time |= (DirectoryRecord.Minute & 0b111111) << 5;
+    Time |= (DirectoryRecord.Second & 0b11111);
 
     FileInfo->CreatedDate = Date;
     FileInfo->CreatedTime = Time;
@@ -58,7 +57,6 @@ struct FileInfo *ISO9660::Driver::OpenFile(struct Storage  *Storage , const char
     FileInfo->LastWrittenDate = Date;
     FileInfo->LastWrittenTime = Time;
     FileInfo->Storage = Storage;
-    MemoryManagement::Free(DirectoryRecord);
     return FileInfo;
 }
 
@@ -94,7 +92,7 @@ int ISO9660::Driver::ReadFile(struct FileInfo *FileInfo , unsigned long Size , v
     return Size;
 }
 
-int ISO9660::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo *FileList) {
+int ISO9660::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList) {
     return 1;
 }
 
@@ -107,11 +105,12 @@ bool ISO9660::Driver::GetFileRecord(struct Storage *Storage , unsigned long Dire
     int Offset = 0;
     char *FileName;
     int FileNameLength;
-    unsigned char Data[ISO9660_BYTES_PER_SECTOR];
+    unsigned char *Data;
     struct PathTableEntry *Directory; // Description->PathTableLocationL
     struct DirectoryRecord *DirectoryFileEntry;
-    Directory = (struct PathTableEntry*)MemoryManagement::Allocate(sizeof(struct PathTableEntry));
-    DirectoryFileEntry = (struct DirectoryRecord*)MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
+    Data = (unsigned char *)MemoryManagement::Allocate(ISO9660_BYTES_PER_SECTOR);
+    Directory = (struct PathTableEntry *)MemoryManagement::Allocate(sizeof(struct PathTableEntry));
+    DirectoryFileEntry = (struct DirectoryRecord *)MemoryManagement::Allocate(sizeof(struct DirectoryRecord));
     Storage->Driver->ReadSector(Storage , DirectoryAddress , 1 , Data);
     memcpy(Directory , Data , sizeof(PathTableEntry));
     Storage->Driver->ReadSector(Storage , Directory->Location , 1 , Data);
@@ -126,12 +125,14 @@ bool ISO9660::Driver::GetFileRecord(struct Storage *Storage , unsigned long Dire
             memcpy(DirectoryRecord , DirectoryFileEntry , sizeof(struct DirectoryRecord));
             MemoryManagement::Free(Directory);
             MemoryManagement::Free(DirectoryFileEntry);
+            MemoryManagement::Free(Data);
             return true;
         }
         Offset += DirectoryFileEntry->DirectoryLength;
     }
     MemoryManagement::Free(Directory);
     MemoryManagement::Free(DirectoryFileEntry);
+    MemoryManagement::Free(Data);
     return false;
 }
 
