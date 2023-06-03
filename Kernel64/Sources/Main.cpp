@@ -12,6 +12,7 @@
 #include <Drivers/RAMDisk.hpp>
 #include <Drivers/IDE.hpp>
 #include <Drivers/PCI.hpp>
+#include <Drivers/BootRAMDisk.hpp>
 
 #include <FileSystem/MBR.hpp>
 #include <FileSystem/GPT.hpp>
@@ -71,7 +72,6 @@ extern "C" void Main(void) {
     // To-do : Make proper stack system
     KernelStackBase = (unsigned long)MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
     KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
-    printf("KernelStackBase : 0x%X\n" , KernelStackBase);
     
     FileSystem::Initialize();
     printf("File System Initialized\n");
@@ -80,11 +80,45 @@ extern "C" void Main(void) {
     ISO9660::Register();
     FAT16::Register();
     printf("File System Registered\n");
-    printf("RAMDiskDriver::Register : 0x%X\n" , &(RAMDiskDriver::Register));
     
     RAMDiskDriver::Register();
     IDEDriver::Register();
     PCI::Detect();
+
+    unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
+    struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
+    struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
+    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer);
+    
+    
+    struct Storage *BootRAMDisk = RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
+    struct FileInfo *FileInfo;
+    struct FileInfo *FileList[20];
+    int FileCount;
+    FileInfo = BootRAMDisk->FileSystem->OpenFile(BootRAMDisk , "" , FILESYSTEM_OPEN_READ);
+    if(FileInfo == 0x00) {
+        printf("File not found.\n");
+        while(1) {
+            ;
+        }
+    }
+    BootRAMDisk->FileSystem->CreateFile(BootRAMDisk , "wow I'm new.hlo");
+    BootRAMDisk->FileSystem->CreateDir(BootRAMDisk , "test");
+    BootRAMDisk->FileSystem->ReadDirectory(FileInfo , FileList);
+    FileCount = BootRAMDisk->FileSystem->GetFileCountInDirectory(FileInfo);
+    printf("--------------------------------------------------------------------\n");
+    printf("Drive : %s%d , Directory : Root Directory , File count : %d \n" , BootRAMDisk->Driver->DriverName , BootRAMDisk->ID , FileCount);
+    printf("--------------------------------------------------------------------\n");
+    for(int i = 0; i < FileCount; i++) {
+        printf("%s" , FileList[i]->FileName);
+        if(FileList[i]->FileType != FILESYSTEM_FILETYPE_DIRECTORY) {
+            printf(" %dB" , FileList[i]->FileSize);
+        }
+        else {
+            printf(" (directory)");
+        }
+        printf("\n");
+    }
     while(1) {
         ;
     }
@@ -123,17 +157,18 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     struct Storage *CurrentPartition;
     char VolumeLabelSFNName[12];
     unsigned char *BootSector = (unsigned char *)MemoryManagement::Allocate(512);
+    MBR::Identifier MBRIdentifier;
 
     Partition.StartAddressLBA = StartAddress; // Always starts in this sector
     Partition.EndAddressLBA = StartAddress+Size;
     Partition.PartitionType = 0x86;
     Partition.IsBootable = 0;
     
-    MBR::Identifier MBRIdentifier(Storage->Driver , Storage);
+    MBRIdentifier.WriteStorageInfo(Storage->Driver , Storage);
     MBRIdentifier.CreatePartition(Partition); // Physically create partition
     StorageSystem::AddLogicalDrive(Storage->Driver , Storage , &(Partition) , 1); // Setup basic information
     
-    CurrentPartition = Storage->LogicalStorages->GetObject(Storage->LogicalStorages->CurrentObjectCount-1);
+    CurrentPartition = Storage->LogicalStorages->GetObject(Storage->LogicalStorages->Count-1);
 
     FAT16::WriteVBR(&(VBR) , CurrentPartition , "POTATOOS" , "NO NAME   " , "FAT16     ");
     memset(BootSector , 0 , 512);
