@@ -20,6 +20,8 @@
 #include <FileSystem/ISO9660.hpp>
 #include <FileSystem/FAT16.hpp>
 
+#include <Shell.hpp>
+
 unsigned long KernelStackBase = 0;
 unsigned long KernelStackSize = 2*1024*1024;
 
@@ -61,12 +63,10 @@ extern "C" void Main(void) {
 
     TaskManagement::Initialize();
     LocalAPIC::Timer::Initialize();
-    IO::Write(0x22 , 0x70);
-    IO::Write(0x23 , 0x71);
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
     IOAPIC::InitializeRedirectionTable();
-    LocalAPIC::ActivateAPCores();
+    // LocalAPIC::ActivateAPCores();
     __asm__ ("sti");
 
     // To-do : Make proper stack system
@@ -85,40 +85,9 @@ extern "C" void Main(void) {
     IDEDriver::Register();
     PCI::Detect();
 
-    unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
-    struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
-    struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
-    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer);
-    
-    
-    struct Storage *BootRAMDisk = RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
-    struct FileInfo *FileInfo;
-    struct FileInfo *FileList[20];
-    int FileCount;
-    FileInfo = BootRAMDisk->FileSystem->OpenFile(BootRAMDisk , "" , FILESYSTEM_OPEN_READ);
-    if(FileInfo == 0x00) {
-        printf("File not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    BootRAMDisk->FileSystem->CreateFile(BootRAMDisk , "wow I'm new.hlo");
-    BootRAMDisk->FileSystem->CreateDir(BootRAMDisk , "test");
-    BootRAMDisk->FileSystem->ReadDirectory(FileInfo , FileList);
-    FileCount = BootRAMDisk->FileSystem->GetFileCountInDirectory(FileInfo);
-    printf("--------------------------------------------------------------------\n");
-    printf("Drive : %s%d , Directory : Root Directory , File count : %d \n" , BootRAMDisk->Driver->DriverName , BootRAMDisk->ID , FileCount);
-    printf("--------------------------------------------------------------------\n");
-    for(int i = 0; i < FileCount; i++) {
-        printf("%s" , FileList[i]->FileName);
-        if(FileList[i]->FileType != FILESYSTEM_FILETYPE_DIRECTORY) {
-            printf(" %dB" , FileList[i]->FileSize);
-        }
-        else {
-            printf(" (directory)");
-        }
-        printf("\n");
-    }
+    Shell::ShellSystem ShellSystem;
+    ShellSystem.Start();
+
     while(1) {
         ;
     }
@@ -258,4 +227,46 @@ extern "C" void APStartup(void) {
     FileSystemDriver->WriteFile(TestingFile , 45 , (void *)"All work and no play makes Jack a dull boy.\r\n");
     printf("Done.\n");
 }
-*/
+*/   
+    /*
+    int i = 0;
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , 9 , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
+    }
+    for(i = 0; i < 80; i++) {
+        TaskManagement::CreateTask((unsigned long)PrivilagedOnes , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Privilaged Ones");
+    }
+    unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
+    unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
+    while(1) {
+        VideoMemory[80*11*2] = Spinner[i++];
+        VideoMemory[80*11*2+1] = 0x0E;
+        if(i >= 4) {
+            i = 0;
+        }
+    }
+    */
