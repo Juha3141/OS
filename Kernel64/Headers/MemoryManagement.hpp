@@ -58,6 +58,7 @@ namespace MemoryManagement {
             struct Node *CurrentNode; // Next address of lastly allocated node
             struct Node *LastlyFreedNode;
             unsigned long TotalUsableMemory;
+            unsigned long CurrentlyUsingMemory;
         private:
             
             QuerySystemAddressMap UnusableMemories[512];
