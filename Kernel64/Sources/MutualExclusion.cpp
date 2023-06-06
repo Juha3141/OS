@@ -7,6 +7,7 @@ void MutualExclusion::SpinLock::Initialize(void)  {
 }
 
 void MutualExclusion::SpinLock::Lock(void) {
+    return;
     if(!_cmpxchg(&(Locked) , 0 , 1)) {
         if(LockedCoreID == LocalAPIC::GetCurrentAPICID()) {
             // multiple lock
@@ -25,6 +26,7 @@ void MutualExclusion::SpinLock::Lock(void) {
 }
 
 void MutualExclusion::SpinLock::Unlock(void)  {
+    return;
     if((Locked == 0)||(LockedCoreID != LocalAPIC::GetCurrentAPICID())) {
         return;
     }
