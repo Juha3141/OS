@@ -27,5 +27,6 @@ void SetPosition(int X , int Y);
 void MovePosition(int RelativeX , int RelativeY);
 void GetScreenInformation(int *X , int *Y , unsigned char *BackgroundColor , unsigned char *ForegroundColor);
 unsigned char GetCharacter(int X , int Y);
+void UpdateCursor(int X , int Y);
 
 #endif

@@ -1,6 +1,7 @@
 #include <TextScreen.hpp>
 #include <KernelSystemStructure.hpp>
 #include <EssentialLibrary.hpp>
+#include <Kernel.hpp>
 
 static TextScreen80x25::TextScreenInformation ScreenInfo;
 
@@ -25,6 +26,7 @@ void ClearScreen(unsigned char BackgroundColor , unsigned char ForegroundColor) 
     ScreenInfo.ForegroundColor = ForegroundColor;
     ScreenInfo.X = 0;
     ScreenInfo.Y = 0;
+    UpdateCursor(ScreenInfo.X , ScreenInfo.Y);
 }
 
 void PrintString(const char *String) {
@@ -80,6 +82,7 @@ void PrintString(const char *String) {
                 break;
         }
     }
+    UpdateCursor(ScreenInfo.X , ScreenInfo.Y);
 }
 
 void printf(const char *Format , ...) {
@@ -100,11 +103,12 @@ void SetPosition(int X , int Y) {
     }
     ScreenInfo.X = X;
     ScreenInfo.Y = Y;
+    UpdateCursor(ScreenInfo.X , ScreenInfo.Y);
 }
 
 void MovePosition(int X , int Y) {
-    ScreenInfo.X -= X;
-    ScreenInfo.Y -= Y;
+    ScreenInfo.X += X;
+    ScreenInfo.Y += Y;
     if(ScreenInfo.X < 0) {
         ScreenInfo.X = 0;
     }
@@ -117,6 +121,7 @@ void MovePosition(int X , int Y) {
     if(ScreenInfo.Y >= ScreenInfo.Height-1) {
         ScreenInfo.Y = ScreenInfo.Height-1;
     }
+    UpdateCursor(ScreenInfo.X , ScreenInfo.Y);
 }
 
 void GetScreenInformation(int *X , int *Y , unsigned char *BackgroundColor , unsigned char *ForegroundColor) {
@@ -124,4 +129,12 @@ void GetScreenInformation(int *X , int *Y , unsigned char *BackgroundColor , uns
     *Y = ScreenInfo.Y;
     *BackgroundColor = ScreenInfo.BackgroundColor;
     *ForegroundColor = ScreenInfo.ForegroundColor;
+}
+
+void UpdateCursor(int X , int Y) {
+    unsigned short Position = Y*TEXTSCREEN_80x25_WIDTH+X;
+    IO::Write(0x3D4 , 0x0F);
+    IO::Write(0x3D5 , (unsigned char)(Position & 0xFF));
+    IO::Write(0x3D4 , 0x0E);
+    IO::Write(0x3D5 , (unsigned char)((Position >> 8) & 0xFF));
 }
