@@ -484,7 +484,7 @@ _ZN9LocalAPIC5Timer16InterruptHandlerEv:
     mov rcx , rax
     imul rax , 2
 
-    mov rsi , 0xB8000
+    mov rsi , 0xB8000+(77*2)
     add rsi , rax
     lock add byte[rsi] , 1
     lock add byte[rsi+1] , 1
@@ -494,8 +494,6 @@ _ZN9LocalAPIC5Timer16InterruptHandlerEv:
 
     call _ZN9LocalAPIC5Timer20MainInterruptHandlerEv
 .DONE:
-    call _ZN9LocalAPIC7SendEOIEv
-    
     LOAD_REGISTERS_FROM_STACK
     iretq
 
