@@ -79,7 +79,7 @@ char *strncat(char *Destination , const char *Origin , unsigned long Length) {
     return Destination;
 }
 
-int strcmp(char *Destination , const char *Origin) {
+int strcmp(const char *Destination , const char *Origin) {
     unsigned long i;
     unsigned long DestinationLength = strlen(Destination);
     unsigned long OriginLength = strlen(Origin);

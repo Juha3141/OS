@@ -329,7 +329,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchReasonableNo
 	Node = this->StartNode;
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		if((Node->Using == 0) && (Node->Size >= Size)) {
-			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
+			// printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
 			return Node;
 		}
 		Node = Node->Next;
