@@ -43,16 +43,16 @@ static void SetTaskRegisters(struct TaskManagement::Task *Task , unsigned long S
     }
     Task->Registers.RSP = (unsigned long)MemoryManagement::Allocate(StackSize)+StackSize-8;
     Task->Registers.RBP = Task->Registers.RSP;
-    //*((unsigned long *)Task->Registers.RBP) = /*Return Address*/;
+    *((unsigned long *)Task->Registers.RBP) = (unsigned long)TaskManagement::Exit;
     Task->Registers.RFlags = 0x202;
     Task->Registers.RIP = StartAddress;
 }
 
-unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName) {
+unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , int ArgumentCount , unsigned long *Arguments) {
     struct Task *Task;
     class CoreSchedulingManager *CoreSchedulingManager = CoreSchedulingManager::GetInstance();
     unsigned int AssignedCoreID = /*CoreSchedulingManager->AddTask();*/0; // Temporarily use BSP.. there's some weird error going on
-    CommonSpinLock->Lock();
+    __asm__("cli");
     Task = (struct Task *)MemoryManagement::Allocate(sizeof(struct Task));
     Task->ID = ((TaskSchedulingManager[AssignedCoreID]->CurrentMaxAllocatedID++)|(0x100000000*AssignedCoreID));
     Task->Status = Status;
@@ -60,21 +60,77 @@ unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned l
     Task->StackSize = StackSize;
     Task->DemandTime = TASK_DEFAULT_DEMAND_TIME;
     SetTaskRegisters(Task , StartAddress , StackSize);
+    if((ArgumentCount != 0) && (Arguments != 0x00)) {
+        AddArgumentToRegister(Task , ArgumentCount , Arguments);
+    }
     strcpy(Task->Name , TaskName);
     TaskSchedulingManager[AssignedCoreID]->Queues[(Status) & 0b11]->AddTask(Task);
-    printf("Assigned Core ID : %d , TaskID : 0x%X\n" , AssignedCoreID , Task->ID);
-    CommonSpinLock->Unlock();
+    __asm__ ("sti");
     return Task->ID;
 }
 
-unsigned long TaskManagement::TerminateTask(unsigned long TaskID) {
+void TaskManagement::AddArgumentToRegister(struct Task *Task , unsigned long ArgumentCount , unsigned long *Arguments) {
+    int i;
+    unsigned char *RSP = (unsigned char *)Task->Registers.RSP;
+    unsigned char *RBP = (unsigned char *)Task->Registers.RBP;
+    if(ArgumentCount >= 6) {
+        RSP -= (ArgumentCount-5)*8;
+    }
+    if(ArgumentCount == 0) {
+        return;
+    }
+    for(i = 0; i < ArgumentCount; i++) {
+        switch(i) {
+            case 0:
+                Task->Registers.RDI = Arguments[i];
+                break;
+            case 1:
+                Task->Registers.RSI = Arguments[i];
+                break;
+            case 2:
+                Task->Registers.RDX = Arguments[i];
+                break;
+            case 3:
+                Task->Registers.RCX = Arguments[i];
+                break;
+            case 4:
+                Task->Registers.R8 = Arguments[i];
+                break;
+            case 5:
+                Task->Registers.R9 = Arguments[i];
+                break;
+            default:
+                *(RBP) = Arguments[i];
+                RBP -= 8;
+                RSP -= 8;
+                break;
+        }
+    }
+}
+
+bool TaskManagement::TerminateTask(unsigned long TaskID) {
     int i;
     struct Task *Task = GetTask(TaskID);
     if(Task == 0x00) {
         return false;
     }
-    TaskSchedulingManager[0]->Queues[Task->Status]->RemoveTask(TaskID);
+    if((TaskID >> 32) > CoreInformation::GetInstance()->CoreCount) {
+        return false;
+    }
+    TaskSchedulingManager[(TaskID >> 32)]->Queues[Task->Status]->RemoveTask(TaskID);
     return true;
+}
+
+void TaskManagement::Exit(void) {
+    if(TerminateTask(GetCurrentlyRunningTaskID()) == false) {
+        printf("Failed terminating task\n");
+        while(1) {
+            ;
+        }
+    }
+    while(1) {
+        ;
+    }
 }
 
 bool TaskManagement::ChangeTaskStatus(unsigned long TaskID , unsigned long NewStatus) {
@@ -116,7 +172,7 @@ void TaskManagement::SchedulingManager::Initialize(void) {
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL;
 
     SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
-    strcpy(MainTask->Name , "MAINTASK");
+    strcpy(MainTask->Name , "Don't you dare terminate me.exe");
     Queues[TASK_STATUS_RUNNING]->AddTask(MainTask);
     CurrentlyRunningTask = MainTask;
 }
@@ -166,6 +222,7 @@ void TaskManagement::SwitchTaskInTimerInterrupt(void) {
         CommonSpinLock->Unlock();
         return;
     }
+    int GetTaskCount(void);
     CurrentTask = TaskSchedulingManager[LocalAPIC::GetCurrentAPICID()]->SwitchTask();
     CommonSpinLock->Unlock();
     if(PreviousTask->ID == CurrentTask->ID) {
@@ -195,6 +252,36 @@ struct TaskManagement::Task *TaskManagement::GetTask(unsigned long ID) {
     return 0x00;
 }
 
+struct TaskManagement::Task *TaskManagement::GetTask(const char *Name) {
+    int i;
+    int j;
+    struct Task *Task;
+    for(i = 0; i < CoreInformation::GetInstance()->CoreCount; i++) {
+        for(j = 0; j < 3; j++) {
+            if((Task = TaskSchedulingManager[i]->Queues[j]->GetTask(Name)) != 0) { // error
+                return Task;
+            }
+        }
+    }
+    return 0x00;
+}
+
+struct TaskManagement::TaskQueue *TaskManagement::GetTaskQueue(int CoreID , int QueueID) {
+    return TaskSchedulingManager[CoreID]->Queues[QueueID];
+}
+
+int TaskManagement::GetTaskCount(void) {
+    int i;
+    int j;
+    int TaskCount = 0;
+    for(i = 0; i < CoreInformation::GetInstance()->CoreCount; i++) {
+        for(j = 0; j < TASK_QUEUE_COUNT; j++) {
+            TaskCount += TaskSchedulingManager[i]->Queues[j]->TaskCount;
+        }
+    }
+    return TaskCount;
+}
+
 ////////// PriorityQueue ////////////
 
 void TaskManagement::TaskQueue::Initialize(void) {
@@ -202,24 +289,31 @@ void TaskManagement::TaskQueue::Initialize(void) {
 }
 
 void TaskManagement::TaskQueue::AddTask(struct Task *Task) {
+    struct Task *TaskPointer;
+    if((TaskCount != 0) && (MaxTaskCount != 0) && (TaskCount >= MaxTaskCount)) {
+        return;
+    }
     if(TaskCount == 0) {
         StartTask = Task;
         StartTask->NextTask = StartTask;
+        StartTask->PreviousTask = 0x00;
         TaskCount++;
         CurrentTask = StartTask;
-        NextTaskLinkerToAllocate = StartTask;
         return;
     }
-    NextTaskLinkerToAllocate->NextTask = Task;
-    NextTaskLinkerToAllocate->NextTask->NextTask = StartTask;
-    NextTaskLinkerToAllocate = NextTaskLinkerToAllocate->NextTask;
+    TaskPointer = StartTask;
+    while(TaskPointer->NextTask != StartTask) {
+        TaskPointer = TaskPointer->NextTask;
+    }
+    TaskPointer->NextTask = Task;
+    TaskPointer->NextTask->NextTask = StartTask;
+    TaskPointer->NextTask->PreviousTask = TaskPointer;
     TaskCount++;
     return;
 }
 
 void TaskManagement::TaskQueue::RemoveTask(unsigned long TaskID) {
     struct Task *TaskPointer = StartTask;
-    struct Task *PreviousPointer = 0x00;
     if(TaskCount == 0) {
         return;
     }
@@ -227,13 +321,21 @@ void TaskManagement::TaskQueue::RemoveTask(unsigned long TaskID) {
         if(TaskPointer->ID == TaskID) {
             break;
         }
-        PreviousPointer = TaskPointer;
         TaskPointer = TaskPointer->NextTask;
+        if(TaskPointer == StartTask) {
+            return;
+        }
     }
-    if(PreviousPointer != 0x00) {
-        PreviousPointer->NextTask = TaskPointer->NextTask;
+    if(TaskPointer->PreviousTask == 0) {
+        TaskPointer->NextTask->PreviousTask = 0x00;
+        StartTask = TaskPointer->NextTask;
+    }
+    else {
+        TaskPointer->NextTask->PreviousTask = TaskPointer->PreviousTask;
+        TaskPointer->PreviousTask->NextTask = TaskPointer->NextTask;
     }
     TaskCount -= 1;
+    return;
 }
 
 struct TaskManagement::Task *TaskManagement::TaskQueue::GetCurrentTask(void) {
@@ -254,8 +356,25 @@ struct TaskManagement::Task *TaskManagement::TaskQueue::GetTask(unsigned long ID
             return TaskPointer;
         }
         TaskPointer = TaskPointer->NextTask;
-        if(TaskPointer->NextTask == StartTask) {
-            return 0x00;
+        if(TaskPointer == StartTask) {
+            break;
+        }
+    }
+    return 0x00;
+}
+
+struct TaskManagement::Task *TaskManagement::TaskQueue::GetTask(const char *Name) {
+    struct Task *TaskPointer = StartTask;
+    if(TaskCount == 0) {
+        return 0x00;
+    }
+    while(1) { // error
+        if(strcmp(TaskPointer->Name , Name) == 0) {
+            return TaskPointer;
+        }
+        TaskPointer = TaskPointer->NextTask;
+        if(TaskPointer == StartTask) {
+            break;
         }
     }
     return 0x00;

@@ -3,6 +3,7 @@
 
 #include <Kernel.hpp>
 
+#define TASK_QUEUE_COUNT              3
 #define TASK_COUNT_PER_QUEUE          256
 
 #define TASK_FLAGS_PRIVILAGE_KERNEL         0x00
@@ -13,7 +14,7 @@
 #define TASK_STATUS_EVENT_WAITING     0x01
 #define TASK_STATUS_IDLE              0x02
 
-#define TASK_DEFAULT_DEMAND_TIME      2
+#define TASK_DEFAULT_DEMAND_TIME      1
 #define TASK_PRIORITY_COUNT           10
 
 struct TaskRegisters {
@@ -69,6 +70,7 @@ namespace TaskManagement {
 
         char Name[32];
         struct Task *NextTask;
+        struct Task *PreviousTask;
 
         StructureQueue<struct Event>EventQueue;
 
@@ -86,12 +88,16 @@ namespace TaskManagement {
             void SwitchToNextTask(void);
 
             struct Task *GetTask(unsigned long ID);
-        private:
+            struct Task *GetTask(const char *Name);
+            
+            int TaskCount;
+            int MaxTaskCount = 0;
+
             struct Task *StartTask;
+        private:
             struct Task *CurrentTask;
 
             struct Task *NextTaskLinkerToAllocate;
-            int TaskCount;
     };
     struct SchedulingManager {
         friend class TaskQueue;
@@ -131,8 +137,10 @@ namespace TaskManagement {
     };
 
     void Initialize(void);
-    unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName);
-    unsigned long TerminateTask(unsigned long TaskID);
+    unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , int ArgumentCount=0 , unsigned long *Arguments=0x00);
+    void AddArgumentToRegister(struct Task *Task , unsigned long ArgumentCount , unsigned long *Arguments);
+    bool TerminateTask(unsigned long TaskID);
+    void Exit(void);
     bool ChangeTaskStatus(unsigned long TaskID , unsigned long Status);
     void ChangeDemandTime(unsigned long TaskID , unsigned long DemandTime);
     void SwitchTask(void);
@@ -140,6 +148,9 @@ namespace TaskManagement {
     struct Task *GetCurrentlyRunningTask(void);
     unsigned long GetCurrentlyRunningTaskID(void);
     struct Task *GetTask(unsigned long ID);
+    struct Task *GetTask(const char *Name);
+    struct TaskQueue *GetTaskQueue(int CoreID , int QueueID);
+    int GetTaskCount(void);
     
     // _ZN14TaskManagement13SwitchContextEP13TaskRegistersS1_
     void SwitchContext(struct TaskRegisters *LastContext , struct TaskRegisters *ContextToChange);
