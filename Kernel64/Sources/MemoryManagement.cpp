@@ -163,6 +163,7 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 			NodeManager->WriteNodeData(SeparatedNode , 0 , TotalNodeSize-Size-sizeof(struct Node) , (unsigned long)Node->Next , (unsigned long)Node);
 		}
 	}
+	NodeManager->CurrentlyUsingMemory += Size;
 	// Return the actual available address : Node address + size of the node structure
 	return ((void *)((unsigned long)Node+sizeof(struct Node)));			// Actual address that is going to be used : 
 																		// Address after area of node
@@ -222,6 +223,7 @@ void MemoryManagement::Free(void *Address) {
 	}
 	// Allocated Size : Location of the next node - Location of current node
 	// If next node is usable, and present, the node can be merged.
+	NodeManager->CurrentlyUsingMemory -= Node->Size;
 	if((Node->Next != 0x00) && (Node->Next->Using == 0) && (Node->Next->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
 		// printf("Next mergable\n");
 		Merged = true;
@@ -307,10 +309,11 @@ void MemoryManagement::NodeManager::MapNode(void) {
 // Description : Initializes the variables
 void MemoryManagement::NodeManager::Initialize(unsigned long StartAddress , unsigned long TotalUsableMemory , QuerySystemAddressMap *E820 , int E820EntryCount) {
 	int i;
-	this->StartNode = (struct Node *)StartAddress;   // StartAddress 	 : The location of the memory pool
-	this->CurrentNode = (struct Node *)StartAddress; // CurrentAddress    : The location of current position
-	this->LastlyFreedNode = 0;						 // LastFreedAddress  : The location of lastly freed segment, 0 = There's yet no freed segment
-	this->TotalUsableMemory = TotalUsableMemory;	 // TotalUsableMemory : Total available memory to use(Size of the memory pool)
+	this->StartNode = (struct Node *)StartAddress;   // StartAddress 	     : The location of the memory pool
+	this->CurrentNode = (struct Node *)StartAddress; // CurrentAddress       : The location of current position
+	this->LastlyFreedNode = 0;						 // LastFreedAddress     : The location of lastly freed segment, 0 = There's yet no freed segment
+	this->TotalUsableMemory = TotalUsableMemory;	 // TotalUsableMemory    : Total available memory to use(Size of the memory pool)
+	this->CurrentlyUsingMemory = 0;					 // CurrentlyUsingMemory : Currently using memory size
 	printf("Unusable Memories List Location : 0x%X\n" , UnusableMemories);
 	for(i = UnusableMemoryEntryCount = 0; i < E820EntryCount; i++) {
 		if(E820[i].Type != MEMORYMANAGEMENT_E820_USABLE) { // If memory is not usable, put it into unusable memories list
@@ -326,7 +329,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchReasonableNo
 	Node = this->StartNode;
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		if((Node->Using == 0) && (Node->Size >= Size)) {
-			// printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->NextNode-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
+			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
 			return Node;
 		}
 		Node = Node->Next;
@@ -371,6 +374,8 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchNewNodeLocat
 	// If there is freed address 	-> Use LastFreedAddress
 	Node = this->CurrentNode;
 	while((Node->Next != 0x00) && (Node->Signature != MEMORYMANAGEMENT_SIGNATURE)) {	// Go to the last node
+		printf("Node       : 0x%X\n" , Node);
+		printf("Node->Next : 0x%X\n" , Node->Next);
 		Node = Node->Next;
 	}
 	*PreviousNode = (unsigned long)Node;
