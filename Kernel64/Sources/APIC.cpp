@@ -190,7 +190,7 @@ unsigned int LocalAPIC::Timer::GetInitialValue(void) {
 void LocalAPIC::Timer::MainInterruptHandler(void) {
     // even I synchronize this it keeps crashing
     TaskManagement::SwitchTaskInTimerInterrupt();
-    // LocalAPIC::SendEOI();
+    LocalAPIC::SendEOI();
 }
 
 /// I/O APIC ///
@@ -208,9 +208,7 @@ void IOAPIC::InitializeRedirectionTable(void) {
     memset(&(RedirectionTable) , 0 , sizeof(struct IORedirectionTable));
     if(MPFloatingPointer == 0x00) {
         printf("MP floating pointer not found.\n");
-        while(1) {
-            ;
-        }
+        return;
     }
     printf("MP Table Entry Count : %d\n" , TableHeader->EntryCount);
     TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTable::MPFloatingTableHeader);
