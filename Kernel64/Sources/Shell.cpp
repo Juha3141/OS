@@ -101,6 +101,10 @@ void Shell::DefaultCommands::readfile(int argc , char **argv) {
         MemoryManagement::Free(File);
         return;
     }
+    if(File->FileSize == 0) {
+        MemoryManagement::Free(File);
+        return;
+    }
     FileData = (char*)MemoryManagement::Allocate(File->FileSize);
     if(FileSystem::ReadFile(File , File->FileSize , FileData) == 0) {
         printf("Failed reading file \"%s\"\n" , argv[1]);
@@ -151,18 +155,22 @@ void Shell::DefaultCommands::listfile(int argc , char **argv) {
     struct FileInfo **FileList;
 
     char KeyInput;
-    if(argc != 2) {
-        printf("Usage : %s [directory name]\n" , argv[0]);
-        return;
+    char *Directory;
+    if(argc == 2) {
+        Directory = argv[1];
     }
-
-    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    else {
+        Directory = TaskManagement::GetCurrentDirectoryLocation();
+    }
+    
+    
+    File = FileSystem::OpenFile(Directory , FILESYSTEM_OPEN_READ);
     if(File == 0) {
-        printf("No such directory named \"%s\"\n" , argv[1]);
+        printf("No such directory named \"%s\"\n" , Directory);
         return;
     }
     if((File->FileType != FILESYSTEM_FILETYPE_DIRECTORY) && (File->FileType != FILESYSTEM_FILETYPE_SYSDIR)) {
-        printf("\"%s\" is not a directory\n" , argv[1]);
+        printf("\"%s\" is not a directory\n" , Directory);
         return;
     }
     FileCount = FileSystem::GetFileCountInDirectory(File);
@@ -343,7 +351,7 @@ void Shell::DefaultCommands::spinner(int argc , char **argv) {
     }
     TaskCount = atoi(argv[1]);
     for(i = 0; i < TaskCount; i++) {
-        TaskManagement::CreateTask((unsigned long)testtask , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 2048 , "testtask");
+        TaskManagement::CreateTask((unsigned long)testtask , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 2048 , "testtask" , TaskManagement::GetCurrentDirectoryLocation());
     }
     return;
 }
@@ -597,7 +605,7 @@ void Shell::CommandListSystem::AddCommand(const char *Name , const char *HelpMes
 unsigned long Shell::CommandListSystem::EntryPoint(char *Name) {
     int i;
     for(i = 0; i < this->MaxCommandsCount; i++) {
-        if(memcmp(Name , this->CommandNames[i] , strlen(this->CommandNames[i])) == 0) {
+        if(strcmp(Name , this->CommandNames[i]) == 0) {
             break;
         }
     }
@@ -647,6 +655,48 @@ static void AdjustFileName(char *FileName) {
     }
 }
 
+void Shell::ShellSystem::ChangeDirectory(int SlicedCommandCount , char **SlicedCommand) {
+    int i;
+    struct FileInfo *File;
+    if(strcmp(SlicedCommand[1] , ".") == 0) {
+        return;
+    }
+
+    if(strcmp(SlicedCommand[1] , "..") == 0) {
+        for(i = strlen(CurrentDirectory)-1; i >= 0; i--) {
+            if(CurrentDirectory[i] == FileSystem::ParseCharacter()) {
+                CurrentDirectory[i] = 0;
+                break;
+            }
+        }
+        return;
+    }
+    if(SlicedCommandCount == 1) {
+        printf("%s\n" , CurrentDirectory);
+        return;
+    }
+    if(SlicedCommand[1][0] != '@') {
+        i = strlen(CurrentDirectory);
+        strcat(CurrentDirectory , "/");
+        strcat(CurrentDirectory , SlicedCommand[1]);
+    }
+    else {
+        i = 0;
+        strcpy(CurrentDirectory , SlicedCommand[1]);
+    }
+    AdjustFileName(CurrentDirectory);
+    if((File = FileSystem::OpenFile(CurrentDirectory , FILESYSTEM_OPEN_READ)) == 0) {
+        printf("Directory not found\n");
+        CurrentDirectory[i] = 0;
+        return;
+    }
+    if((File->FileType != FILESYSTEM_FILETYPE_SYSDIR) && (File->FileType != FILESYSTEM_FILETYPE_DIRECTORY)) {
+        printf("This is not a directory\n");
+        CurrentDirectory[i] = 0;
+    }
+    MemoryManagement::Free(File);
+}
+
 void Shell::ShellSystem::ProcessCommand(void) {
     int i;
     int j;
@@ -661,6 +711,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
     unsigned long TemproryKeyboardData;
     unsigned long ArgumentForCommandFunction[4]; // <- PLEASE CHANGE THIS IF YOU ARE CHANGING LINE 467!!!
     int CommandLength;
+    struct FileInfo *File;
     FileSystem::RemoveUnnecessarySpaces(Command);
     SlicedCommandCount = 0;
     for(i = 0; Command[i] != 0; i++) {
@@ -669,7 +720,9 @@ void Shell::ShellSystem::ProcessCommand(void) {
         }
     }
     SlicedCommandCount++;
+
     char *SlicedCommand[SlicedCommandCount];
+    
     for(i = j = 0; i < SlicedCommandCount; i++) {
         for(CommandLength = j; Command[j] != ' '; j++) {
             if(Command[j] == 0x00) {
@@ -706,17 +759,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
     ArgumentForCommandFunction[2] = (unsigned long)&(this->CommandList);
     ArgumentForCommandFunction[3] = (unsigned long)CurrentDirectory;
     if(strcmp(SlicedCommand[0] , "cd") == 0) {
-        printf("Changing directory to : %s\n" , SlicedCommand[1]);
-        printf("Current directory     : %s\n" , CurrentDirectory);
-        if(SlicedCommand[1][0] != '@') {
-            strcat(CurrentDirectory , "/");
-            strcat(CurrentDirectory , SlicedCommand[1]);
-        }
-        else {
-            strcpy(CurrentDirectory , SlicedCommand[1]);
-        }
-        AdjustFileName(CurrentDirectory);
-        printf("Changed directory     : %s\n" , CurrentDirectory);
+        ChangeDirectory(SlicedCommandCount , SlicedCommand);
     }
     else if(strcmp(SlicedCommand[0] , "clear") == 0) {
         ClearScreen(0x00 , 0x07);
@@ -744,7 +787,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
         printf("Command not found\n");
     }
     else {
-        ID = TaskManagement::CreateTask((unsigned long)EntryPoint , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "testing" , 4 , ArgumentForCommandFunction);
+        ID = TaskManagement::CreateTask((unsigned long)EntryPoint , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "testing" , CurrentDirectory , 4 , ArgumentForCommandFunction);
         TaskManagement::ChangeDemandTime(ID , 10);
         while(1) {
             if(TaskManagement::GetTask(ID) == 0x00) {

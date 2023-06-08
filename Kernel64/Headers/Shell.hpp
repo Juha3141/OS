@@ -100,6 +100,9 @@ namespace Shell {
             void Select_ProcessKeybordLeft(void);
             void Select_ProcessKeyboardRight(void);
             void RemoveUnnecessarySpaces(void);
+
+            void ChangeDirectory(int SlicedCommandCount , char **SlicedCommand);
+
             char *Command;
             
             char *CurrentDirectory;
