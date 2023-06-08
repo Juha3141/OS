@@ -8,3 +8,4 @@ backup/
 Blank.img
 FAT32-TEMP.img
 Disk.img
+.gdb_history
