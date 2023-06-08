@@ -145,6 +145,40 @@ namespace FileSystem {
     FileSystemDriver *Search(unsigned long ID);
     FileSystemDriver *Search(const char *FileSystemString);
     FileSystemDriver *DetectFileSystem(struct Storage *Storage);
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    int GetDirectoryCount(const char *FileName);
+    int ParseDirectories(const char *FileName , char **DirectoryNames);
+    char ParseCharacter(void);
+    char PartitionParseCharacter(void);
+    char *HeadDirectory(void);
+    char *Parse(const char *FileName , char Character);
+    void RemoveUnnecessarySpaces(char *String);
+
+    char *GetStorageDriverName(const char *FileName);
+    int GetStorageID(const char *FileName);
+    int GetStoragePartitionID(const char *FileName);
+    const char *GetRAWFileName(const char *FileName);
+    struct FileInfo *GetHeadDirectory(void);
+
+    struct Storage *GetStorage(const char *FileName);
+
+    ///////////////////////////////////////////////////////////////////////////
+    bool CreateFile(const char *FileName); // true : The storage has this file system, false : The storage has different file system.
+    bool CreateDir(const char *DirectoryName);
+
+    void SetOffset(struct FileInfo *FileInfo , int Offset , int OffsetOption);
+
+    struct FileInfo *OpenFile(const char *FileName , int OpenOption);
+    int CloseFile(struct FileInfo *FileInfo);
+    int RemoveFile(struct FileInfo *FileInfo);
+        
+    int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
+    int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
+        
+    int ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **FileList);
+    int GetFileCountInDirectory(struct FileInfo *FileInfo);
 }
 
 #endif
