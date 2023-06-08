@@ -41,14 +41,15 @@ static void SetTaskRegisters(struct TaskManagement::Task *Task , unsigned long S
             Task->Registers.SS = USER_DS;
             break;
     }
-    Task->Registers.RSP = (unsigned long)MemoryManagement::Allocate(StackSize)+StackSize-8;
+    Task->StackAddress = (unsigned long)MemoryManagement::Allocate(StackSize);
+    Task->Registers.RSP = Task->StackAddress+StackSize-8;
     Task->Registers.RBP = Task->Registers.RSP;
     *((unsigned long *)Task->Registers.RBP) = (unsigned long)TaskManagement::Exit;
     Task->Registers.RFlags = 0x202;
     Task->Registers.RIP = StartAddress;
 }
 
-unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , int ArgumentCount , unsigned long *Arguments) {
+unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , const char *SubdirectoryLocation , int ArgumentCount , unsigned long *Arguments) {
     struct Task *Task;
     class CoreSchedulingManager *CoreSchedulingManager = CoreSchedulingManager::GetInstance();
     unsigned int AssignedCoreID = /*CoreSchedulingManager->AddTask();*/0; // Temporarily use BSP.. there's some weird error going on
@@ -59,6 +60,8 @@ unsigned long TaskManagement::CreateTask(unsigned long StartAddress , unsigned l
     Task->Flags = Flags;
     Task->StackSize = StackSize;
     Task->DemandTime = TASK_DEFAULT_DEMAND_TIME;
+    Task->SubdirectoryLocation = (char *)MemoryManagement::Allocate(strlen(SubdirectoryLocation)+1);
+    strcpy(Task->SubdirectoryLocation , SubdirectoryLocation);
     SetTaskRegisters(Task , StartAddress , StackSize);
     if((ArgumentCount != 0) && (Arguments != 0x00)) {
         AddArgumentToRegister(Task , ArgumentCount , Arguments);
@@ -118,6 +121,9 @@ bool TaskManagement::TerminateTask(unsigned long TaskID) {
         return false;
     }
     TaskSchedulingManager[(TaskID >> 32)]->Queues[Task->Status]->RemoveTask(TaskID);
+
+    MemoryManagement::Free(Task->SubdirectoryLocation);
+    MemoryManagement::Free((void *)Task->StackAddress);
     return true;
 }
 
@@ -172,7 +178,7 @@ void TaskManagement::SchedulingManager::Initialize(void) {
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL;
 
     SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
-    strcpy(MainTask->Name , "Don't you dare terminate me.exe");
+    strcpy(MainTask->Name , "kernel");
     Queues[TASK_STATUS_RUNNING]->AddTask(MainTask);
     CurrentlyRunningTask = MainTask;
 }
@@ -280,6 +286,10 @@ int TaskManagement::GetTaskCount(void) {
         }
     }
     return TaskCount;
+}
+
+char *TaskManagement::GetCurrentDirectoryLocation(void) {
+    return GetCurrentlyRunningTask()->SubdirectoryLocation;
 }
 
 ////////// PriorityQueue ////////////

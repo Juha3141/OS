@@ -64,6 +64,7 @@ namespace TaskManagement {
         unsigned long ID;
         unsigned long Flags;
         unsigned long Status;
+        unsigned long StackAddress;
         unsigned long StackSize;
         struct TaskRegisters Registers;
         unsigned long CR3;
@@ -75,6 +76,8 @@ namespace TaskManagement {
         StructureQueue<struct Event>EventQueue;
 
         int DemandTime;
+
+        char *SubdirectoryLocation;
     };
 
     class TaskQueue {
@@ -137,7 +140,7 @@ namespace TaskManagement {
     };
 
     void Initialize(void);
-    unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , int ArgumentCount=0 , unsigned long *Arguments=0x00);
+    unsigned long CreateTask(unsigned long StartAddress , unsigned long Flags , unsigned long Status , unsigned long StackSize , const char *TaskName , const char *DirectoryLocation , int ArgumentCount=0 , unsigned long *Arguments=0x00);
     void AddArgumentToRegister(struct Task *Task , unsigned long ArgumentCount , unsigned long *Arguments);
     bool TerminateTask(unsigned long TaskID);
     void Exit(void);
@@ -151,6 +154,8 @@ namespace TaskManagement {
     struct Task *GetTask(const char *Name);
     struct TaskQueue *GetTaskQueue(int CoreID , int QueueID);
     int GetTaskCount(void);
+
+    char *GetCurrentDirectoryLocation(void);
     
     // _ZN14TaskManagement13SwitchContextEP13TaskRegistersS1_
     void SwitchContext(struct TaskRegisters *LastContext , struct TaskRegisters *ContextToChange);
