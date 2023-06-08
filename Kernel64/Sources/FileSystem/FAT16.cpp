@@ -129,9 +129,7 @@ bool FAT16::Driver::CreateDir(struct Storage *Storage , const char *DirectoryNam
     // Write file entry to directory address, LFN comes before SFN.
     WriteLFNEntry(Storage , DirectoryLocation , DirectoryName);
     WriteSFNEntry(Storage , DirectoryLocation , &(SFNEntry));
-    
-    printf("[!] SFN name : %s\n" , SFNName);
-    printf("[!] Directory name : %s\n" , DirectoryName);
+
     SFNEntry.Attribute = 0x10;
     memcpy(SFNEntry.FileName , ".          " , 11);
     SFNEntry.FileSize = 0;
@@ -227,7 +225,10 @@ struct FileInfo *FAT16::Driver::OpenFile(struct Storage *Storage , const char *F
 }
 
 int FAT16::Driver::CloseFile(struct FileInfo *FileInfo) {
-    return 0;
+    if(FileInfo != 0x00) {
+        MemoryManagement::Free(FileInfo);
+    }
+    return 1;
 }
 
 int FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
@@ -312,8 +313,7 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
         LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-i+DotIndex];
     }
     LastName[j] = 0;
-    DirectoryLocation = GetDirectoryLocation(FileInfo->Storage , FileInfo->FileName);
-    if(GetSFNEntry(FileInfo->Storage , DirectoryLocation , LastName , &(NewSFNEntry)) == false) {
+    if(GetSFNEntry(FileInfo->Storage , FileInfo->SubdirectoryLocation , LastName , &(NewSFNEntry)) == false) {
         MemoryManagement::Free(LastName);
         MemoryManagement::Free(Data);
     }
@@ -1132,6 +1132,7 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
     }
     char TemporaryFileName[(EntryCount*(5+6+2))+1];
     CreateSFNName(TemporaryFileName , FileName , 1);
+    /*
     if((strlen(FileName) <= 11)) { // bug
         // printf("TemporaryFileName : \"%s\"(%d char)\n" , TemporaryFileName , strlen(TemporaryFileName));
         for(i = 0; i < EntryCount; i++) {
@@ -1146,6 +1147,7 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
         MemoryManagement::Free(Directory);
         return false;
     }
+    */
     for(i = 0; i < EntryCount; i++) {
         SFNEntry = (struct SFNEntry *)(Directory+Offset);
         LFNEntry = (struct LFNEntry *)(Directory+Offset);
