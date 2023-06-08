@@ -33,7 +33,7 @@ void PrintString(const char *String) {
     int i;
     int j;
     int Offset;
-    for(i = 0; i < strlen(String); i++) {
+    for(i = 0; String[i] != 0; i++) {
         Offset = (ScreenInfo.Y*ScreenInfo.Width*2)+ScreenInfo.X*2;
         switch(String[i]) {
             case '\n':

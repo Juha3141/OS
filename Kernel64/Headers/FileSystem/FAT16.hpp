@@ -91,12 +91,13 @@ namespace FAT16 {
     unsigned int GetRootDirectorySize(struct VBR *VBR);
     unsigned int GetDataAreaLocation(struct VBR *VBR);
     
-    unsigned int GetDirectoryInfo(struct Storage *Storage , unsigned int DirectorySectorAddress , unsigned int *DirectoryClusterSize);
+    unsigned int GetDirectoryInfo(struct Storage *Storage , unsigned int DirectorySectorAddress);
     unsigned int ClusterToSector(unsigned int ClusterNumber , struct VBR *VBR);
     unsigned int SectorToCluster(unsigned int SectorNumber , struct VBR *VBR);
     bool GetVBR(struct Storage *Storage , struct VBR *VBR);
      
     unsigned int FindNextCluster(struct Storage *Storage , unsigned int Cluster , struct VBR *VBR);
+    unsigned int GetFileClusterSize(struct Storage *Storage , unsigned int ClusterNumber , struct VBR *VBR);
     void WriteClusterInfo(struct Storage *Storage , unsigned int Cluster , unsigned short ClusterInfo , struct VBR *VBR);
     void ExtendCluster(struct Storage *Storage , unsigned int EndCluster , unsigned int ClusterCount , struct VBR *VBR);
 
@@ -111,8 +112,6 @@ namespace FAT16 {
     // File name whatever
     int GetFileNameFromLFN(char *FileName , struct LFNEntry *Entries);
     
-    int GetDirectoryCount(const char *FileName);
-    int ParseDirectories(const char *FileName , char **DirectoryNames);
     unsigned int GetDirectoryLocation(struct Storage *Storage , const char *FileName);
     void WriteFileInfo(struct FileInfo *FileInfo , struct SFNEntry SFNEntry , const char *FileName , unsigned int SubdirectoryLocation , struct VBR *VBR , struct Storage *Storage , int OpenOption);
 };
