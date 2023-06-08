@@ -85,6 +85,13 @@ extern "C" void Main(void) {
     IDEDriver::Register();
     PCI::Detect();
 
+    unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
+    struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
+    struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
+    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer);
+    RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
+    // To-do : Create system that reads all usable storages in the system
+
     Shell::ShellSystem ShellSystem;
     ShellSystem.Start();
 
