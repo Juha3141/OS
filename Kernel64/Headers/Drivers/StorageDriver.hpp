@@ -226,8 +226,10 @@
     struct PartitionDriver : public StorageDriver {
         void SetSuperDriver(struct StorageDriver *Driver) {
             SuperDriver = Driver;
+            this->DriverID = Driver->DriverID;
+            strcpy(this->DriverName , Driver->DriverName);
         }
-        bool PreInitialization(void) { 
+        bool PreInitialization(void) {
             printf("It's not allowed to do this!\n");
             return false;
         };

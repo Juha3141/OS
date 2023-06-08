@@ -13,15 +13,12 @@ void StorageSystem::Initialize(void) {
 // Interface of StorageDriverManager
 bool StorageSystem::RegisterDriver(StorageDriver *Driver , const char *DriverName) {
     StorageDriverManager *DriverManager = StorageDriverManager::GetInstance();
-    printf("DriverManager : 0x%X\n" , DriverManager);
-    printf("Driver : 0x%X\n" , Driver);
     if(DriverManager->Register(Driver) == STORAGESYSTEM_INVALIDID) {
         return false;
     }
     Driver->StorageManager = new class StorageManager;
     Driver->StorageManager->Initialize();
     strcpy(Driver->DriverName , DriverName);
-    printf("Registered driver info. : ID %d , registered as name \"%s\"\n" , Driver->DriverID , Driver->DriverName);
     Driver->PreInitialization();
     return true;
 }
@@ -99,7 +96,6 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
         }
     }
     FileSystem = FileSystem::DetectFileSystem(Storage);
-    printf("FileSystem : 0x%X\n" , FileSystem);
     if(FileSystem == 0x00) {
         Storage->FileSystem = 0x00;
         strcpy(Storage->FileSystemString , "NONE");
@@ -112,8 +108,11 @@ bool StorageSystem::RegisterStorage(struct StorageDriver *Driver , struct Storag
     }
     Storage->FileSystem = FileSystem;
     strcpy(Storage->FileSystemString , FileSystem->FileSystemString);
-    
-    printf("%s%d : File System Detected : %s\n" , Driver->DriverName , Storage->ID , Storage->FileSystemString);
+    printf("%s%d" , Driver->DriverName , Storage->ID);
+    if(Storage->Type == Storage::StorageType::Logical) {
+        printf(":%d" , Storage->PartitionID);
+    }
+    printf(" : File System Detected : %s\n" , FileSystem->FileSystemString);
     return true;
 }
 
@@ -194,7 +193,7 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
     if((Storage->PartitionScheme == STORAGESYSTEM_MBR) && (Storage->LogicalStorages->Count == 4)) {
         return;
     }
-    printf("PartitionCount : %d\n" , PartitionCount);
+    printf("Storage %s%d , PartitionCount : %d\n" , Driver->DriverName , Storage->ID , PartitionCount);
     for(i = CurrentPartitionCount; i < CurrentPartitionCount+PartitionCount; i++) {
         LogicalStorage = (struct Storage *)MemoryManagement::Allocate(sizeof(struct Storage));
         // Write info of parent storage
@@ -205,12 +204,8 @@ void StorageSystem::AddLogicalDrive(StorageDriver *Driver , struct Storage *Stor
         memcpy(&(LogicalStorage->LogicalPartitionInfo) , &(Partitions[j++]) , sizeof(struct Partition));
         // to-do : fix infinite loop error
         LogicalStorage->PartitionID = Storage->LogicalStorages->Register(LogicalStorage);
-        printf("LogicalStorage->PartitionID : %d\n" , LogicalStorage->PartitionID);
-        printf("Partition %d : %d~%d\n" , i-CurrentPartitionCount , LogicalStorage->LogicalPartitionInfo.StartAddressLBA , LogicalStorage->LogicalPartitionInfo.StartAddressLBA+LogicalStorage->LogicalPartitionInfo.EndAddressLBA);
         RegisterStorage(Driver , LogicalStorage);
     }
-    printf("Storage->LogicalStorages : 0x%X\n" , Storage->LogicalStorages);
-    printf("Storage->PartitionCount : %d\n" , Storage->LogicalStorages->Count);
 }
 
 static void AssignPhysicalInfo(Storage *Storage , int PortsCount , int FlagsCount , int IRQsCount , int ResourcesCount) {
