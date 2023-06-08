@@ -100,7 +100,7 @@ int strcmp(const char *Destination , const char *Origin) {
     return 0;
 }
 
-int strncmp(char *Destination , const char *Origin , unsigned long Length) {
+int strncmp(const char *Destination , const char *Origin , unsigned long Length) {
     unsigned long i;
     unsigned long DestinationLength = strlen(Destination);
     unsigned long OriginLength = strlen(Origin);

@@ -14,7 +14,6 @@ int atoi(const char *str);
 char *ltoa(long num, char *str, int base);
 long atol(const char *str);
 int strncmp(const char *s1, const char *s2, unsigned int n);
-int strcmp(const char *s1, const char *s2);
 unsigned int strlen(const char *str);
 
 #endif

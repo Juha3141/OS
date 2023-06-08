@@ -3,7 +3,7 @@
 void vsprintf(char *Destination , const char *Format , va_list ap) {
 	int i;
 	int j = 0;
-	for(i = 0; i < strlen(Format); i++) {
+	for(i = 0; Format[i] != 0; i++) {
 		switch(Format[i]) {
 			case '%':
 				switch(Format[i+1]) {
