@@ -205,12 +205,13 @@ int FileSystem::GetStoragePartitionID(const char *FileName) {
     return ID;
 }
 
-const char *FileSystem::GetRAWFileName(const char *FileName) {
+bool FileSystem::GetPartialFileName(char *PartialFileName , const char *FileName) {
     int i;
     char *IDPart;
     int ID;
     if(strncmp(FileName , HeadDirectory() , 1) != 0) {
-        return 0x00;
+        strcpy(PartialFileName , "");
+        return false;
     }
     FileName += (strlen(HeadDirectory())+1);
     for(i = 0; FileName[i] != 0; i++) {
@@ -224,10 +225,12 @@ const char *FileSystem::GetRAWFileName(const char *FileName) {
         }
     }
     if(FileName[i] == 0) {
-        return "";
+        strcpy(PartialFileName , "");
+        return true;
     }
     else {
-        return FileName+i+1;
+        strcpy(PartialFileName , FileName+i+1);
+        return true;
     }
 }
 
@@ -278,35 +281,62 @@ struct Storage *FileSystem::GetStorage(const char *FileName) {
     return Storage;
 }
 
+static struct Storage *GetInfoFromFileName(char *PartialFileName , const char *FileName) {
+    int i;
+    int k = 0;
+    struct Storage *Storage;
+    char FullName[strlen(FileName)+1+strlen(TaskManagement::GetCurrentDirectoryLocation())+2];
+    if(memcmp(FileName , FileSystem::HeadDirectory() , 1) != 0) {
+        sprintf(FullName , "%s/%s" , TaskManagement::GetCurrentDirectoryLocation() , FileName);
+
+        for(i = (strlen(FileSystem::HeadDirectory())+1); FullName[i] != 0; i++) {
+            if((FullName[i] == FileSystem::PartitionParseCharacter())||(FullName[i] == FileSystem::ParseCharacter())) {
+                break;
+            }
+        }
+        for(; FullName[i] != 0; i++) {
+            if((FullName[i] == FileSystem::ParseCharacter())) {
+                break;
+            }
+        }
+        strcpy(PartialFileName , FullName+i+1);
+        if((Storage = FileSystem::GetStorage(TaskManagement::GetCurrentDirectoryLocation())) == 0x00) {
+            return 0x00;
+        }
+        return Storage;
+    }
+    if((Storage = FileSystem::GetStorage(FileName)) == 0x00) {
+        return 0x00;
+    }
+    if(FileSystem::GetPartialFileName(PartialFileName , FileName) == false) {
+        return 0x00;
+    }
+    return Storage;
+}
+
 // Common use
 bool FileSystem::CreateFile(const char *FileName) {
-    const char *RAWFileName;
+    char PartialFileName[strlen(FileName)+1+strlen(TaskManagement::GetCurrentDirectoryLocation())+2];
     struct Storage *Storage;
     if(strcmp(FileName , HeadDirectory()) == 0) {
-        return false;
+        return GetHeadDirectory();
     }
-    if((Storage = GetStorage(FileName)) == 0x00) {
-        return false;
+    if((Storage = GetInfoFromFileName(PartialFileName , FileName)) == 0) {
+        return 0x00;
     }
-    if((RAWFileName = GetRAWFileName(FileName)) == 0) {
-        return false;
-    }
-    return Storage->FileSystem->CreateFile(Storage , RAWFileName);
+    return Storage->FileSystem->CreateFile(Storage , PartialFileName);
 }
 
 bool FileSystem::CreateDir(const char *DirectoryName) {
-    const char *RAWFileName;
+    char PartialFileName[strlen(DirectoryName)+1+strlen(TaskManagement::GetCurrentDirectoryLocation())+2];
     struct Storage *Storage;
     if(strcmp(DirectoryName , HeadDirectory()) == 0) {
-        return false;
+        return GetHeadDirectory();
     }
-    if((Storage = GetStorage(DirectoryName)) == 0x00) {
-        return false;
+    if((Storage = GetInfoFromFileName(PartialFileName , DirectoryName)) == 0) {
+        return 0x00;
     }
-    if((RAWFileName = GetRAWFileName(DirectoryName)) == 0) {
-        return false;
-    }
-    return Storage->FileSystem->CreateDir(Storage , RAWFileName);
+    return Storage->FileSystem->CreateDir(Storage , PartialFileName);
 }
 
 void FileSystem::SetOffset(struct FileInfo *FileInfo , int Offset , int OffsetOption) {
@@ -314,18 +344,16 @@ void FileSystem::SetOffset(struct FileInfo *FileInfo , int Offset , int OffsetOp
 }
 
 struct FileInfo *FileSystem::OpenFile(const char *FileName , int OpenOption) {
-    const char *RAWFileName;
+    struct FileInfo *File;
+    char PartialFileName[strlen(FileName)+1+strlen(TaskManagement::GetCurrentDirectoryLocation())+2];
     struct Storage *Storage;
     if(strcmp(FileName , HeadDirectory()) == 0) {
         return GetHeadDirectory();
     }
-    if((Storage = GetStorage(FileName)) == 0x00) {
+    if((Storage = GetInfoFromFileName(PartialFileName , FileName)) == 0) {
         return 0x00;
     }
-    if((RAWFileName = GetRAWFileName(FileName)) == 0) {
-        return 0x00;
-    }
-    return Storage->FileSystem->OpenFile(Storage , RAWFileName , OpenOption);
+    return Storage->FileSystem->OpenFile(Storage , PartialFileName , OpenOption);
 }
 
 int FileSystem::CloseFile(struct FileInfo *FileInfo) {

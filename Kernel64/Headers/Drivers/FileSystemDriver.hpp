@@ -159,7 +159,7 @@ namespace FileSystem {
     char *GetStorageDriverName(const char *FileName);
     int GetStorageID(const char *FileName);
     int GetStoragePartitionID(const char *FileName);
-    const char *GetRAWFileName(const char *FileName);
+    bool GetPartialFileName(char *PartialFileName , const char *FileName);
     struct FileInfo *GetHeadDirectory(void);
 
     struct Storage *GetStorage(const char *FileName);
