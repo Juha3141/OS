@@ -17,8 +17,11 @@
 
 namespace Shell {
     namespace DefaultCommands {
+        void createfile(int argc , char **argv);
+        void createdir(int argc , char **argv);
+        void writefile(int argc , char **argv);
         void readfile(int argc , char **argv);
-        void listfile(int argc , char **argv , unsigned long NotUsing , unsigned long CurrentDirectoryNameAddress);
+        void listfile(int argc , char **argv);
         
         void mem(void);
         void testmemalloc(void);
@@ -30,8 +33,48 @@ namespace Shell {
     };
 };
 
+void Shell::DefaultCommands::createfile(int argc , char **argv) {
+    struct FileInfo *File;
+    if(argc != 2) {
+        printf("Usage : %s [file name]\n" , argv[0]);
+        return;
+    }
+    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    if(File != 0x00) {
+        printf("File already exists\n");
+        MemoryManagement::Free(File);
+        return;
+    }
+    if(FileSystem::CreateFile(argv[1]) == false) {
+        printf("Failed creating file\n");
+        return;
+    }
+    printf("File created\n");
+}
+
+void Shell::DefaultCommands::createdir(int argc , char **argv) {
+    struct FileInfo *File;
+    if(argc != 2) {
+        printf("Usage : %s [file name]\n" , argv[0]);
+        return;
+    }
+    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    if(File != 0x00) {
+        printf("File already exists\n");
+        MemoryManagement::Free(File);
+        return;
+    }
+    if(FileSystem::CreateDir(argv[1]) == false) {
+        printf("Failed creating directory\n");
+        return;
+    }
+}
+
+void Shell::DefaultCommands::writefile(int argc , char **argv) {
+    
+}
+
 void Shell::DefaultCommands::readfile(int argc , char **argv) {
-    /*
     unsigned int i;
     unsigned int j;
     int KeyData;
@@ -40,36 +83,43 @@ void Shell::DefaultCommands::readfile(int argc , char **argv) {
     int PreviousX;
     int PreviousY;
     int Line = 0;
-    struct FileInfo *FileInformation;
+    struct FileInfo *File;
     char *FileData;
-    if(argc == 1) {
-        printf("Error : You need one argument!\n");
+
+    char KeyInput;
+    if(argc != 2) {
+        printf("Usage : %s [file name]\n" , argv[0]);
         return;
     }
-    FileInformation = CommonFileSystem::OpenFile(argv[1]);
-    if(FileInformation == 0) {
-        printf("Error : File %s not found!\n" , argv[1]);
+    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    if(File == 0) {
+        printf("File \"%s\" not found\n" , argv[1]);
         return;
     }
-    FileData = (char*)MemoryManagement::Allocate(FileInformation->FileSize);
-    if(CommonFileSystem::ReadFile(FileInformation , FileInformation->FileSize , FileData) == 0) {
-        printf("Error : Failed reading file %s\n" , argv[1]);
+    if((File->FileType == FILESYSTEM_FILETYPE_DIRECTORY)||(File->FileType == FILESYSTEM_FILETYPE_SYSDIR)) {
+        printf("File \"%s\" is a directory\n" , argv[1]);
+        MemoryManagement::Free(File);
         return;
     }
-    FileData[FileInformation->FileSize] = 0x00;
-    for(i = j = 0; i < FileInformation->FileSize; i++) {
+    FileData = (char*)MemoryManagement::Allocate(File->FileSize);
+    if(FileSystem::ReadFile(File , File->FileSize , FileData) == 0) {
+        printf("Failed reading file \"%s\"\n" , argv[1]);
+        MemoryManagement::Free(File);
+        return;
+    }
+    FileData[File->FileSize] = 0x00;
+    for(i = j = 0; i < File->FileSize; i++) {
         if(Line >= 5) {
             Line = 0;
             GetScreenInformation(&PreviousX , &PreviousY , 0 , 0);
             printf("\n");
             GetScreenInformation(&X , &Y , 0 , 0);
-            printf("Press any key to continue ... (Press Esc to escape)");
-            KeyData = Keyboard::GetASCIIData();
-            SetPosition(X , Y);
-            printf("                                                   ");
+            printf("(q/esc to escape) : ");
+            KeyInput = Keyboard::GetASCIIData();
             SetPosition(PreviousX , PreviousY-1);
-            if(KeyData == KEYBOARD_KEY_ESC) {
-                MemoryManagement::Free(FileData);
+            printf("                    ");
+            SetPosition(PreviousX , PreviousY-1);
+            if((KeyInput == 'q')||(KeyInput == KEYBOARD_KEY_ESC)) {
                 return;
             }
         }
@@ -86,80 +136,81 @@ void Shell::DefaultCommands::readfile(int argc , char **argv) {
     }
     printf("\n");
     MemoryManagement::Free(FileData);
-    */
+    MemoryManagement::Free(File);
     return;
 
 }
 
-void Shell::DefaultCommands::listfile(int argc , char **argv , unsigned long NotUsing , unsigned long CurrentDirectoryNameAddress) {
-    printf("Not implemented yet!\n");
-    /*
+void Shell::DefaultCommands::listfile(int argc , char **argv) {
     int i;
     int X;
     int Y;
     int FileCount;
     int MaxFileNameLength = 0;
-    char *CurrentDirectoryName;
-    struct FileInfo *FileInformation;
+    struct FileInfo *File = 0x00;
     struct FileInfo **FileList;
-    if(argc == 1) {
-        CurrentDirectoryName = (char*)CurrentDirectoryNameAddress;
-        printf("CurrentDirectoryName : %s(0x%X)\n" , CurrentDirectoryName , CurrentDirectoryNameAddress);
-        FileInformation = CommonFileSystem::OpenFile(CurrentDirectoryName);
-        printf("Done\n");
-    }
-    else {
-        FileInformation = CommonFileSystem::OpenFile(argv[1]);
-    }
-    printf("Opening File : done\n");
-    if(FileInformation == 0) {
-        printf("Error : Can't find directory named \"%s\"!\n" , argv[1]);
-        printf("0x%X\n" , FileInformation);
+
+    char KeyInput;
+    if(argc != 2) {
+        printf("Usage : %s [directory name]\n" , argv[0]);
         return;
     }
-    if((FileInformation->Attribute != FILE_ATTRIBUTE_DIRECTORY) && (FileInformation->Attribute != FILE_ATTRIBUTE_SYSTEMDIR)) {
-        printf("\"%s\" is not a directory!\n" , argv[1]);
+
+    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    if(File == 0) {
+        printf("No such directory named \"%s\"\n" , argv[1]);
         return;
     }
-    printf("Getting File Count : ");
-    FileCount = CommonFileSystem::GetFileCountInDirectory(FileInformation);
+    if((File->FileType != FILESYSTEM_FILETYPE_DIRECTORY) && (File->FileType != FILESYSTEM_FILETYPE_SYSDIR)) {
+        printf("\"%s\" is not a directory\n" , argv[1]);
+        return;
+    }
+    FileCount = FileSystem::GetFileCountInDirectory(File);
     if(FileCount == 0) {
-        printf("This directory is empty.\n");
+        printf("This directory is completely empty somehow\n");
         return;
     }
-    printf("Done\n");
-    FileList = (struct CommonFileSystem::FileInfo*)MemoryManagement::Allocate(FileCount*sizeof(CommonFileSystem::FileInfo));
-    CommonFileSystem::ViewDirectory(FileInformation , FileList);
+    printf("File count : %d\n" , FileCount);
+    FileList = (struct FileInfo **)MemoryManagement::Allocate(FileCount*sizeof(FileInfo *));
+    FileSystem::ReadDirectory(File , FileList);
     for(i = 0; i < FileCount; i++) {
-        if(MaxFileNameLength < strlen(FileList[i].FileName)) {
-            MaxFileNameLength = strlen(FileList[i].FileName);
+        if(MaxFileNameLength < strlen(FileList[i]->FileName)) { // error??
+            MaxFileNameLength = strlen(FileList[i]->FileName);
         }
     }
     for(i = 0; i < FileCount; i++) {
-        printf("%s" , FileList[i].FileName);
+        printf("%s" , FileList[i]->FileName);
         GetScreenInformation(&(X) , &(Y) , 0 , 0);
         SetPosition(MaxFileNameLength+1 , Y);
-        if((FileList[i].Attribute != FILE_ATTRIBUTE_DIRECTORY) && (FileList[i].Attribute != FILE_ATTRIBUTE_SYSTEMDIR)) {
-            if(FileList[i].FileSize < 1024) {
-                printf(" %dB" , FileList[i].FileSize);
+        if((FileList[i]->FileType != FILESYSTEM_FILETYPE_DIRECTORY) && (FileList[i]->FileType != FILESYSTEM_FILETYPE_SYSDIR)) {
+            if(FileList[i]->FileSize < 1024) {
+                printf(" %dB" , FileList[i]->FileSize);
             }
-            if((FileList[i].FileSize > 1024) && (FileList[i].FileSize < 1024*1024)) {
-                printf(" %dKB" , FileList[i].FileSize/1024);
+            if((FileList[i]->FileSize > 1024) && (FileList[i]->FileSize < 1024*1024)) {
+                printf(" %dKB" , FileList[i]->FileSize/1024);
             }
-            if((FileList[i].FileSize > 1024*1024) && (FileList[i].FileSize < 1024*1024*1024)) {
-                printf(" %dMB" , FileList[i].FileSize/1024/1024);
+            if((FileList[i]->FileSize > 1024*1024) && (FileList[i]->FileSize < 1024*1024*1024)) {
+                printf(" %dMB" , FileList[i]->FileSize/1024/1024);
             }
-            if(FileList[i].FileSize > 1024*1024*1024) {
-                printf(" %dGB" , FileList[i].FileSize/1024/1024/1024);
+            if(FileList[i]->FileSize > 1024*1024*1024) {
+                printf(" %dGB" , FileList[i]->FileSize/1024/1024/1024);
             }
         }
         else {
             printf(" DIR");
         }
         printf("\n");
+        if((i != 0) && (i%24 == 0)) {
+            printf("(q/esc to escape) : ");
+            KeyInput = Keyboard::GetASCIIData();
+            printf("\n");
+            if((KeyInput == 'q')||(KeyInput == KEYBOARD_KEY_ESC)) {
+                return;
+            }
+        }
+        MemoryManagement::Free(FileList[i]);
     }
     MemoryManagement::Free(FileList);
-    */
     return;
 }
 
@@ -362,6 +413,9 @@ void Shell::DefaultCommands::mem(void) {
 
 void Shell::ShellSystem::AddBasicCommands(void) {
     CommandList.Initialize(256);
+    CommandList.AddCommand("createdir" , "Create directory" , (unsigned long)DefaultCommands::createdir);
+    CommandList.AddCommand("createfile" , "Create file" , (unsigned long)DefaultCommands::createfile);
+    CommandList.AddCommand("writefile" , "Write file" , (unsigned long)DefaultCommands::writefile);
     CommandList.AddCommand("readfile" , "Read file" , (unsigned long)DefaultCommands::readfile);
     CommandList.AddCommand("listfile" , "List content in current/targetted directory" , (unsigned long)DefaultCommands::listfile);
     
@@ -383,7 +437,7 @@ void Shell::ShellSystem::Start(void) {
     int ASCIIData;
     Command = (char *)MemoryManagement::Allocate(8192);
     CurrentDirectory = (char *)MemoryManagement::Allocate(512);
-    strcpy(CurrentDirectory , "");
+    strcpy(CurrentDirectory , "@");
     History.Initialize();
     this->AddBasicCommands();
 
@@ -409,7 +463,7 @@ void Shell::ShellSystem::Start(void) {
             else if(ASCIIData == KEYBOARD_KEY_UP) {
                 IsCommandDuplicated = 1;
                 SetPosition(DefaultPositionX , DefaultPositionY);
-                for(i = 0; i < strlen(Command); i++) {
+                for(i = 0; Command[i] != 0; i++) {
                     printf(" ");
                 }
                 History.View(Command);
@@ -423,7 +477,7 @@ void Shell::ShellSystem::Start(void) {
             else if(ASCIIData == KEYBOARD_KEY_DOWN) {
                 IsCommandDuplicated = 1;
                 SetPosition(DefaultPositionX , DefaultPositionY);
-                for(i = 0; i < strlen(Command); i++) {
+                for(i = 0; Command[i] != 0; i++) {
                     printf(" ");
                 }
                 History.View(Command);
@@ -607,9 +661,9 @@ void Shell::ShellSystem::ProcessCommand(void) {
     unsigned long TemproryKeyboardData;
     unsigned long ArgumentForCommandFunction[4]; // <- PLEASE CHANGE THIS IF YOU ARE CHANGING LINE 467!!!
     int CommandLength;
-    RemoveUnnecessarySpaces();
+    FileSystem::RemoveUnnecessarySpaces(Command);
     SlicedCommandCount = 0;
-    for(i = 0; i < strlen(Command); i++) {
+    for(i = 0; Command[i] != 0; i++) {
         if(Command[i] == ' ') {
             SlicedCommandCount++;
         }
@@ -687,7 +741,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
         }
     }
     else if(EntryPoint == 0) {
-        printf("Command not found!\n");
+        printf("Command not found\n");
     }
     else {
         ID = TaskManagement::CreateTask((unsigned long)EntryPoint , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "testing" , 4 , ArgumentForCommandFunction);
@@ -702,29 +756,4 @@ void Shell::ShellSystem::ProcessCommand(void) {
         // MemoryManagement::Free(SlicedCommand[i]);
     }
     return;
-}
-
-void Shell::ShellSystem::RemoveUnnecessarySpaces(void) {
-    int i;
-    int j;
-    if(Command[strlen(Command)-1] == ' ') {
-        for(i = strlen(Command)-1; Command[i] == ' '; i--) {
-            Command[i] = 0x00;
-        }
-    }
-    if(Command[0] == ' ') {
-        for(i = 0; Command[i] == ' '; i++) {
-            Command[i] = 0x00;
-        }
-        memcpy(Command , Command+i , strlen(Command));
-    }
-    for(i = 0; i < strlen(Command); i++) {
-        if(Command[i] == ' ') {
-            if(Command[i+1] == ' ') {
-                while(Command[i+1] == ' ') {
-                    memcpy(Command+i , Command+i+1 , strlen(Command)-i);
-                }
-            }
-        }
-    }
 }
