@@ -19,7 +19,6 @@ ResourceAccessManagement.obj Paging.obj MutualExclusion.obj \
 Drivers/StorageDriver.obj Drivers/FileSystemDriver.obj \
 Drivers/RAMDisk.obj Drivers/IDE.obj Drivers/PCI.obj \
 FileSystem/MBR.obj FileSystem/GPT.obj FileSystem/ISO9660.obj FileSystem/FAT16.obj \
-KernelInterface.obj \
 Shell.obj
 
 ASMSOURCE = Entry.asm
