@@ -24,12 +24,14 @@ namespace Shell {
         void listfile(int argc , char **argv);
         
         void mem(void);
-        void testmemalloc(void);
+        void memmap(void);
         
         void tasklist(void);
         void terminate(int argc , char **argv);
         void changetasktime(int argc , char **argv);
         void spinner(int argc , char **argv);
+
+        void cpuinfo(int argc , char **argv);
     };
 };
 
@@ -180,7 +182,9 @@ void Shell::DefaultCommands::listfile(int argc , char **argv) {
     }
     printf("File count : %d\n" , FileCount);
     FileList = (struct FileInfo **)MemoryManagement::Allocate(FileCount*sizeof(FileInfo *));
+    printf("File list : 0x%X\n" , FileList);
     FileSystem::ReadDirectory(File , FileList);
+    printf("Read directory success\n");
     for(i = 0; i < FileCount; i++) {
         if(MaxFileNameLength < strlen(FileList[i]->FileName)) { // error??
             MaxFileNameLength = strlen(FileList[i]->FileName);
@@ -232,6 +236,7 @@ void Shell::DefaultCommands::tasklist(void) {
     struct TaskManagement::TaskQueue *TaskQueue;
     int KeyInput;
     for(i = 0; i < CoreInformation::GetInstance()->CoreCount; i++) {
+        printf("========== Core #%d ========== \n" , i);
         for(j = 0; j < TASK_QUEUE_COUNT; j++) {
             TaskQueue = TaskManagement::GetTaskQueue(i , j);
             TaskPointer = TaskQueue->StartTask;
@@ -356,46 +361,6 @@ void Shell::DefaultCommands::spinner(int argc , char **argv) {
     return;
 }
 
-void Shell::DefaultCommands::testmemalloc(void) {
-    unsigned long Block8KB;
-    unsigned long Block8MB;
-    unsigned long Block16MB;
-    unsigned long Block32MB;
-    unsigned long Block64MB;
-    unsigned long Block128MB;
-    unsigned long Block256MB;
-    unsigned long Block512MB;
-    unsigned long Block1GB;
-    printf("8KB Allocating : ");
-    Block8KB = (unsigned long)MemoryManagement::Allocate(8192);
-    printf("Located at 0x%X\n" , Block8KB);
-    printf("8MB Allocating : ");
-    Block8MB = (unsigned long)MemoryManagement::Allocate(8192*1024);
-    printf("Located at 0x%X\n" , Block8MB);
-    printf("16MB Allocating : ");
-    Block16MB = (unsigned long)MemoryManagement::Allocate(16*1024*1024);
-    printf("Located at 0x%X\n" , Block16MB);
-    printf("32MB Allocating : ");
-    Block32MB = (unsigned long)MemoryManagement::Allocate(32*1024*1024);
-    printf("Located at 0x%X\n" , Block32MB);
-    printf("64MB Allocating : ");
-    Block64MB = (unsigned long)MemoryManagement::Allocate(64*1024*1024);
-    printf("Located at 0x%X\n" , Block64MB);
-    printf("128MB Allocating : ");
-    Block128MB = (unsigned long)MemoryManagement::Allocate(128*1024*1024);
-    printf("Located at 0x%X\n" , Block128MB);
-    printf("256MB Allocating : ");
-    Block256MB = (unsigned long)MemoryManagement::Allocate(256*1024*1024);
-    printf("Located at 0x%X\n" , Block256MB);
-    printf("512MB Allocating : ");
-    Block512MB = (unsigned long)MemoryManagement::Allocate(512*1024*1024);
-    printf("Located at 0x%X\n" , Block512MB);
-    printf("1GB Allocating : ");
-    Block1GB = (unsigned long)MemoryManagement::Allocate(1024*1024*1024);
-    printf("Located at 0x%X\n" , Block1GB);
-    return;
-}
-
 void Shell::DefaultCommands::mem(void) {
     MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
     if((NodeManager->TotalUsableMemory >= 1024*1024) && (NodeManager->TotalUsableMemory < 1024*1024*1024)) {
@@ -419,21 +384,61 @@ void Shell::DefaultCommands::mem(void) {
     return;
 }
 
+void Shell::DefaultCommands::memmap(void) {
+    int i = 0;
+	MemoryManagement::QuerySystemAddressMap *E820 = (MemoryManagement::QuerySystemAddressMap *)MEMORYMANAGEMENT_E820_ADDRESS;
+	while(1) {
+		// If entry type is zero, we reached the end of the table.
+		if(E820[i].Type == 0x00) {
+			break;
+		}
+		printf("0x%X-0x%X   " , E820[i].Address , E820[i].Address+E820[i].Length);
+        switch(E820[i].Type) {
+            case 1:
+                printf("Available");
+                break;
+            case 2:
+                printf("Reserved");
+                break;
+            case 3:
+                printf("ACPI Reclaimable");
+                break;
+            case 4:
+                printf("ACPI NVS Memory");
+                break;
+            case 5:
+                printf("Bad Memory");
+                break;
+        }
+        printf("\n");
+		i += 1;
+	}
+}
+
+void Shell::DefaultCommands::cpuinfo(int argc , char **argv) {
+    CoreInformation *CPUInfo = CoreInformation::GetInstance();
+    printf("Number of Cores    : %d\n" , CPUInfo->CoreCount);
+    printf("IO APIC Address    : 0x%X\n" , CPUInfo->IOAPICAddress);
+    printf("Local APIC Address : 0x%X\n" , CPUInfo->LocalAPICAddress);
+}
+
 void Shell::ShellSystem::AddBasicCommands(void) {
     CommandList.Initialize(256);
-    CommandList.AddCommand("createdir" , "Create directory" , (unsigned long)DefaultCommands::createdir);
-    CommandList.AddCommand("createfile" , "Create file" , (unsigned long)DefaultCommands::createfile);
-    CommandList.AddCommand("writefile" , "Write file" , (unsigned long)DefaultCommands::writefile);
-    CommandList.AddCommand("readfile" , "Read file" , (unsigned long)DefaultCommands::readfile);
-    CommandList.AddCommand("listfile" , "List content in current/targetted directory" , (unsigned long)DefaultCommands::listfile);
+    CommandList.AddCommand("createdir" , "Creates directory" , (unsigned long)DefaultCommands::createdir);
+    CommandList.AddCommand("createfile" , "Creates file" , (unsigned long)DefaultCommands::createfile);
+    CommandList.AddCommand("writefile" , "Writes file" , (unsigned long)DefaultCommands::writefile);
+    CommandList.AddCommand("readfile" , "Reads file" , (unsigned long)DefaultCommands::readfile);
+    CommandList.AddCommand("listfile" , "Lists content in current/targetted directory" , (unsigned long)DefaultCommands::listfile);
     
-    CommandList.AddCommand("mem" , "Check status of memory usage" , (unsigned long)DefaultCommands::mem);
-    CommandList.AddCommand("testmemalloc" , "Test Memory Allocation System" , (unsigned long)DefaultCommands::testmemalloc);
+    CommandList.AddCommand("mem" , "Shows status of memory usage" , (unsigned long)DefaultCommands::mem);
+    CommandList.AddCommand("memmap" , "Shows the memory map" , (unsigned long)DefaultCommands::memmap);
     
-    CommandList.AddCommand("tasklist" , "List currently running tasks" , (unsigned long)DefaultCommands::tasklist);
-    CommandList.AddCommand("terminate" , "Terminate task by given ID" , (unsigned long )DefaultCommands::terminate);
-    CommandList.AddCommand("changetasktime" , "Change give task time" , (unsigned long )DefaultCommands::changetasktime);
-    CommandList.AddCommand("spinner" , "Create task that da cool spinin'" , (unsigned long)DefaultCommands::spinner);
+    CommandList.AddCommand("tasklist" , "Lists currently running tasks" , (unsigned long)DefaultCommands::tasklist);
+    CommandList.AddCommand("terminate" , "Terminates task by given ID" , (unsigned long )DefaultCommands::terminate);
+    CommandList.AddCommand("changetasktime" , "Changes give task time" , (unsigned long )DefaultCommands::changetasktime);
+    CommandList.AddCommand("spinner" , "Creates task that da cool spinin'" , (unsigned long)DefaultCommands::spinner);
+
+    CommandList.AddCommand("cpuinfo" , "Shows information of CPU" , (unsigned long)DefaultCommands::cpuinfo);
 }
 
 void Shell::ShellSystem::Start(void) {
@@ -787,7 +792,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
         printf("Command not found\n");
     }
     else {
-        ID = TaskManagement::CreateTask((unsigned long)EntryPoint , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "testing" , CurrentDirectory , 4 , ArgumentForCommandFunction);
+        ID = TaskManagement::CreateTask((unsigned long)EntryPoint , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 2*1024*1024 , "com" , CurrentDirectory , 4 , ArgumentForCommandFunction);
         TaskManagement::ChangeDemandTime(ID , 10);
         while(1) {
             if(TaskManagement::GetTask(ID) == 0x00) {
