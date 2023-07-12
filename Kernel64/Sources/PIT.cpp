@@ -9,7 +9,7 @@ void PIT::MainInterruptHandler(void) {
     unsigned char *VideoMemory = (unsigned char *)0xB8000;
     VideoMemory[79*2] = Spinner[TickCount%4];
     TickCount += 1;
-    
+    MemoryManagement::CheckNodeCorruption();
     LocalAPIC::SendEOI();
 }
 

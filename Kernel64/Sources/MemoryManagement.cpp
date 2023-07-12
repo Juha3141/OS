@@ -155,12 +155,12 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 				Node = NodeManager->CreateNewNode(Size , Alignment);
 			}
 		}
-		NodeManager->WriteNodeData(Node , 1 , Size);
+		NodeManager->WriteNodeData(Node , 1 , Size , NO_ALIGN);
 		// Seperate node
 		if(TotalNodeSize != Size) {
 			// Separate node to prevent internal fragmentation(Allow residual unused area usable)
 			SeparatedNode = (struct Node *)(((unsigned long)Node+sizeof(struct Node))+(Size));
-			NodeManager->WriteNodeData(SeparatedNode , 0 , TotalNodeSize-Size-sizeof(struct Node) , (unsigned long)Node->Next , (unsigned long)Node);
+			NodeManager->WriteNodeData(SeparatedNode , 0 , TotalNodeSize-Size-sizeof(struct Node) , NO_ALIGN , (unsigned long)Node->Next , (unsigned long)Node);
 		}
 	}
 	NodeManager->CurrentlyUsingMemory += Size;
@@ -202,6 +202,7 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 
 // problem in memory free system
 void MemoryManagement::Free(void *Address) {
+	return;
 	bool Merged = false;
 	unsigned long TotalMergingSize = 0;
 	struct Node *NodePointer;
@@ -213,12 +214,12 @@ void MemoryManagement::Free(void *Address) {
 	// Load the NodeManager from the local address
 	MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
 	if((unsigned long)Address < (unsigned long)NodeManager->StartNode) {
-		printf("Deallocation Error #0 : Low Memory Address\n");
+		printf("Deallocation Error #0 : Low Memory Address , 0x%X\n" , Address);
 		return;
 	}
 	struct Node *Node = (struct Node *)(((unsigned long)Address)-sizeof(struct Node));  // Address of Node : Address - Size of the node structure
 	if((Node->Using == 0)||(Node->Signature != MEMORYMANAGEMENT_SIGNATURE)) {			// If Node is not using, or not present, print error and leave.
-		printf("Deallocation Error #1 : Not Allocated Memory\n");
+		printf("Deallocation Error #1 : Not Allocated Memory , 0x%X\n" , Address);
 		return;
 	}
 	// Allocated Size : Location of the next node - Location of current node
@@ -244,7 +245,7 @@ void MemoryManagement::Free(void *Address) {
 		printf("Total Merging size : %d\n" , TotalMergingSize);
 		*/
 		// Done erasing : Modify the next node location to the end of the node(It's going to be using node).
-		NodeManager->WriteNodeData(((struct Node *)CurrentNode) , 0 , TotalMergingSize , (unsigned long)NodePointer->Next); // Free the node
+		NodeManager->WriteNodeData(((struct Node *)CurrentNode) , 0 , TotalMergingSize , NO_ALIGN , (unsigned long)NodePointer->Next); // Free the node
 	}
 	// break
 	// If the previous node is usable, and present, the node can be merged.
@@ -267,7 +268,7 @@ void MemoryManagement::Free(void *Address) {
 		printf("CurrentNode->Next : 0x%X\n" , CurrentNode->Next);
 		printf("Size : %d\n" , (((unsigned long)CurrentNode->Next)-((unsigned long)NodePointer)-sizeof(struct Node)));
 		*/
-		NodeManager->WriteNodeData(NodePointer , 0 , (((unsigned long)CurrentNode->Next)-((unsigned long)NodePointer)-sizeof(struct Node)) , (unsigned long)CurrentNode->Next);
+		NodeManager->WriteNodeData(NodePointer , 0 , (((unsigned long)CurrentNode->Next)-((unsigned long)NodePointer)-sizeof(struct Node)) , NO_ALIGN , (unsigned long)CurrentNode->Next);
 		NodeManager->LastlyFreedNode = NodePointer;
 		/*
 		NextNode = Node->Next; // Next node of original node
@@ -329,7 +330,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchReasonableNo
 	Node = this->StartNode;
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		if((Node->Using == 0) && (Node->Size >= Size)) {
-			// printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
+			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
 			return Node;
 		}
 		Node = Node->Next;
@@ -395,7 +396,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::CreateNewNode(unsi
 		// printf("Adjusting node from alignment\n");
 	}
 	// Next node : Offset + Size of the node + Size of the node structure
-	WriteNodeData(Node , 1 , Size , 0x00 , PreviousNode);
+	WriteNodeData(Node , 1 , Size , Alignment , 0x00 , PreviousNode);
 	Node = NodeManager->AdjustNode(Node);
 	/*printf("NewNode : 0x%X , Previous : 0x%X" , Node , PreviousNode);
 	if(Alignment != NO_ALIGN) {
@@ -411,7 +412,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::CreateNewNode(unsi
 /// @param Size 
 /// @param NextNode 
 /// @param PreviousNode 
-void MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , unsigned long NextNode , unsigned long PreviousNode) {
+void MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , MemoryManagement::ALIGNMENT Alignment , unsigned long NextNode , unsigned long PreviousNode) {
 	Node->Using = Using;
 	if(PreviousNode != 0xFFFFFFFFFFFFFFFF) { // auto
 		Node->Previous = (struct Node *)PreviousNode;
@@ -432,6 +433,7 @@ void MemoryManagement::NodeManager::WriteNodeData(struct Node *Node , unsigned c
 		Node->Next->Previous = Node;
 	}
 	Node->Signature = MEMORYMANAGEMENT_SIGNATURE;   // Write a signature to mark that it's a valid node
+	Node->IsAligned = (Alignment == NO_ALIGN) ? 0 : 1;
 }
 
 int MemoryManagement::NodeManager::IsNodeInUnusableMemory(struct Node *Node , MemoryManagement::QuerySystemAddressMap *ViolatedMemory) {
@@ -508,4 +510,25 @@ bool MemoryManagement::IsMemoryInside(unsigned long Source , unsigned long Sourc
 		return true;
 	}
 	return false;
+}
+
+void MemoryManagement::CheckNodeCorruption(void) {
+    MemoryManagement::NodeManager *NodeManager = (MemoryManagement::NodeManager *)MEMORYMANAGEMENT_MEMORY_STARTADDRESS;
+    struct MemoryManagement::Node *NodePointer = NodeManager->StartNode;
+
+    while(NodePointer->Next != 0x00) {
+        if(((unsigned long)NodePointer->Next <= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)||((((unsigned long)NodePointer->Next)-(unsigned long)NodePointer)-sizeof(struct MemoryManagement::Node)) > NodePointer->Size) {
+			if(NodePointer->IsAligned == 1) {
+				NodePointer = NodePointer->Next;
+				continue;
+			}
+            printf("Node corruption detected!!!\n");
+            printf("Corrupted Node : 0x%X(Next : 0x%X) , Size : %d\n" , NodePointer , NodePointer->Next , NodePointer->Size);
+            __asm__ ("cli");
+            while(1) {
+                ;
+            }
+        }
+        NodePointer = NodePointer->Next;
+    }
 }

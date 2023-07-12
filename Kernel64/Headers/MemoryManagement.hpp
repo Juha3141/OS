@@ -22,7 +22,8 @@ namespace MemoryManagement {
     struct Node {
         struct Node *Next;
         struct Node *Previous;
-        unsigned long Size;
+        unsigned long Size:63;
+        unsigned char IsAligned:1;
         unsigned char Using:1;
         unsigned short Signature:15; // 0x3141
     }; // Total 18 bytes
@@ -45,7 +46,7 @@ namespace MemoryManagement {
             struct Node *SearchNewNodeLocation(unsigned long *PreviousNode);
             
             struct Node *CreateNewNode(unsigned long Size , ALIGNMENT Alignment);
-            void WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , unsigned long NextNode=0xFFFFFFFFFFFFFFFF , unsigned long PreviousNode=0xFFFFFFFFFFFFFFFF);
+            void WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , ALIGNMENT Alignment , unsigned long NextNode=0xFFFFFFFFFFFFFFFF , unsigned long PreviousNode=0xFFFFFFFFFFFFFFFF);
             
             struct MemoryManagement::Node *AdjustNode(struct Node *Node); // If node violated reserved memory, adjust it.
             
@@ -76,7 +77,7 @@ namespace MemoryManagement {
     void Free(void *Address);
     // Protect memory from being allocated by kernel.
     void ProtectMemory(unsigned long StartAddress , unsigned long MemorySize);
-    bool CheckNodeCorruption(void);
+    void CheckNodeCorruption(void);
 }
 
 #endif
