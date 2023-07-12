@@ -12,6 +12,9 @@
 #define FILESYSTEM_FILETYPE_HIDDEN      6
 #define FILESYSTEM_FILETYPE_DIRECTORY   7
 
+#define FILESYSTEM_FILETYPE_INTERFACE   8
+#define FILESYSTEM_FILETYPE_MOUNTED     9
+
 #define FILESYSTEM_OPEN_NEW                1 // Just create entirely new file and write
 #define FILESYSTEM_OPEN_OVERWRITE          2 // Overwrite from the current offset
 #define FILESYSTEM_OPEN_READ               3 // Read only
@@ -97,6 +100,7 @@ struct FileSystemDriver {
 
     char FileSystemString[32];
 };
+
 class FileSystemManager : public ObjectManager<struct FileSystemDriver> {
     public:
         static FileSystemManager *GetInstance(void) { // Singleton object
@@ -136,6 +140,9 @@ class FileSystemManager : public ObjectManager<struct FileSystemDriver> {
         unsigned int GetDriverCount(void) {
             return Count;
         }
+        //////////////  //////////////////
+        struct Storage *HeadStorage;
+
 };
 
 namespace FileSystem {
@@ -151,18 +158,11 @@ namespace FileSystem {
     int GetDirectoryCount(const char *FileName);
     int ParseDirectories(const char *FileName , char **DirectoryNames);
     char ParseCharacter(void);
-    char PartitionParseCharacter(void);
     char *HeadDirectory(void);
     char *Parse(const char *FileName , char Character);
     void RemoveUnnecessarySpaces(char *String);
 
-    char *GetStorageDriverName(const char *FileName);
-    int GetStorageID(const char *FileName);
-    int GetStoragePartitionID(const char *FileName);
-    bool GetPartialFileName(char *PartialFileName , const char *FileName);
-    struct FileInfo *GetHeadDirectory(void);
-
-    struct Storage *GetStorage(const char *FileName);
+    void SetHeadStorage(struct Storage *Storage);
 
     ///////////////////////////////////////////////////////////////////////////
     bool CreateFile(const char *FileName); // true : The storage has this file system, false : The storage has different file system.
