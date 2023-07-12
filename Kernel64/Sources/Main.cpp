@@ -16,6 +16,7 @@
 
 #include <FileSystem/MBR.hpp>
 #include <FileSystem/GPT.hpp>
+#include <FileSystem/MountSystem.hpp>
 
 #include <FileSystem/ISO9660.hpp>
 #include <FileSystem/FAT16.hpp>
@@ -27,9 +28,6 @@ unsigned long KernelStackSize = 2*1024*1024;
 
 // problem : Kernel stack is too small & overrides kernel
 // One core per 2MB *** 
-
-// problem 2 : Using traditional malloc-like system crashes when using abstract class
-// -> use new/delete keyword.
 
 void InitializeDrive_MBR(struct Storage *Storage);
 void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , unsigned long StartAddress , unsigned long Size);
@@ -66,7 +64,7 @@ extern "C" void Main(void) {
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
     IOAPIC::InitializeRedirectionTable();
-    // LocalAPIC::ActivateAPCores();
+    LocalAPIC::ActivateAPCores();
     __asm__ ("sti");
 
     // To-do : Make proper stack system
@@ -74,6 +72,7 @@ extern "C" void Main(void) {
     KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
     
     FileSystem::Initialize();
+    MountSystem::Initialize();
     printf("File System Initialized\n");
     StorageSystem::Initialize();
     printf("Storage System Initialized\n");
@@ -86,12 +85,25 @@ extern "C" void Main(void) {
     PCI::Detect();
 
     unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
+    unsigned char *RAMDiskBuffer2 = (unsigned char *)MemoryManagement::Allocate(16384*1024);
     struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
+    memset(RAMDiskBuffer , 0 , 16384*1024);
+    struct Storage *MainStorage = RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
+    CreatePartition_FAT16(MainStorage , "LEL" , 128 , 32768-128);
+    struct Storage *MainStoragePartition = MainStorage->LogicalStorages->GetObject(0);
+    FileSystem::SetHeadStorage(MainStoragePartition);
+    printf("MainStorage : 0x%X\n" , MainStoragePartition);
+    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd1");
+    
+    MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd1" , Storage);
+    
     struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
-    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer);
-    RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
-    // To-do : Create system that reads all usable storages in the system
+    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer2);
+    Storage =  RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer2);
+    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd2");
 
+    MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd2" , Storage);
+    
     Shell::ShellSystem ShellSystem;
     ShellSystem.Start();
 
@@ -125,6 +137,11 @@ void InitializeDrive_MBR(struct Storage *Storage) {
     // MemoryManagement::Free(BootSector);
 }
 
+/// @brief Create FAT16 partition to a storage
+/// @param Storage Target storage
+/// @param VolumeLabel Volume Label
+/// @param StartAddress Start sector of partition
+/// @param Size LBA size of partition
 void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , unsigned long StartAddress , unsigned long Size) {
     struct Partition Partition;
     struct FAT16::SFNEntry VolumeLabelEntry;
@@ -173,107 +190,12 @@ extern "C" void APStartup(void) {
      * Create Memory Management System
      * Create IO Redirection table
      */
-    static MutualExclusion::SpinLock *SpinLock = 0x00;
-    if(SpinLock == 0x00) {
-        SpinLock = (MutualExclusion::SpinLock *)MemoryManagement::Allocate(sizeof(MutualExclusion::SpinLock));
-        SpinLock->Initialize();
-    }
     __asm__ ("cli");
     DescriptorTables::Initialize();
     LocalAPIC::EnableLocalAPIC();
+    LocalAPIC::Timer::Initialize();
     __asm__ ("sti");
     while(1) {
         ;
     }
 }
-
-// To-do : More reliable way to detect core
-// To-do : Change driver to Polymorphism.
-
-/*
-{
-    struct Storage *RAMDiskStorage = RAMDiskDriver::CreateRAMDisk(65536 , 512 , 0x00);
-    printf("Registered RAMDisk Storage , Location : 0x%X\n" , RAMDiskStorage->PhysicalInfo.Resources[0]);
-
-    // To-do : Create interface
-    // AutoFormat_FAT16(Storage);
-    
-    // Let's do some cleaning
-    // To-do : Create function that creates partition
-    struct Storage *Storage = StorageSystem::SearchStorage("idehd" , 0);
-    if(Storage == 0x00) {
-        printf("Not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    while(1) {
-        printf("%c" , Keyboard::GetASCIIData());
-    }
-    InitializeDrive_MBR(Storage);
-    CreatePartition_FAT16(Storage , "MAIN" , 128 , (100*1024*1024)/512); // 100MiB
-    // There's chance that the error was because the faulty initialization code
-    // (especially WriteClusterInfo. It's sus.)
-    // LogicalStorage 0
-    class FileSystemDriver *FileSystemDriver = Storage->LogicalStorages->GetObject(0)->FileSystem;
-    // FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "hello this is testing long file name.txt" , 0);
-    
-    FileSystemDriver->CreateDir(Storage->LogicalStorages->GetObject(0) , "Test directory");
-    FileSystemDriver->CreateFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt");
-    struct FileInfo *TestingFile = FileSystemDriver->OpenFile(Storage->LogicalStorages->GetObject(0) , "Test directory/blank file.txt" , FILESYSTEM_OPEN_OVERWRITE);
-    if(TestingFile == 0x00) {
-        printf("File not found.\n");
-        while(1) {
-            ;
-        }
-    }
-    else {
-        printf("Found file!\n");
-        printf("Sector address : %d\n" , TestingFile->Location);
-    }
-    FileSystemDriver->WriteFile(TestingFile , 45 , (void *)"All work and no play makes Jack a dull boy.\r\n");
-    printf("Done.\n");
-}
-*/   
-    /*
-    int i = 0;
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , 9 , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)HelloWorld , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 1024 , "Test1");
-    }
-    for(i = 0; i < 80; i++) {
-        TaskManagement::CreateTask((unsigned long)PrivilagedOnes , TASK_FLAGS_PRIVILAGE_KERNEL , TASK_STATUS_RUNNING , 8*1024 , "Privilaged Ones");
-    }
-    unsigned char *VideoMemory = (unsigned char *)TEXTSCREEN_80x25_VIDEOMEMORY;
-    unsigned char Spinner[4] = {'-' , '\\' , '|' , '/'};
-    while(1) {
-        VideoMemory[80*11*2] = Spinner[i++];
-        VideoMemory[80*11*2+1] = 0x0E;
-        if(i >= 4) {
-            i = 0;
-        }
-    }
-    */
