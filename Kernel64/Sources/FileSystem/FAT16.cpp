@@ -29,7 +29,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     int i;
     int j = 0;
     int k;
-    int DotIndex = 0;
+    int ParseIndex = -1;
     int DirCountFromName = 0;
     unsigned char Data[512];
     char SFNName[13];
@@ -51,17 +51,22 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     k = strlen(FileName);
     for(i = 0; i < k-1; i++) {
         if(FileName[i] == FileSystem::ParseCharacter()) {
-            DotIndex = i;
+            ParseIndex = i;
             break;
         }
     }
-    for(i = strlen(FileName); i > 0; i--) {
-        if(FileName[i] == FileSystem::ParseCharacter()) {
-            break;
-        }
-        LastName[j++] = FileName[strlen(FileName)-i+DotIndex];
+    if(ParseIndex == -1) {
+        strcpy(LastName , FileName);
     }
-    LastName[j] = 0;
+    else {
+        for(i = strlen(FileName); i > 0; i--) {
+            if(FileName[i] == FileSystem::ParseCharacter()) {
+                break;
+            }
+            LastName[j++] = FileName[strlen(FileName)-i+ParseIndex+1];
+        }
+        LastName[j] = 0;
+    }
     printf("Last name : %s\n" , LastName);
     CreateSFNName(SFNName , LastName , 1);
     strncpy((char *)SFNEntry.FileName , SFNName , 11);
@@ -76,6 +81,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     
     // If the directory is not found, process error
     if(DirectoryLocation == 0xFFFFFFFF) {
+        MemoryManagement::Free(LastName);
         return false;
     }
 
@@ -89,7 +95,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     // Allocated sector address
     printf("Sector address : %d\n" , ClusterToSector(EmptyClusterLocation , &(VBR)));
     printf("Cluster address : 0x%X%X\n" , SFNEntry.StartingClusterHigh , SFNEntry.StartingClusterLow);
-    
+    MemoryManagement::Free(LastName);
     return true;
 }
 
@@ -236,8 +242,7 @@ int FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
 }
 
 // What I'm thinking is that we actually don't need thoses garbage stuffs...
-// We have to make it more modulized - Throw WriteOption ...
-// Make it more modulized    
+// We have to make it more modularized - Throw WriteOption ...
 int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) {
     int i = 0;
     int j = 0;
@@ -371,16 +376,18 @@ int FAT16::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **F
     EntryCount = GetDirectoryInfo(FileInfo->Storage , FileInfo->Location);
     GetVBR(FileInfo->Storage , &(VBR));
     DirectoryClusterSize = GetFileClusterSize(FileInfo->Storage , FileInfo->Location , &(VBR));
-    // printf("Entry count : %d\n" , EntryCount);
-    // printf("Cluster size : %d\n" , DirectoryClusterSize);
+    printf("Entry count : %d\n" , EntryCount);
+    printf("Cluster size : %d\n" , DirectoryClusterSize);
     Directory = (unsigned char *)MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
+    printf("Allocated directory\n");
     if(FileInfo->Location == GetRootDirectoryLocation(&(VBR))) {
         FileInfo->Storage->Driver->ReadSector(FileInfo->Storage , FileInfo->Location , GetRootDirectorySize(&(VBR)) , Directory);
     }
     else {
         ReadCluster(FileInfo->Storage , SectorToCluster(FileInfo->Location , &(VBR)) , DirectoryClusterSize , Directory , &(VBR));
-        // printf("Successfully read cluster\n");
+        printf("Successfully read cluster\n");
     }
+    printf("Successfully read directory data : 0x%X\n" , Directory);
     for(i = 0; i < EntryCount; i++) {
         SFNEntry = (struct SFNEntry *)(Directory+Offset);
         LFNEntry = (struct LFNEntry *)(Directory+Offset);
@@ -413,8 +420,8 @@ int FAT16::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **F
             if(SFNEntry->Attribute == 0x00) {
                 break;
             }
-            TemporaryFileName = (char *)MemoryManagement::Allocate(12);
-            RealFileName = (char *)MemoryManagement::Allocate(12);
+            TemporaryFileName = (char *)MemoryManagement::Allocate(13);
+            RealFileName = (char *)MemoryManagement::Allocate(13);
             strncpy(TemporaryFileName , (const char *)SFNEntry->FileName , 8);
             FileSystem::RemoveUnnecessarySpaces(TemporaryFileName);
             
@@ -1157,7 +1164,8 @@ bool FAT16::GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress 
                 Offset += sizeof(struct SFNEntry);
                 continue;
             }
-            if(memcmp(FileName , TemporaryFileName , strlen(FileName)) == 0) {
+            // printf("FileName : %s , TemporaryFileName : %s\n" , FileName , TemporaryFileName);
+            if(strcmp(FileName , TemporaryFileName) == 0) {
                 Offset += LFNEntryCount*sizeof(struct LFNEntry);
                 memcpy(Destination , (struct SFNEntry *)(Directory+Offset) , sizeof(struct SFNEntry));
                 MemoryManagement::Free(Directory);
