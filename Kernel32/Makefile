@@ -2,9 +2,9 @@ SOURCESFOLDER = Sources
 TEMPORARYFOLDER = ../Temporary
 KERNEL32TEMPORARYFOLDER = $(TEMPORARYFOLDER)/Kernel32
 
-CC = gcc
-LD = ld
-OBJCOPY = objcopy
+CC = x86_64-linux-gnu-gcc
+LD = x86_64-linux-gnu-ld
+OBJCOPY = x86_64-linux-gnu-objcopy
 
 GCCOPTIONS = -Os -masm=intel -W -Wall -fpack-struct=1 -IHeaders -fno-stack-protector
 LDOPTIONS = -m elf_i386

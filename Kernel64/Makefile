@@ -6,7 +6,7 @@ ISOFOLDER = ../iso
 MAINKERNELTEMPORARYFOLDER = $(TEMPORARYFOLDER)/Kernel64
 
 CC = x86_64-elf-g++
-OBJCOPY = objcopy
+OBJCOPY = x86_64-elf-objcopy
 
 CCOPTIONS = -g -ffreestanding -fpack-struct=1 -I $(HEADERSFOLDER)/ -masm=intel -nostdlib -Werror=return-type -fno-use-cxa-atexit -fno-threadsafe-statics -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
 #  -fomit-frame-pointer -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
@@ -33,7 +33,7 @@ prepare:
 	make -C $(ESSENTIALLIBRARYFOLDER) clean all
 
 all: prepare asm $(MAINSOURCES)
-	cd $(MAINKERNELTEMPORARYFOLDER); bash -c "ld -nostdlib -T ../../Kernel64/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj SwitchContext.obj MutualExclusion_ASM.obj $(MAINSOURCES) $(EXCLUDE_OPTIMIZATION) -L ../ -lEssentialLibrary"
+	cd $(MAINKERNELTEMPORARYFOLDER); x86_64-elf-ld -nostdlib -T ../../Kernel64/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj AssemblyInterruptHandler.obj MemoryManagement_ASM.obj SwitchContext.obj MutualExclusion_ASM.obj $(MAINSOURCES) $(EXCLUDE_OPTIMIZATION) -L ../ -lEssentialLibrary
 	$(OBJCOPY) -O binary $(ELF) $(TARGET)
 
 asm:

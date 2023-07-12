@@ -1,8 +1,8 @@
 TEMPORARYFOLDER = ../../Temporary
 OBJECTSTEMPORARYFOLDER = $(TEMPORARYFOLDER)/EssentialLibrary
 
-CC = g++
-AR = ar
+CC = x86_64-linux-gnu-g++
+AR = x86_64-linux-gnu-ar
 
 CCOPTIONS = -Os -m64 -fpack-struct=1 -fno-stack-protector -fno-builtin -W -Wall -masm=intel -nostdlib # -mno-red-zone -mno-mmx -mno-sse -mno-sse2
 MAINSOURCES = string.obj vsprintf.obj
