@@ -19,9 +19,10 @@ namespace Shell {
     namespace DefaultCommands {
         void createfile(int argc , char **argv);
         void createdir(int argc , char **argv);
+        void removefile(int argc , char **argv);
         void writefile(int argc , char **argv);
         void readfile(int argc , char **argv);
-        void listfile(int argc , char **argv);
+        void ls(int argc , char **argv);
         
         void mem(void);
         void memmap(void);
@@ -70,6 +71,27 @@ void Shell::DefaultCommands::createdir(int argc , char **argv) {
         printf("Failed creating directory\n");
         return;
     }
+}
+
+void Shell::DefaultCommands::removefile(int argc , char **argv) {
+    struct FileInfo *File;
+    if(argc != 2) {
+        printf("Usage : %s [file name]\n" , argv[0]);
+        return;
+    }
+    File = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ);
+    if(File == 0x00) {
+        printf("File not found\n");
+        MemoryManagement::Free(File);
+        return;
+    }
+    if(FileSystem::RemoveFile(File) == false) {
+        printf("Failed removing file\n");
+        MemoryManagement::Free(File);
+        return;
+    }
+    printf("Succeed removing file\n");
+    MemoryManagement::Free(File);
 }
 
 void Shell::DefaultCommands::writefile(int argc , char **argv) {
@@ -122,7 +144,7 @@ void Shell::DefaultCommands::readfile(int argc , char **argv) {
             GetScreenInformation(&X , &Y , 0 , 0);
             printf("(q/esc to escape) : ");
             KeyInput = Keyboard::GetASCIIData();
-            SetPosition(PreviousX , PreviousY-1);
+            SetPosition(0 , PreviousY);
             printf("                    ");
             SetPosition(PreviousX , PreviousY-1);
             if((KeyInput == 'q')||(KeyInput == KEYBOARD_KEY_ESC)) {
@@ -147,7 +169,7 @@ void Shell::DefaultCommands::readfile(int argc , char **argv) {
 
 }
 
-void Shell::DefaultCommands::listfile(int argc , char **argv) {
+void Shell::DefaultCommands::ls(int argc , char **argv) {
     int i;
     int X;
     int Y;
@@ -426,9 +448,10 @@ void Shell::ShellSystem::AddBasicCommands(void) {
     CommandList.Initialize(256);
     CommandList.AddCommand("createdir" , "Creates directory" , (unsigned long)DefaultCommands::createdir);
     CommandList.AddCommand("createfile" , "Creates file" , (unsigned long)DefaultCommands::createfile);
+    CommandList.AddCommand("removefile" , "Removes file" , (unsigned long)DefaultCommands::removefile);
     CommandList.AddCommand("writefile" , "Writes file" , (unsigned long)DefaultCommands::writefile);
     CommandList.AddCommand("readfile" , "Reads file" , (unsigned long)DefaultCommands::readfile);
-    CommandList.AddCommand("listfile" , "Lists content in current/targetted directory" , (unsigned long)DefaultCommands::listfile);
+    CommandList.AddCommand("ls" , "Lists content in current/targetted directory" , (unsigned long)DefaultCommands::ls);
     
     CommandList.AddCommand("mem" , "Shows status of memory usage" , (unsigned long)DefaultCommands::mem);
     CommandList.AddCommand("memmap" , "Shows the memory map" , (unsigned long)DefaultCommands::memmap);
