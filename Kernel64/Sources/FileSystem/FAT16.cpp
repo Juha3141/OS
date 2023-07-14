@@ -20,7 +20,7 @@ bool FAT16::Driver::Check(struct Storage *Storage) {
     return false;
 }
 
-/// @brief 
+/// @brief Create file
 /// @param Storage Pointer of the stoage
 /// @param FileName Standalized file name (Full file name, including paths) 
 /// @param InitialFileSize Initial size of the file
@@ -49,7 +49,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     printf("FileName : %s\n" , FileName);
     LastName = (char *)MemoryManagement::Allocate(strlen(FileName)+1);
     k = strlen(FileName);
-    for(i = 0; i < k-1; i++) {
+    for(i = k-1; i >= 0; i--) {
         if(FileName[i] == FileSystem::ParseCharacter()) {
             ParseIndex = i;
             break;
@@ -237,16 +237,76 @@ int FAT16::Driver::CloseFile(struct FileInfo *FileInfo) {
     return 1;
 }
 
-int FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
-    return 0;
+bool FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
+    int i = 0;
+    int j = 0;
+    int ParseIndex = -1;
+    int k;
+    unsigned int CurrentCluster; // Final Cluster of the file
+    unsigned int NextCluster;
+    unsigned short FileClusterSize;
+    unsigned char *Data;
+    char *LastName;
+    char SFNName[12];
+    struct SFNEntry NewSFNEntry;
+
+    unsigned int DirectoryLocation;
+    struct VBR VBR;
+    GetVBR(FileInfo->Storage , &(VBR));
+    // Get last name of the file
+    if(FileInfo->FileType == FILESYSTEM_FILETYPE_DIRECTORY) {
+        return false;
+    }
+    LastName = (char *)MemoryManagement::Allocate(strlen(FileInfo->FileName)+1);
+    k = strlen(FileInfo->FileName);
+    for(i = k-1; i >= 0; i--) {
+        if(FileInfo->FileName[i] == FileSystem::ParseCharacter()) {
+            ParseIndex = i;
+            break;
+        }
+    }
+    if(ParseIndex == -1) {
+        strcpy(LastName , FileInfo->FileName);
+    }
+    
+    for(i = strlen(FileInfo->FileName); i > 0; i--) {
+        if(FileInfo->FileName[i] == FileSystem::ParseCharacter()) {
+            break;
+        }
+        LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-i+ParseIndex+1];
+    }
+    LastName[j] = 0;
+    
+    printf("Full Name : %s\n" , FileInfo->FileName);
+    printf("LastName  : %s\n" , LastName);
+    printf("Getting SFN Entry : \n");
+    if(GetSFNEntry(FileInfo->Storage , FileInfo->SubdirectoryLocation , LastName , &(NewSFNEntry)) == false) {
+        MemoryManagement::Free(LastName);
+        MemoryManagement::Free(Data);
+        printf("Failed getting sfn entry\n");
+        return false;
+    }
+    
+    FileClusterSize = FileInfo->FileSize/VBR.SectorsPerCluster+((((FileInfo->FileSize%VBR.SectorsPerCluster)) == 0) ? 0 : 1);
+    CurrentCluster = SectorToCluster(FileInfo->Location , &(VBR));
+    for(i = 0; i < (FileInfo->FileSize/(VBR.SectorsPerCluster*VBR.BytesPerSector))+(FileInfo->FileSize%(VBR.SectorsPerCluster*VBR.BytesPerSector) != 0); i++) {
+        NextCluster = FindNextCluster(FileInfo->Storage , CurrentCluster , &(VBR));
+        WriteClusterInfo(FileInfo->Storage , CurrentCluster , 0x00 , &(VBR));
+        CurrentCluster = NextCluster;
+    }
+    CreateSFNName(SFNName , LastName , 1);
+    if(MarkEntryRemoved(FileInfo->Storage , FileInfo->SubdirectoryLocation , SFNName) == false) {
+        return false;
+    }
+    MemoryManagement::Free(LastName);
+    MemoryManagement::Free(Data);
+    return true;
 }
 
-// What I'm thinking is that we actually don't need thoses garbage stuffs...
-// We have to make it more modularized - Throw WriteOption ...
 int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) {
     int i = 0;
     int j = 0;
-    int DotIndex;
+    int ParseIndex = -1;
     int k;
     unsigned int CurrentCluster; // Final Cluster of the file
     unsigned short NextCluster;
@@ -305,19 +365,24 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
     FileInfo->FileOffset += Size;
     LastName = (char *)MemoryManagement::Allocate(strlen(FileInfo->FileName)+1);
     k = strlen(FileInfo->FileName);
-    for(i = 0; i < k-1; i++) {
+    for(i = k-1; i >= 0; i--) {
         if(FileInfo->FileName[i] == FileSystem::ParseCharacter()) {
-            DotIndex = i;
+            ParseIndex = i;
             break;
         }
     }
-    for(i = strlen(FileInfo->FileName)-1; i >= 0; i--) {
-        if(FileInfo->FileName[i] == FileSystem::ParseCharacter()) {
-            break;
-        }
-        LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-i+DotIndex];
+    if(ParseIndex == -1) {
+        strcpy(LastName , FileInfo->FileName);
     }
-    LastName[j] = 0;
+    else {
+        for(i = strlen(FileInfo->FileName); i > 0; i--) {
+            if(FileInfo->FileName[i] == FileSystem::ParseCharacter()) {
+                break;
+            }
+            LastName[j++] = FileInfo->FileName[strlen(FileInfo->FileName)-i+ParseIndex+1];
+        }
+        LastName[j] = 0;
+    }
     if(GetSFNEntry(FileInfo->Storage , FileInfo->SubdirectoryLocation , LastName , &(NewSFNEntry)) == false) {
         MemoryManagement::Free(LastName);
         MemoryManagement::Free(Data);
@@ -624,11 +689,9 @@ unsigned int FAT16::WriteCluster(struct Storage *Storage , unsigned long Cluster
     unsigned long i;
     unsigned long NextClusterAddress = ClusterNumber;
     for(i = 0; i < ClusterCountToRead; i++) {
-        printf("CurrentIndex : 0x%X\n" , (Data+(i*VBR->SectorsPerCluster*VBR->BytesPerSector)));
         if(Storage->Driver->WriteSector(Storage , ClusterToSector(NextClusterAddress , VBR) , VBR->SectorsPerCluster , (Data+(i*VBR->SectorsPerCluster*VBR->BytesPerSector))) != VBR->SectorsPerCluster*VBR->BytesPerSector) {
             break;
         }
-        printf("I : %d , NextClusterAddress : %d (%dsector)\n" , i , NextClusterAddress , ClusterToSector(NextClusterAddress , VBR));
         NextClusterAddress = FindNextCluster(Storage , NextClusterAddress , VBR);
         if(NextClusterAddress == 0xFFFF) {
             break;
@@ -780,7 +843,7 @@ unsigned int FAT16::GetFileClusterSize(struct Storage *Storage , unsigned int Se
 void FAT16::WriteClusterInfo(struct Storage *Storage , unsigned int Cluster , unsigned short ClusterInfo , struct VBR *VBR) {
     unsigned int SectorAddress = (unsigned int)((Cluster/256)+VBR->ReservedSectorCount);
     unsigned short *FATArea;
-    FATArea = (unsigned short *)MemoryManagement::Allocate(512);
+    FATArea = (unsigned short *)MemoryManagement::Allocate(VBR->BytesPerSector);
     Storage->Driver->ReadSector(Storage , SectorAddress , 1 , FATArea);
     FATArea[(Cluster%256)] = ClusterInfo;
     Storage->Driver->WriteSector(Storage , SectorAddress , 1 , FATArea);
@@ -824,7 +887,7 @@ void FAT16::CreateSFNName(char *SFNName , const char *LFNName , int Number) {
         strcpy(SFNName , "..         ");
         return;
     }
-    Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName));
+    Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName)+1);
     memset(SFNName , ' ' , 11);
     for(i = j = 0; LFNName[i] != 0; i++) {
         if(LFNName[i] != ' ') {
@@ -872,7 +935,7 @@ void FAT16::CreateVolumeLabelName(char *SFNName , const char *LFNName) {
     if(strlen(LFNName) == 0) {
         return;
     }
-    Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName));
+    Buffer = (char *)MemoryManagement::Allocate(strlen(LFNName)+1);
     memset(SFNName , ' ' , 11);
     for(i = j = 0; LFNName[i] != 0; i++) {
         if(LFNName[i] != ' ') {
@@ -934,6 +997,7 @@ bool FAT16::WriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
 
     DirectoryClusterSize = GetFileClusterSize(Storage , DirectoryAddress , &(VBR));
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress);
+    
     printf("DirectoryEntryCount : %d\n" , DirectoryEntryCount);
     // error
     printf("Location to write : %d\n" , DirectoryAddress);
@@ -1101,6 +1165,171 @@ bool FAT16::RewriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddr
             if(memcmp(((struct SFNEntry *)(Directory+(Offset)))->FileName , SFNName , 11) == 0) {
                 memcpy((struct SFNEntry *)(Directory+(Offset)) , NewSFNEntry , sizeof(struct SFNEntry));
                 WriteCluster(Storage , ClusterNumber , 1 , Directory , &(VBR));
+                MemoryManagement::Free(Directory);
+                return true;
+            }
+        }
+        ClusterNumber = FindNextCluster(Storage , ClusterNumber , &(VBR));
+    }
+    MemoryManagement::Free(Directory);
+    return false;
+}
+
+/// @brief Mark entire entry(which includes LFN entry) to removed
+/// @param Storage Target storage
+/// @param DirectoryAddress Sector address of the directory
+/// @param Offset Absolute offset from the start of the directory
+void RemoveEntryBySFNOffset(struct Storage *Storage , unsigned int DirectoryAddress , int Offset) {
+    struct FAT16::VBR VBR;
+    int i;
+    int j;
+    int SequenceNumber;
+    int PreviousClusterNumber;
+    int ClusterNumber;
+    int LFNStartOffset;
+    int ClusterOffset; // Offset in cluster number
+    int RelativeOffset; // Offset corresponds to Directory
+    unsigned char *Directory;
+    FAT16::GetVBR(Storage , &(VBR));
+    ClusterOffset = Offset/(VBR.SectorsPerCluster*VBR.BytesPerSector);
+    ClusterNumber = FAT16::SectorToCluster(DirectoryAddress , &(VBR));
+    for(i = 0; i < ClusterOffset; i++) {
+        PreviousClusterNumber = ClusterNumber;
+        ClusterNumber = FAT16::FindNextCluster(Storage , ClusterNumber , &(VBR));
+    }
+    Directory = (unsigned char *)MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*3);
+    if(ClusterNumber != FAT16::SectorToCluster(DirectoryAddress , &(VBR))) {
+        // The entry could intersect with two cluster; We should read two cluster in order to read one entry completely
+        printf("Intersected\n");
+        FAT16::ReadCluster(Storage , PreviousClusterNumber , 2 , Directory , &(VBR));
+        RelativeOffset = (Offset%(VBR.SectorsPerCluster*VBR.BytesPerSector))+(VBR.SectorsPerCluster*VBR.BytesPerSector);
+    }
+    else {
+        // Not intersected with two cluster
+        printf("Not intersected\n");
+        FAT16::ReadCluster(Storage , ClusterNumber , 1 , Directory , &(VBR));
+        RelativeOffset = Offset%(VBR.SectorsPerCluster*VBR.BytesPerSector);
+    }
+    if(((struct FAT16::SFNEntry *)(Directory+RelativeOffset-sizeof(struct FAT16::SFNEntry)))->Attribute != FAT16_ATTRIBUTE_LFN) {
+        // Current entry : Offsets
+        ((struct FAT16::SFNEntry *)(Directory+RelativeOffset))->FileName[0] = FAT16_FILENAME_REMOVED;
+        MemoryManagement::Free(Directory);
+        return;
+    }
+
+    if((((struct FAT16::LFNEntry *)(Directory+RelativeOffset-sizeof(struct FAT16::LFNEntry)))->SequenceNumber & 0x40) == 0x40) {
+        SequenceNumber = ((struct FAT16::LFNEntry *)(Directory+RelativeOffset-sizeof(struct FAT16::LFNEntry)))->SequenceNumber^0x40;
+    }
+    // There is more than one entry there
+    else {
+        SequenceNumber = ((struct FAT16::LFNEntry *)(Directory+RelativeOffset-sizeof(struct FAT16::LFNEntry)))->SequenceNumber+1;
+    }
+    // Determine Start offset of the LFN
+    LFNStartOffset = RelativeOffset-SequenceNumber*sizeof(struct FAT16::SFNEntry);
+    // Mark every LFN entry as removed
+    for(j = RelativeOffset; j >= LFNStartOffset; j -= sizeof(struct FAT16::LFNEntry)) {
+        // In FAT16, when first character of file name is 0xE5, it is considered as removed file.
+        ((struct FAT16::SFNEntry *)(Directory+j))->FileName[0] = FAT16_FILENAME_REMOVED;
+    }
+    // Write the modified version of directory
+    if(ClusterNumber != FAT16::SectorToCluster(DirectoryAddress , &(VBR))) {
+        FAT16::WriteCluster(Storage , PreviousClusterNumber , 2 , Directory , &(VBR));
+    }
+    else {
+        FAT16::WriteCluster(Storage , ClusterNumber , 1 , Directory , &(VBR));
+    }
+    MemoryManagement::Free(Directory);
+    return;
+}
+
+/// @brief Mark entire SFN&LFN entry removed (0xE5)
+/// @param Storage Target storage
+/// @param DirectoryAddress Sector address of the directory
+/// @param SFNName File name in 8.3 file name
+/// @return If it's successfully removed, returns true, if not, returns false.
+bool FAT16::MarkEntryRemoved(struct Storage *Storage , unsigned int DirectoryAddress , const char *SFNName) {
+    int i;
+    int j;
+    int LFNStartOffset;
+    int SequenceNumber;
+    int Offset = 0;
+    int AbsoluteOffset = 0;
+    int ClusterNumber = 0;
+    int EntryCount = 0;
+    unsigned int DirectoryClusterSize;
+    struct SFNEntry *SFNEntry;
+    struct LFNEntry *LFNEntry;
+    struct VBR VBR;
+    unsigned char *Directory;
+    /*
+     * To-do : Add comment & whatever
+    */
+    GetVBR(Storage , &(VBR));
+    // Get information of directory
+    EntryCount = GetDirectoryInfo(Storage , DirectoryAddress);
+    DirectoryClusterSize = GetFileClusterSize(Storage , DirectoryAddress , &(VBR));
+    // Process it differently when it's a root directory
+    if(DirectoryAddress == GetRootDirectoryLocation(&(VBR))) {
+        // Root directory is small; we can just get entire root directory and process it(straightforward!)
+        Directory = (unsigned char *)MemoryManagement::Allocate(GetRootDirectorySize(&(VBR))*VBR.BytesPerSector);
+        Storage->Driver->ReadSector(Storage , DirectoryAddress , GetRootDirectorySize(&(VBR)) , Directory);
+
+        printf("SFNName : %s\n" , SFNName);
+        for(i = 0; i < GetRootDirectorySize(&(VBR))*VBR.BytesPerSector/sizeof(struct SFNEntry); i++) {
+            // Search file each
+            if(memcmp(((struct SFNEntry *)(Directory+Offset))->FileName , SFNName , 11) == 0) {
+                // If it's not a LFN entry file that behinds current entry, only current entry should be removed
+                if(((struct SFNEntry *)(Directory+Offset-sizeof(struct SFNEntry)))->Attribute != FAT16_ATTRIBUTE_LFN) {
+                    // Current entry : Offsets
+                    ((struct SFNEntry *)(Directory+Offset))->FileName[0] = FAT16_FILENAME_REMOVED;
+                    Storage->Driver->WriteSector(Storage , DirectoryAddress , GetRootDirectorySize(&(VBR)) , Directory);
+                    MemoryManagement::Free(Directory);
+                    return true;
+                }
+                // Get the sequence number from previous entry
+                // There is only one LFN entry there
+                if((((struct LFNEntry *)(Directory+Offset-sizeof(struct LFNEntry)))->SequenceNumber & 0x40) == 0x40) {
+                    SequenceNumber = ((struct LFNEntry *)(Directory+Offset-sizeof(struct LFNEntry)))->SequenceNumber^0x40;
+                }
+                // There is more than one entry there
+                else {
+                    SequenceNumber = ((struct LFNEntry *)(Directory+Offset-sizeof(struct LFNEntry)))->SequenceNumber+1;
+                }
+                // Determine Start offset of the LFN
+                LFNStartOffset = Offset-SequenceNumber*sizeof(struct SFNEntry);
+                // Mark every LFN entry as removed
+                for(j = Offset; j >= LFNStartOffset; j -= sizeof(struct LFNEntry)) {
+                    // In FAT16, when first character of file name is 0xE5, it is considered as removed file.
+                    ((struct SFNEntry *)(Directory+j))->FileName[0] = FAT16_FILENAME_REMOVED;
+                }
+                // Write the modified version of directory
+                Storage->Driver->WriteSector(Storage , DirectoryAddress , GetRootDirectorySize(&(VBR)) , Directory);
+                MemoryManagement::Free(Directory);
+                return true;
+            }
+            // Keep searching
+            Offset += sizeof(struct SFNEntry);
+        }
+        // Failed to search
+        MemoryManagement::Free(Directory);
+        return false;
+    }
+    // Not a root directory, should be process differently by just partially reading the contents of the directory
+    ClusterNumber = SectorToCluster(DirectoryAddress , &(VBR));
+    for(i = 0; i < DirectoryClusterSize; i++) {
+        Directory = (unsigned char *)MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector);
+        ReadCluster(Storage , ClusterNumber , 1 , Directory , &(VBR));
+        for(Offset = 0; Offset < VBR.SectorsPerCluster*VBR.BytesPerSector; Offset += sizeof(struct SFNEntry)) {
+            if(((struct SFNEntry *)(Directory+(Offset)))->Attribute == 0) {
+                MemoryManagement::Free(Directory);
+                return false;
+            }
+            // Found the file by the SFN name
+            if(memcmp(((struct SFNEntry *)(Directory+(Offset)))->FileName , SFNName , 11) == 0) {
+                // Absolute Offset : Based on the "Start" of the directory
+                AbsoluteOffset = Offset+(i*VBR.SectorsPerCluster*VBR.BytesPerSector);
+                printf("Found file!!, Absolute Offset : %d\n" , Offset);
+                RemoveEntryBySFNOffset(Storage , DirectoryAddress , Offset);
                 MemoryManagement::Free(Directory);
                 return true;
             }

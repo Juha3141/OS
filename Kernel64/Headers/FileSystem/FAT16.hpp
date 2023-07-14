@@ -23,7 +23,7 @@ namespace FAT16 {
         bool CreateDir(struct Storage *Storage , const char *DirectoryName);
         struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName , int OpenOption);
         int CloseFile(struct FileInfo *FileInfo);
-        int RemoveFile(struct FileInfo *FileInfo);
+        bool RemoveFile(struct FileInfo *FileInfo);
             
         int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
         int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
@@ -107,6 +107,7 @@ namespace FAT16 {
     bool WriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress , struct SFNEntry *Entry);
     bool WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddress , const char *FileName);
     bool RewriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress , const char *SFNName , struct SFNEntry *NewSFNEntry);
+    bool MarkEntryRemoved(struct Storage *Storage , unsigned int DirectoryAddress , const char *SFNName);
     bool GetSFNEntry(struct Storage *Storage , unsigned int DirectoryAddress , const char *FileName , struct SFNEntry *Destination);
 
     // File name whatever
