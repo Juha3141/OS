@@ -64,7 +64,7 @@ struct Partition *MBR::Identifier::GetPartition(void) {
 bool MBR::Identifier::CreatePartition(struct Partition Partition) {
     int i;
     unsigned long TotalSectorCount = 0;
-    struct PartitionTable *PartitionTable = (struct PartitionTable *)MemoryManagement::Allocate(512);
+    struct PartitionTable *PartitionTable;
     this->GetPartition();
     if(PartitionCount == 4) {
         return false;
@@ -75,7 +75,9 @@ bool MBR::Identifier::CreatePartition(struct Partition Partition) {
     if((TotalSectorCount > Partitions[0].StartAddressLBA+1) && (TotalSectorCount-Partitions[0].StartAddressLBA-1 >= Storage->PhysicalInfo.Geometry.TotalSectorCount)) {
         return false;
     }
+    PartitionTable = (struct PartitionTable *)MemoryManagement::Allocate(512);
     if(Driver->ReadSector(Storage , 0 , 1 , PartitionTable) != 512) {
+        // MemoryManagement::Free(PartitionTable);
         return false;
     }
     PartitionTable->Entries[PartitionCount].BootableFlag = ((Partition.IsBootable == true) ? 0x80 : 0x00);
@@ -92,7 +94,9 @@ bool MBR::Identifier::CreatePartition(struct Partition Partition) {
     PartitionTable->Entries[PartitionCount].EndingCHS[2] = ((Partition.EndAddressLBA)%Storage->PhysicalInfo.Geometry.CHS_Sectors)+1;
     
     if(Driver->WriteSector(Storage , 0 , 1 , PartitionTable) != 512) {
+        // MemoryManagement::Free(PartitionTable);
         return false;
     }
+    // MemoryManagement::Free(PartitionTable);
     return true;
 }
