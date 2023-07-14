@@ -25,7 +25,7 @@
 
 struct FileInfo {
     char *FileName;
-    unsigned long Location;             // Essential(Location)
+    unsigned long Location;             // Essential(Location) in Sector
     unsigned long SubdirectoryLocation;
 
     unsigned long BlockSize;            // Bytes Per Sector
@@ -90,7 +90,7 @@ struct FileSystemDriver {
 
     virtual struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName , int OpenOption) = 0;
     virtual int CloseFile(struct FileInfo *FileInfo) = 0;
-    virtual int RemoveFile(struct FileInfo *FileInfo) = 0;
+    virtual bool RemoveFile(struct FileInfo *FileInfo) = 0;
         
     virtual int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
     virtual int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer) = 0;
@@ -172,7 +172,7 @@ namespace FileSystem {
 
     struct FileInfo *OpenFile(const char *FileName , int OpenOption);
     int CloseFile(struct FileInfo *FileInfo);
-    int RemoveFile(struct FileInfo *FileInfo);
+    bool RemoveFile(struct FileInfo *FileInfo);
         
     int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
     int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);

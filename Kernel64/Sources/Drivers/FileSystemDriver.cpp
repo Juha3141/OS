@@ -138,16 +138,18 @@ static struct Storage *GetInfoFromFileName(char *PartialFileName , const char *F
         CompleteFileName[strlen(CompleteFileName)] = FileSystem::ParseCharacter();
     }
     strcat(CompleteFileName , FileName);
-    printf("%s\n" , CompleteFileName);
+    // printf("%s\n" , CompleteFileName);
     if((Storage = MountSystem::UniversalMountManager::GetInstance()->GetMountedStorage(CompleteFileName)) == 0x00) {
         return 0x00;
     }
     if(MountSystem::UniversalMountManager::GetInstance()->GetMountedName(PartialFileName , CompleteFileName) == false) {
         return 0x00;
     }
+    /*
     printf("Storage         : 0x%X(%s%d)\n" , Storage , Storage->Driver->DriverName , Storage->ID);
     printf("PartialFileName : \"%s\"\n" , PartialFileName);
     printf("FileSystem : 0x%X(%s)\n" , Storage->FileSystem , Storage->FileSystem->FileSystemString);
+    */
     return Storage;
 }
 
@@ -200,7 +202,7 @@ int FileSystem::CloseFile(struct FileInfo *FileInfo) {
     return FileInfo->Storage->FileSystem->CloseFile(FileInfo);
 }
 
-int FileSystem::RemoveFile(struct FileInfo *FileInfo) {
+bool FileSystem::RemoveFile(struct FileInfo *FileInfo) {
     return FileInfo->Storage->FileSystem->RemoveFile(FileInfo);
 }
     

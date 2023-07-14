@@ -91,7 +91,7 @@ namespace ISO9660 {
         bool CreateDir(struct Storage *Storage , const char *DirectoryName);
         struct FileInfo *OpenFile(struct Storage *Storage , const char *FileName , int OpenOption);
         int CloseFile(struct FileInfo *FileInfo);
-        int RemoveFile(struct FileInfo *FileInfo);
+        bool RemoveFile(struct FileInfo *FileInfo);
         
         int WriteFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
         int ReadFile(struct FileInfo *FileInfo , unsigned long Size , void *Buffer);
