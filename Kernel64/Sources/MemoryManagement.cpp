@@ -142,12 +142,12 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 		// Initialize the next node to remove potential error from garbage memory
 	}
 	else {	// Using already existing node
-	/*
+		/*
 		printf("Using existing node\n");
 		printf("NodeLocation : 0x%X\n" , Node);
-	*/
+		*/
 		if(Alignment != NO_ALIGN) {
-			// Search New alignable loca tion
+			// Search New alignable location
 			// printf("Alignment : %d\n" , Alignment);
 			Node = (struct Node *)NodeManager->SearchAlignedNode(Size , Alignment);
 			// printf("Found aligned, new one : 0x%X\n" , Node);
@@ -157,9 +157,16 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 		}
 		NodeManager->WriteNodeData(Node , 1 , Size , NO_ALIGN);
 		// Seperate node
-		if(TotalNodeSize != Size) {
+		if(TotalNodeSize >= Size) {
 			// Separate node to prevent internal fragmentation(Allow residual unused area usable)
 			SeparatedNode = (struct Node *)(((unsigned long)Node+sizeof(struct Node))+(Size));
+			if(SeparatedNode >= Node->Next) {
+				printf("Something terrible happend\n");
+				// panic
+				while(1) {
+					;
+				}
+			}
 			NodeManager->WriteNodeData(SeparatedNode , 0 , TotalNodeSize-Size-sizeof(struct Node) , NO_ALIGN , (unsigned long)Node->Next , (unsigned long)Node);
 		}
 	}
@@ -202,7 +209,6 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 
 // problem in memory free system
 void MemoryManagement::Free(void *Address) {
-	return;
 	bool Merged = false;
 	unsigned long TotalMergingSize = 0;
 	struct Node *NodePointer;
@@ -232,22 +238,17 @@ void MemoryManagement::Free(void *Address) {
 		NodePointer = Node;									// Save the current node, and move to next node
 		while((NodePointer->Next->Using == 0) && (NodePointer->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
 			if(NodePointer->Next == 0x00) {
-				TotalMergingSize += NodePointer->Size;
 				break;
-			}
-			else {
-				TotalMergingSize += NodePointer->Size+sizeof(struct Node);
 			}
 			NodePointer = (struct Node *)NodePointer->Next; 				// Go to the next node and keep search
 		}
 		/*
 		printf("Merging Node(Next) : 0x%X~0x%X\n" , CurrentNode , NodePointer);
-		printf("Total Merging size : %d\n" , TotalMergingSize);
+		printf("Total Merging size : %d\n" , (((unsigned long)NodePointer->Next)-((unsigned long)CurrentNode)-sizeof(struct Node)));
 		*/
 		// Done erasing : Modify the next node location to the end of the node(It's going to be using node).
-		NodeManager->WriteNodeData(((struct Node *)CurrentNode) , 0 , TotalMergingSize , NO_ALIGN , (unsigned long)NodePointer->Next); // Free the node
+		NodeManager->WriteNodeData(((struct Node *)CurrentNode) , 0 , (((unsigned long)NodePointer->Next)-((unsigned long)CurrentNode)-sizeof(struct Node)) , NO_ALIGN , (unsigned long)NodePointer->Next); // Free the node
 	}
-	// break
 	// If the previous node is usable, and present, the node can be merged.
 	// (Why are we merging and seperating the segment? Because, it can reduce the external fragmentation)
 	if((Node->Previous != 0x00) && (Node->Previous->Using == 0) && (Node->Previous->Signature == MEMORYMANAGEMENT_SIGNATURE)) {
@@ -277,13 +278,19 @@ void MemoryManagement::Free(void *Address) {
 		*/
 	}
 	if(Merged == false) {
+		// printf("No merge\n");
 		Node->Using = 0;
 		NodeManager->LastlyFreedNode = Node;
+		if(Node->Next == 0x00) {
+			// printf("No next free\n");
+			Node->Previous->Next = 0x00;
+			memset(Node , 0 , sizeof(struct Node));
+		}
 	}
 	// If the first node is usable, and there is no next nodes, then the node will be removed.
 	// But, if the first node is being used, or there is next nodes, then the node is not going to be removed.
 	Node = NodeManager->StartNode;
-	if((Node->Using == 0) && (((struct Node *)Node->Next)->Signature != MEMORYMANAGEMENT_SIGNATURE)) { // If it sooths the condition,
+	if((Node->Using == 0) && (((struct Node *)Node->Next) == 0x00)) { // If it sooths the condition,
 		memset(Node , 0 , sizeof(struct Node));		  // Erase the node(Set everything to 0)
 		NodeManager->CurrentNode = NodeManager->StartNode;	// Reset the address so that
 		NodeManager->LastlyFreedNode = NodeManager->StartNode;  // Next allocation will be started at StartAddress
@@ -329,8 +336,8 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchReasonableNo
 	struct Node *Node;
 	Node = this->StartNode;
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
-		if((Node->Using == 0) && (Node->Size >= Size)) {
-			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (Node->Next-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
+		if((Node->Using == 0) && (Node->Size >= Size) && (Node->Size-Size > sizeof(struct Node))) {
+			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (((unsigned long)Node->Next)-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
 			return Node;
 		}
 		Node = Node->Next;
@@ -517,7 +524,10 @@ void MemoryManagement::CheckNodeCorruption(void) {
     struct MemoryManagement::Node *NodePointer = NodeManager->StartNode;
 
     while(NodePointer->Next != 0x00) {
-        if(((unsigned long)NodePointer->Next <= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)||((((unsigned long)NodePointer->Next)-(unsigned long)NodePointer)-sizeof(struct MemoryManagement::Node)) > NodePointer->Size) {
+        if((NodePointer->Signature != MEMORYMANAGEMENT_SIGNATURE)
+		||((unsigned long)NodePointer->Next <= MEMORYMANAGEMENT_MEMORY_STARTADDRESS)
+		||(((((unsigned long)NodePointer->Next)-(unsigned long)NodePointer)-sizeof(struct MemoryManagement::Node)) > NodePointer->Size)
+		||(NodePointer->Next <= NodePointer)) {
 			if(NodePointer->IsAligned == 1) {
 				NodePointer = NodePointer->Next;
 				continue;
