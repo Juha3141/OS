@@ -14,7 +14,6 @@ struct MountSystem::MountInfo *MountSystem::UniversalMountManager::GetMountInfo(
             strncpy(TempName , CompleteFileName , i);
             MountInfo = MountedListManager->GetObjectByCompleteName(TempName);
             FinalMountInfo = (MountInfo == 0x00) ? FinalMountInfo : MountInfo;
-            printf("%d : %s\n" , i , TempName);
         }
     }
     MountInfo = MountedListManager->GetObjectByCompleteName(CompleteFileName);
