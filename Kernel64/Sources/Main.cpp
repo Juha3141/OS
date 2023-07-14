@@ -87,14 +87,16 @@ extern "C" void Main(void) {
     unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
     unsigned char *RAMDiskBuffer2 = (unsigned char *)MemoryManagement::Allocate(16384*1024);
     struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
-    memset(RAMDiskBuffer , 0 , 16384*1024);
-    struct Storage *MainStorage = RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
+    memset(RAMDiskBuffer , 0 , 16*1024*1024);
+    memset(RAMDiskBuffer2 , 0 , 16*1024*1024);
+    struct Storage *MainStorage = RAMDiskDriver::CreateRAMDisk(16*1024*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
     CreatePartition_FAT16(MainStorage , "LEL" , 128 , 32768-128);
+    
     struct Storage *MainStoragePartition = MainStorage->LogicalStorages->GetObject(0);
     FileSystem::SetHeadStorage(MainStoragePartition);
     printf("MainStorage : 0x%X\n" , MainStoragePartition);
-    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd1");
     
+    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd1");
     MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd1" , Storage);
     
     struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
@@ -103,7 +105,7 @@ extern "C" void Main(void) {
     MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd2");
 
     MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd2" , Storage);
-    
+    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "System");
     Shell::ShellSystem ShellSystem;
     ShellSystem.Start();
 
@@ -134,7 +136,7 @@ void InitializeDrive_MBR(struct Storage *Storage) {
     BootSector[510] = 0x55;
     BootSector[511] = 0xAA;
     Storage->Driver->WriteSector(Storage , 0 , 1 , BootSector);
-    // MemoryManagement::Free(BootSector);
+    MemoryManagement::Free(BootSector);
 }
 
 /// @brief Create FAT16 partition to a storage
@@ -166,18 +168,18 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     FAT16::WriteVBR(&(VBR) , CurrentPartition , "POTATOOS" , "NO NAME   " , "FAT16     ");
     memset(BootSector , 0 , 512);
     memcpy(BootSector , &(VBR) , sizeof(struct FAT16::VBR));
-    memcpy(BootSector+sizeof(struct FAT16::VBR) , CommonByteCode , 140);
+    memcpy(BootSector+sizeof(struct FAT16::VBR) , CommonByteCode , sizeof(CommonByteCode));
     BootSector[510] = 0x55;
     BootSector[511] = 0xAA;
     CurrentPartition->Driver->WriteSector(CurrentPartition , 0 , 1 , BootSector);
-    // MemoryManagement::Free(BootSector);
+    MemoryManagement::Free(BootSector);
     
     memset(&(VolumeLabelEntry) , 0 , sizeof(struct FAT16::SFNEntry));
     FAT16::CreateVolumeLabelName(VolumeLabelSFNName , VolumeLabel);
     memcpy(VolumeLabelEntry.FileName , VolumeLabelSFNName , 11);
     VolumeLabelEntry.Attribute = 0x08;
     
-    FAT16::WriteClusterInfo(CurrentPartition , 0 , 0xFFF8 , &(VBR)); // this doesn't work
+    FAT16::WriteClusterInfo(CurrentPartition , 0 , 0xFFF8 , &(VBR));
     FAT16::WriteClusterInfo(CurrentPartition , 1 , 0xFFFF , &(VBR));
     FAT16::WriteSFNEntry(CurrentPartition , FAT16::GetRootDirectoryLocation(&(VBR)) , &(VolumeLabelEntry));
     
