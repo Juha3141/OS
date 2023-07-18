@@ -49,6 +49,7 @@ namespace MemoryManagement {
             void WriteNodeData(struct Node *Node , unsigned char Using , unsigned long Size , ALIGNMENT Alignment , unsigned long NextNode=0xFFFFFFFFFFFFFFFF , unsigned long PreviousNode=0xFFFFFFFFFFFFFFFF);
             
             struct MemoryManagement::Node *AdjustNode(struct Node *Node); // If node violated reserved memory, adjust it.
+            struct Node *AlignNode(struct Node *Node , ALIGNMENT Alignment , unsigned long PreviousNode); // Align newly created node
             
             int IsNodeInUnusableMemory(struct Node *Node , QuerySystemAddressMap *ViolatedMemory);
             void AddUnusableMemory(unsigned long StartAddress , unsigned long MemorySize);
@@ -67,7 +68,6 @@ namespace MemoryManagement {
     };
     extern "C" unsigned long GetUsableMemory(unsigned long E820Address , unsigned long MemoryPoolAddress);
     
-    struct Node *AlignNode(struct Node *Node , ALIGNMENT Alignment); // Align newly created node
     unsigned long AlignAddress(unsigned long Address , ALIGNMENT Alignment);
     
     unsigned long GetNodeSize(struct Node *Node);

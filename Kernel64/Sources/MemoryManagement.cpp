@@ -134,6 +134,10 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 		// printf("Creating new node\n");
 		Node = NodeManager->CreateNewNode(Size , Alignment);
 		if(Node == 0x00) {
+			printf("Error! no node can be created anymore\n");
+			while(1) {
+				;
+			}
 			return 0x00;
 		}
 		TotalNodeSize = 0;								// Set the value to 0 so that the <Node Seperation Sequence> can't be executed.	
@@ -142,10 +146,8 @@ void *MemoryManagement::Allocate(unsigned long Size , MemoryManagement::ALIGNMEN
 		// Initialize the next node to remove potential error from garbage memory
 	}
 	else {	// Using already existing node
-		/*
-		printf("Using existing node\n");
-		printf("NodeLocation : 0x%X\n" , Node);
-		*/
+		// printf("Using existing node\n");
+		// printf("NodeLocation : 0x%X\n" , Node);
 		if(Alignment != NO_ALIGN) {
 			// Search New alignable location
 			// printf("Alignment : %d\n" , Alignment);
@@ -337,7 +339,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchReasonableNo
 	Node = this->StartNode;
 	while(Node->Signature == MEMORYMANAGEMENT_SIGNATURE) {
 		if((Node->Using == 0) && (Node->Size >= Size) && (Node->Size-Size > sizeof(struct Node))) {
-			printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (((unsigned long)Node->Next)-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
+			// printf("Free Node Found : At 0x%X, Size : %d, %d\n" , Node , (((unsigned long)Node->Next)-(unsigned long)Node-sizeof(struct Node)) , Node->Size);
 			return Node;
 		}
 		Node = Node->Next;
@@ -382,8 +384,8 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::SearchNewNodeLocat
 	// If there is freed address 	-> Use LastFreedAddress
 	Node = this->CurrentNode;
 	while((Node->Next != 0x00) && (Node->Signature != MEMORYMANAGEMENT_SIGNATURE)) {	// Go to the last node
-		printf("Node       : 0x%X\n" , Node);
-		printf("Node->Next : 0x%X\n" , Node->Next);
+		// printf("Node       : 0x%X\n" , Node);
+		// printf("Node->Next : 0x%X\n" , Node->Next);
 		Node = Node->Next;
 	}
 	*PreviousNode = (unsigned long)Node;
@@ -396,7 +398,7 @@ struct MemoryManagement::Node *MemoryManagement::NodeManager::CreateNewNode(unsi
 	unsigned long PreviousNode = 0x00;
 	struct Node *Node = SearchNewNodeLocation(&(PreviousNode));	// New node address : CurrentAddress
 	// break
-	Node = AlignNode(Node , Alignment);
+	Node = AlignNode(Node , Alignment , PreviousNode);
 	if((Alignment != NO_ALIGN) && (NodeManager->StartNode->Using == 0)) {
 		NodeManager->StartNode = Node;
 		NodeManager->CurrentNode = Node;
@@ -466,15 +468,16 @@ void MemoryManagement::NodeManager::AddUnusableMemory(unsigned long StartAddress
 /// @param Node Pointer of the node to check whether the node violated the area
 /// @return Adjusted location of the node, If it wasn't violating anything, return original address(=Node)
 struct MemoryManagement::Node *MemoryManagement::NodeManager::AdjustNode(struct MemoryManagement::Node *Node) {
+	// this function has the error haha
 	int i;
 	int ViolatedMemoryCount;
 	unsigned long StartAddress = 0;
 	unsigned long EndAddress;
 	QuerySystemAddressMap ViolatedMemoryList[UnusableMemoryEntryCount];
 	memset(ViolatedMemoryList , 0 , sizeof(ViolatedMemoryList));
-	//printf("Node->Size : %d\n" , Node->Size);
+	// printf("Node->Size : %d\n" , Node->Size);
 	if((ViolatedMemoryCount = IsNodeInUnusableMemory(Node , ViolatedMemoryList)) == 0) {
-		//printf("Node is not in reserved memory\n");
+		// printf("Node is not in reserved memory\n");
 		return Node;
 	}
 	StartAddress = ViolatedMemoryList[0].Address;
@@ -497,17 +500,26 @@ unsigned long MemoryManagement::AlignAddress(unsigned long Address , MemoryManag
 	return Address;
 }
 
-struct MemoryManagement::Node *MemoryManagement::AlignNode(struct MemoryManagement::Node *Node , MemoryManagement::ALIGNMENT Alignment) {
+struct MemoryManagement::Node *MemoryManagement::NodeManager::AlignNode(struct MemoryManagement::Node *Node , MemoryManagement::ALIGNMENT Alignment , unsigned long PreviousNode) {
 	unsigned long AlignedAddress = 0;   // PreviousNodeAddress : Previous Node Address before aligning to 4K
+	unsigned long OriginalAddress = (unsigned long)Node;
 	if(Alignment == NO_ALIGN) {
 //		printf("No alignment\n");
 		return Node;
 	}
 	AlignedAddress = AlignAddress((((unsigned long)Node)+sizeof(struct Node)) , Alignment); // Get the aligned address
 	((struct Node *)(AlignedAddress-sizeof(struct Node)))->Previous = Node->Previous; // Write previous node information to new aligned node
+	
 	Node = (struct Node *)(AlignedAddress-sizeof(struct Node));							      // Relocate node to aligned address
-	Node->Previous->Next = (struct Node *)(AlignedAddress-sizeof(struct Node));	  // Rewrite new node information(new aligned one)
-	// printf("Node start address     : 0x%X\n" , Node);
+	if(OriginalAddress != (unsigned long)this->StartNode) {
+		Node->Previous = (struct Node *)PreviousNode;
+		Node->Previous->Next = (struct Node *)(AlignedAddress-sizeof(struct Node));	  // Rewrite new node information(new aligned one)
+	}
+	else {
+		Node->Previous = 0x00;
+	}
+	// printf("Node start address : 0x%X\n" , Node);
+	// printf("Previous Node      : 0x%X\n" , Node->Previous);
 	return Node;
 }
 
