@@ -75,11 +75,14 @@
         char FileSystemString[24];
         
         struct PhysicalStorageInfo PhysicalInfo;
+
+        // Mount Information
+        bool IsMounted;
+        unsigned int MountInfoID; // ID of MountInfo structure
+        // You can get MountInfo structure by its ID from "UniversalMountManager"
         
         unsigned char PartitionScheme; // MBR or GPT?
         enum StorageType { Physical , Logical } Type;
-
-        // You have to go now...
 
         // If this storage is a physical storage, use information here : 
         StorageManager *LogicalStorages;
@@ -107,7 +110,13 @@
     template <typename T>class ObjectManager { // Manages [Pointer of] some object
         public:
             virtual void Initialize(int MaxObjectCount) {
+                int i;
                 MaxCount = MaxObjectCount;
+                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxObjectCount);
+                for(i = 0; i < MaxCount; i++) {
+                    ObjectContainer[i].Object = 0x00;
+                    ObjectContainer[i].Using = false;
+                }
             }
             virtual unsigned long Register(T *Object) { // returns ID
                 unsigned int i;
@@ -141,10 +150,10 @@
                 return STORAGESYSTEM_INVALIDID;
             }
             virtual T *GetObject(unsigned long ID) {
-                if(ObjectContainer[ID].Using == false) {
+                if(ID >= MaxCount) {
                     return 0x00;
                 }
-                if(ID >= MaxCount) {
+                if(ObjectContainer[ID].Using == false) {
                     return 0x00;
                 }
                 return ObjectContainer[ID].Object;
@@ -154,7 +163,7 @@
         protected:
             struct ObjectContainer {
                 T *Object;
-                bool Using = false;
+                bool Using;
             }*ObjectContainer = 0x00;
     };
 
@@ -170,7 +179,6 @@
             }
             void Initialize(void) {
                 ObjectManager<StorageDriver>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
             }
             unsigned long Register(StorageDriver *Driver) {
                 Driver->DriverID = ObjectManager<StorageDriver>::Register(Driver);
@@ -179,10 +187,10 @@
             StorageDriver *GetObjectByName(const char *DriverName) {
                 int i;
                 for(i = 0; i < MaxCount; i++) {
-                    if(strlen(ObjectContainer[i].Object->DriverName) != strlen(DriverName)) {
+                    if(ObjectContainer[i].Object == 0x00) {
                         continue;
                     }
-                    if(memcmp(ObjectContainer[i].Object->DriverName , DriverName , strlen(ObjectContainer[i].Object->DriverName)) == 0) {
+                    if(strcmp(ObjectContainer[i].Object->DriverName , DriverName) == 0) {
                         return ObjectContainer[i].Object;
                     }
                 }
@@ -194,7 +202,6 @@
         public:
             void Initialize(void) {
                 ObjectManager<struct Storage>::Initialize(256);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
             }
     };
 

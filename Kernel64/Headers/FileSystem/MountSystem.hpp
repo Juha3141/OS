@@ -32,10 +32,10 @@ namespace MountSystem {
         class InterfaceHandler *Handler;
     };
     class MountInfoManager : public ObjectManager<MountInfo> {
+        friend class UniversalMountManager;
         public:
             void Initialize(void) {
                 ObjectManager<MountInfo>::Initialize(MOUNTSYSTEM_MAXCOUNT);
-                ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
             }
             unsigned long Register(struct MountInfo *MountInfo) {
                 MountInfo->MountID = ObjectManager<struct MountInfo>::Register(MountInfo);
@@ -73,6 +73,7 @@ namespace MountSystem {
             }
     };
     class UniversalMountManager { // Universal Mount Manager
+        friend class MountInfoManager;
         public:
             static UniversalMountManager *GetInstance(void) {
                 static class UniversalMountManager *Instance;
@@ -86,7 +87,8 @@ namespace MountSystem {
                 MountedListManager = new MountInfoManager;
                 MountedListManager->Initialize();
             }
-            struct MountSystem::MountInfo *GetMountInfo(const char *CompleteFileName);
+            struct MountInfo *GetMountInfo(const char *CompleteFileName);
+            struct MountInfo *GetMountInfo(unsigned long MountInfoID);
 
             struct MountInfo *RegisterInterface(const char *InterfaceName , const char *FileName , InterfaceHandler *Handler);
             struct MountInfo *MountStorage(const char *DirectoryName , struct Storage *Storage);

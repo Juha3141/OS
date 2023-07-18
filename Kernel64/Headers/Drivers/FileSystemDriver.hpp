@@ -112,16 +112,15 @@ class FileSystemManager : public ObjectManager<struct FileSystemDriver> {
         }
         void Initialize(void) {
             ObjectManager<struct FileSystemDriver>::Initialize(256);
-            ObjectContainer = (struct ObjectManager::ObjectContainer *)MemoryManagement::Allocate(sizeof(struct ObjectManager::ObjectContainer)*MaxCount);
         }
 
         FileSystemDriver *GetObjectByName(const char *FileSystemString) {
             int i;
             for(i = 0; i < MaxCount; i++) {
-                if(strlen(ObjectContainer[i].Object->FileSystemString) != strlen(FileSystemString)) {
+                if(ObjectContainer[i].Object == 0x00) {
                     continue;
                 }
-                if(memcmp(ObjectContainer[i].Object->FileSystemString , FileSystemString , strlen(ObjectContainer[i].Object->FileSystemString)) == 0) {
+                if(strcmp(ObjectContainer[i].Object->FileSystemString , FileSystemString) == 0) {
                     return ObjectContainer[i].Object;
                 }
             }
