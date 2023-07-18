@@ -10,6 +10,7 @@
 
 #include <FileSystem/MBR.hpp>
 #include <FileSystem/GPT.hpp>
+#include <FileSystem/MountSystem.hpp>
 
 #include <FileSystem/ISO9660.hpp>
 #include <FileSystem/FAT16.hpp>
@@ -23,6 +24,9 @@ namespace Shell {
         void writefile(int argc , char **argv);
         void readfile(int argc , char **argv);
         void ls(int argc , char **argv);
+
+        void storagelist(void);
+        void mount(int argc , char **argv);
         
         void mem(void);
         void memmap(void);
@@ -204,9 +208,7 @@ void Shell::DefaultCommands::ls(int argc , char **argv) {
     }
     printf("File count : %d\n" , FileCount);
     FileList = (struct FileInfo **)MemoryManagement::Allocate(FileCount*sizeof(FileInfo *));
-    printf("File list : 0x%X\n" , FileList);
     FileSystem::ReadDirectory(File , FileList);
-    printf("Read directory success\n");
     for(i = 0; i < FileCount; i++) {
         if(MaxFileNameLength < strlen(FileList[i]->FileName)) { // error??
             MaxFileNameLength = strlen(FileList[i]->FileName);
@@ -248,6 +250,95 @@ void Shell::DefaultCommands::ls(int argc , char **argv) {
     return;
 }
 
+
+void Shell::DefaultCommands::storagelist(void) {
+    int i;
+    int j;
+    int k = 0;
+    struct Storage *Storage;
+    struct Storage *Partition;
+    struct StorageDriver *Driver;
+    struct MountSystem::MountInfo *MountInfo;
+    class StorageDriverManager *DriverManager = StorageDriverManager::GetInstance();
+    for(i = 0; i < DriverManager->MaxCount; i++) {
+        if((Driver = DriverManager->GetObject(i)) == 0x00) {
+            continue;
+        }
+        for(j = 0; j < Driver->StorageManager->MaxCount; j++) {
+            if((Storage = Driver->StorageManager->GetObject(j)) == 0x00) {
+                continue;
+            }
+            printf("%s%d" , Storage->Driver->DriverName , Storage->ID);
+            if(Storage->FileSystem != 0x00) {
+                printf("(%s)" , Storage->FileSystemString);
+            }
+            if(Storage->IsMounted == true) {
+                MountInfo = MountSystem::UniversalMountManager::GetInstance()->GetMountInfo(Storage->MountInfoID);
+                printf(" - Mounted to %s" , MountInfo->AccessFileName);
+            }
+            printf("\n");
+            if(Storage->LogicalStorages != 0x00) {
+                for(k = 0; k < Storage->LogicalStorages->Count; k++) {
+                    Partition = Storage->LogicalStorages->GetObject(k);
+                    printf("  + %s%d:%d" , Partition->Driver->DriverName , Partition->ID , Partition->PartitionID);
+                    if(Partition->FileSystem != 0x00) {
+                        printf("(%s)" , Partition->FileSystemString);
+                    }
+                    if(Partition->IsMounted == true) {
+                        MountInfo = MountSystem::UniversalMountManager::GetInstance()->GetMountInfo(Partition->MountInfoID);
+                        printf(" - Mounted to %s" , MountInfo->AccessFileName);
+                    }
+                    printf("\n");
+                }
+            }
+        }
+    }
+    return;
+}
+
+void Shell::DefaultCommands::mount(int argc , char **argv) {
+    struct FileInfo *FileInfo;
+    struct Storage *Storage;
+
+    unsigned long StorageID;
+    unsigned long PartitionID;
+    char ParseCharacterString[2] = {FileSystem::ParseCharacter() , 0};
+    if(argc < 4) {
+        printf("Usage : %s [directory name] [storage name] [storage id] [optional partition id]\n" , argv[0]);
+        return;
+    }
+    int CurrentDirLength = ((TaskManagement::GetCurrentDirectoryLocation() == 0x00) ? 0 : strlen(TaskManagement::GetCurrentDirectoryLocation()));
+    char FullDirectoryName[strlen(argv[1])+1+CurrentDirLength+2];
+    if((FileInfo = FileSystem::OpenFile(argv[1] , FILESYSTEM_OPEN_READ)) == 0x00) {
+        printf("No such directory named \"%s\"\n" , argv[1]);
+        return;
+    }
+    FileSystem::CloseFile(FileInfo);
+    StorageID = atoi(argv[3]);
+    if(argc == 4) {
+        PartitionID = STORAGESYSTEM_INVALIDID;
+        Storage = StorageSystem::SearchStorage(argv[2] , StorageID);
+    }
+    else {
+        PartitionID = atoi(argv[4]);
+        Storage = StorageSystem::SearchStorage(argv[2] , StorageID , PartitionID);
+    }
+    if(Storage == 0x00) {
+        printf("Couldn't find the storage\n");
+        return;
+    }
+    if(strncmp(argv[1] , FileSystem::HeadDirectory() , 1) != 0) {
+        strcpy(FullDirectoryName , TaskManagement::GetCurrentDirectoryLocation());
+        strncat(FullDirectoryName , ParseCharacterString , 1);
+        strcat(FullDirectoryName , argv[1]);
+    }
+    else {
+        strcpy(FullDirectoryName , argv[1]);
+    }
+    if(MountSystem::UniversalMountManager::GetInstance()->MountStorage(FullDirectoryName , Storage) == 0x00) {
+        printf("Mount failed.\n");
+    }
+}
 
 void Shell::DefaultCommands::tasklist(void) {
     int i;
@@ -452,7 +543,9 @@ void Shell::ShellSystem::AddBasicCommands(void) {
     CommandList.AddCommand("writefile" , "Writes file" , (unsigned long)DefaultCommands::writefile);
     CommandList.AddCommand("readfile" , "Reads file" , (unsigned long)DefaultCommands::readfile);
     CommandList.AddCommand("ls" , "Lists content in current/targetted directory" , (unsigned long)DefaultCommands::ls);
-    
+    CommandList.AddCommand("storagelist" , "Lists registered storage to system" , (unsigned long)DefaultCommands::storagelist);
+    CommandList.AddCommand("mount" , "Mounts storage to a directory" , (unsigned long)DefaultCommands::mount);
+
     CommandList.AddCommand("mem" , "Shows status of memory usage" , (unsigned long)DefaultCommands::mem);
     CommandList.AddCommand("memmap" , "Shows the memory map" , (unsigned long)DefaultCommands::memmap);
     
@@ -615,10 +708,16 @@ void Shell::ShellSystem::ProcessKeyboardBackspace(void) {
 }
 
 void Shell::CommandListSystem::Initialize(int MaxCount)  {
+    int i;
     this->MaxCommandsCount = MaxCount;
-    CommandEntryPoint = (unsigned long*)MemoryManagement::Allocate(MaxCommandsCount*sizeof(unsigned long));
+    CommandEntryPoint = (unsigned long*)MemoryManagement::Allocate(MaxCount*sizeof(unsigned long));
     CommandNames = (char **)MemoryManagement::Allocate(MaxCount*sizeof(char *));
     CommandHelpMessages = (char **)MemoryManagement::Allocate(MaxCount*sizeof(char *));
+    for(i = 0; i < MaxCommandsCount; i++) {
+        CommandEntryPoint[i] = 0x00;
+        CommandNames[i] = 0x00;
+        CommandHelpMessages[i] = 0x00;
+    }
 }
 
 void Shell::CommandListSystem::AddCommand(const char *Name , const char *HelpMessage , unsigned long EntryPoint) {
@@ -633,12 +732,15 @@ void Shell::CommandListSystem::AddCommand(const char *Name , const char *HelpMes
 unsigned long Shell::CommandListSystem::EntryPoint(char *Name) {
     int i;
     for(i = 0; i < this->MaxCommandsCount; i++) {
+        if(this->CommandNames[i] == 0x00) {
+            continue;
+        }
         if(strcmp(Name , this->CommandNames[i]) == 0) {
             break;
         }
     }
     if(i == this->MaxCommandsCount) {
-        return 0;
+        return 0x00;
     }
     return this->CommandEntryPoint[i];
 }
@@ -781,6 +883,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
         }
     }
     SlicedCommandCount -= LongCommandSpaceCount;
+    // error
     EntryPoint = CommandList.EntryPoint(SlicedCommand[0]);
     ArgumentForCommandFunction[0] = (unsigned long)SlicedCommandCount;
     ArgumentForCommandFunction[1] = (unsigned long)SlicedCommand;
@@ -824,7 +927,7 @@ void Shell::ShellSystem::ProcessCommand(void) {
         }
     }
     for(i = 0; i < SlicedCommandCount; i++) {
-        // MemoryManagement::Free(SlicedCommand[i]);
+        MemoryManagement::Free(SlicedCommand[i]);
     }
     return;
 }
