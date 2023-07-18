@@ -26,10 +26,6 @@ LongModeEntry:
 
     lock inc dword[ActivatedCoreCount]
 
-    .L1:
-        cmp qword[KernelStackBase] , 0x00
-        jz .L1
-
     mov rcx , 27
     xor rax , rax
     xor rdx , rdx
