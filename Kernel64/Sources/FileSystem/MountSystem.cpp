@@ -6,8 +6,8 @@ void MountSystem::Initialize(void) {
 
 struct MountSystem::MountInfo *MountSystem::UniversalMountManager::GetMountInfo(const char *CompleteFileName) {
     int i;
-    struct MountInfo *FinalMountInfo;
-    struct MountInfo *MountInfo;
+    struct MountInfo *FinalMountInfo = 0x00;
+    struct MountInfo *MountInfo = 0x00;
     char TempName[strlen(CompleteFileName)+1];
     for(i = 0; CompleteFileName[i] != 0; i++) {
         if(CompleteFileName[i] == FileSystem::ParseCharacter()) {
@@ -24,6 +24,10 @@ struct MountSystem::MountInfo *MountSystem::UniversalMountManager::GetMountInfo(
     return FinalMountInfo;
 }
 
+struct MountSystem::MountInfo *MountSystem::UniversalMountManager::GetMountInfo(unsigned long MountInfoID) {
+    return MountedListManager->GetObject(MountInfoID);
+}
+
 struct MountSystem::MountInfo *MountSystem::UniversalMountManager::RegisterInterface(const char *InterfaceName , const char *FileName , MountSystem::InterfaceHandler *Handler) {
     struct MountInfo *MountInfo = (struct MountInfo *)MemoryManagement::Allocate(sizeof(struct MountInfo));
     MountInfo->Type = MountInfo::SystemInterface;
@@ -37,13 +41,26 @@ struct MountSystem::MountInfo *MountSystem::UniversalMountManager::RegisterInter
 }
 
 struct MountSystem::MountInfo *MountSystem::UniversalMountManager::MountStorage(const char *DirectoryName , struct Storage *Storage) {
+    int i;
     struct MountInfo *MountInfo = (struct MountInfo *)MemoryManagement::Allocate(sizeof(struct MountInfo));
+    if(Storage->FileSystem == 0x00) {
+        return 0x00;
+    }
+    if(Storage->IsMounted == true) {
+        return 0x00;
+    }
+    if(MountedListManager->GetObjectByCompleteName(DirectoryName) != 0x00) {
+        return 0x00;
+    }
     MountInfo->Type = MountInfo::StorageLink;
     MountInfo->TargetStorage = Storage;
 
     strcpy(MountInfo->AccessFileName , DirectoryName);
     
     MountedListManager->Register(MountInfo);
+
+    Storage->IsMounted = true;
+    Storage->MountInfoID = MountInfo->MountID;
     return MountInfo;
 }
 
