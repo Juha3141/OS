@@ -46,7 +46,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     memset(&(SFNEntry) , 0 , sizeof(struct SFNEntry));
     // Create SFN Name (Ex : HELLOW~1.TXT)
 
-    printf("FileName : %s\n" , FileName);
+    // printf("FileName : %s\n" , FileName);
     LastName = (char *)MemoryManagement::Allocate(strlen(FileName)+1);
     k = strlen(FileName);
     for(i = k-1; i >= 0; i--) {
@@ -67,7 +67,7 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
         }
         LastName[j] = 0;
     }
-    printf("Last name : %s\n" , LastName);
+    // printf("Last name : %s\n" , LastName);
     CreateSFNName(SFNName , LastName , 1);
     strncpy((char *)SFNEntry.FileName , SFNName , 11);
     // Write data to SFN Entry
@@ -86,15 +86,16 @@ bool FAT16::Driver::CreateFile(struct Storage *Storage , const char *FileName) {
     }
 
     // Write file entry to directory address, LFN comes before SFN.
-    printf("Directory Location -> : %d\n" , DirectoryLocation);
+    // printf("Directory Location -> : %d\n" , DirectoryLocation);
     WriteLFNEntry(Storage , DirectoryLocation , LastName);
     WriteSFNEntry(Storage , DirectoryLocation , &(SFNEntry));
-    
+    /*
     printf("Directory Location : %d\n" , GetRootDirectoryLocation(&(VBR)));
     printf("Allocated Cluster : %d\n" , EmptyClusterLocation);
     // Allocated sector address
     printf("Sector address : %d\n" , ClusterToSector(EmptyClusterLocation , &(VBR)));
     printf("Cluster address : 0x%X%X\n" , SFNEntry.StartingClusterHigh , SFNEntry.StartingClusterLow);
+    */
     MemoryManagement::Free(LastName);
     return true;
 }
@@ -277,9 +278,11 @@ bool FAT16::Driver::RemoveFile(struct FileInfo *FileInfo) {
     }
     LastName[j] = 0;
     
+    /*
     printf("Full Name : %s\n" , FileInfo->FileName);
     printf("LastName  : %s\n" , LastName);
     printf("Getting SFN Entry : \n");
+    */
     if(GetSFNEntry(FileInfo->Storage , FileInfo->SubdirectoryLocation , LastName , &(NewSFNEntry)) == false) {
         MemoryManagement::Free(LastName);
         MemoryManagement::Free(Data);
@@ -332,14 +335,16 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
         FileClusterSize = 1;
     }
     CurrentCluster = SectorToCluster(FileInfo->Location , &(VBR));
+    /*
     printf("Read %d clusters, from cluster #%d\n" , ClusterCount , StartingClusterIndex);
     printf("File address : %d cluster(%d sector)\n" , CurrentCluster , FileInfo->Location);
+    */
     while(1) {
         if(i == StartingClusterIndex) {
             StartingCluster = CurrentCluster;
         }
         NextCluster = FAT16::FindNextCluster(FileInfo->Storage , CurrentCluster , &(VBR));
-        printf("NextCluster : %d\n" , NextCluster);
+        // printf("NextCluster : %d\n" , NextCluster);
         if(NextCluster == 0xFFFF) {
             break;
         }
@@ -349,12 +354,14 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
     Data = (unsigned char *)MemoryManagement::Allocate(ClusterCount*VBR.BytesPerSector*VBR.SectorsPerCluster);
     ReadCluster(FileInfo->Storage , StartingCluster , ClusterCount , Data , &(VBR));
     if(FileClusterSize*VBR.BytesPerSector*VBR.SectorsPerCluster < FileInfo->FileOffset+Size) {
-        printf("Need to create new clusters\n");
+        // printf("Need to create new clusters\n");
         ExtendCluster(FileInfo->Storage , CurrentCluster , StartingCluster+ClusterCount-FileClusterSize , &(VBR));
         // Bug : I think Data overwrites some part or something..? idk
+        /*
         printf("Extended cluster\n");
         printf("New cluster count : %d\n" , ClusterCount);
         printf("StartingClusterIndex : %d\n" , StartingCluster);
+        */
     }
     printf("%d\n" , (FileInfo->FileOffset-(StartingClusterIndex*VBR.BytesPerSector*VBR.SectorsPerCluster)));
     memcpy(Data+((FileInfo->FileOffset-(StartingClusterIndex*VBR.BytesPerSector*VBR.SectorsPerCluster))) , Buffer , Size);
@@ -390,7 +397,7 @@ int FAT16::Driver::WriteFile(struct FileInfo *FileInfo , unsigned long Size , vo
     NewSFNEntry.FileSize = FileInfo->FileSize;
     CreateSFNName(SFNName , LastName , 1);
     if(RewriteSFNEntry(FileInfo->Storage , DirectoryLocation , SFNName , &(NewSFNEntry)) == false) {
-        printf("Failed :(\n");
+        // printf("Failed :(\n");
     }
 
     MemoryManagement::Free(LastName);
@@ -441,18 +448,20 @@ int FAT16::Driver::ReadDirectory(struct FileInfo *FileInfo , struct FileInfo **F
     EntryCount = GetDirectoryInfo(FileInfo->Storage , FileInfo->Location);
     GetVBR(FileInfo->Storage , &(VBR));
     DirectoryClusterSize = GetFileClusterSize(FileInfo->Storage , FileInfo->Location , &(VBR));
+    /*
     printf("Entry count : %d\n" , EntryCount);
     printf("Cluster size : %d\n" , DirectoryClusterSize);
+    */
     Directory = (unsigned char *)MemoryManagement::Allocate(DirectoryClusterSize*VBR.SectorsPerCluster*VBR.BytesPerSector);
-    printf("Allocated directory\n");
+    // printf("Allocated directory\n");
     if(FileInfo->Location == GetRootDirectoryLocation(&(VBR))) {
         FileInfo->Storage->Driver->ReadSector(FileInfo->Storage , FileInfo->Location , GetRootDirectorySize(&(VBR)) , Directory);
     }
     else {
         ReadCluster(FileInfo->Storage , SectorToCluster(FileInfo->Location , &(VBR)) , DirectoryClusterSize , Directory , &(VBR));
-        printf("Successfully read cluster\n");
+        // printf("Successfully read cluster\n");
     }
-    printf("Successfully read directory data : 0x%X\n" , Directory);
+    // printf("Successfully read directory data : 0x%X\n" , Directory);
     for(i = 0; i < EntryCount; i++) {
         SFNEntry = (struct SFNEntry *)(Directory+Offset);
         LFNEntry = (struct LFNEntry *)(Directory+Offset);
@@ -997,11 +1006,11 @@ bool FAT16::WriteSFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
 
     DirectoryClusterSize = GetFileClusterSize(Storage , DirectoryAddress , &(VBR));
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress);
-    
+    /*
     printf("DirectoryEntryCount : %d\n" , DirectoryEntryCount);
     // error
     printf("Location to write : %d\n" , DirectoryAddress);
-    
+    */
     Cluster = (unsigned char *)MemoryManagement::Allocate(VBR.BytesPerSector*VBR.SectorsPerCluster);
 
     // If root directory, take care of it differently. 
@@ -1062,8 +1071,10 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
     CreateSFNName(SFNName , FileName , 1); // To-do : number
     Checksum = GetSFNChecksum(SFNName);
     // Create LFN Entries
+    /*
     printf("SFN file name   : %s\n" , SFNName);
     printf("LFN Entry count : %d\n" , RequiredLFNEntry);
+    */
     LFNEntry = (struct LFNEntry *)MemoryManagement::Allocate((RequiredLFNEntry*sizeof(struct LFNEntry)));
     memset(LFNEntry , 0 , RequiredLFNEntry*sizeof(struct LFNEntry));
     for(i = RequiredLFNEntry-1; i >= 0; i--) {
@@ -1076,11 +1087,12 @@ bool FAT16::WriteLFNEntry(struct Storage *Storage , unsigned int DirectoryAddres
         for(j = 0; j < 6; j++) { LFNEntry[i].FileName2[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
         for(j = 0; j < 2; j++) { LFNEntry[i].FileName3[j] = ((NameOffset <= strlen(FileName)) ? ((unsigned short)FileName[NameOffset++]) : 0xFFFF); }
     }
+    /*
     printf("Directory Entry Count : %d\n" , DirectoryEntryCount);
     printf("LFNEntry              : 0x%X~0x%X\n" , LFNEntry , ((unsigned long)LFNEntry)+(RequiredLFNEntry*sizeof(struct LFNEntry)));
     printf("LFNEntry[0].Attribute : 0x%X\n" , LFNEntry[0].Attribute);
     printf("Directory Address that's gonna be... : %d\n" , DirectoryAddress);
-
+    */
     DirectoryClusterSize = GetFileClusterSize(Storage , DirectoryAddress , &(VBR));
     DirectoryEntryCount = GetDirectoryInfo(Storage , DirectoryAddress);
     // If root directory, take care of it differently. 
@@ -1200,13 +1212,11 @@ void RemoveEntryBySFNOffset(struct Storage *Storage , unsigned int DirectoryAddr
     Directory = (unsigned char *)MemoryManagement::Allocate(VBR.SectorsPerCluster*VBR.BytesPerSector*3);
     if(ClusterNumber != FAT16::SectorToCluster(DirectoryAddress , &(VBR))) {
         // The entry could intersect with two cluster; We should read two cluster in order to read one entry completely
-        printf("Intersected\n");
         FAT16::ReadCluster(Storage , PreviousClusterNumber , 2 , Directory , &(VBR));
         RelativeOffset = (Offset%(VBR.SectorsPerCluster*VBR.BytesPerSector))+(VBR.SectorsPerCluster*VBR.BytesPerSector);
     }
     else {
         // Not intersected with two cluster
-        printf("Not intersected\n");
         FAT16::ReadCluster(Storage , ClusterNumber , 1 , Directory , &(VBR));
         RelativeOffset = Offset%(VBR.SectorsPerCluster*VBR.BytesPerSector);
     }
@@ -1274,7 +1284,7 @@ bool FAT16::MarkEntryRemoved(struct Storage *Storage , unsigned int DirectoryAdd
         Directory = (unsigned char *)MemoryManagement::Allocate(GetRootDirectorySize(&(VBR))*VBR.BytesPerSector);
         Storage->Driver->ReadSector(Storage , DirectoryAddress , GetRootDirectorySize(&(VBR)) , Directory);
 
-        printf("SFNName : %s\n" , SFNName);
+        // printf("SFNName : %s\n" , SFNName);
         for(i = 0; i < GetRootDirectorySize(&(VBR))*VBR.BytesPerSector/sizeof(struct SFNEntry); i++) {
             // Search file each
             if(memcmp(((struct SFNEntry *)(Directory+Offset))->FileName , SFNName , 11) == 0) {
@@ -1328,7 +1338,7 @@ bool FAT16::MarkEntryRemoved(struct Storage *Storage , unsigned int DirectoryAdd
             if(memcmp(((struct SFNEntry *)(Directory+(Offset)))->FileName , SFNName , 11) == 0) {
                 // Absolute Offset : Based on the "Start" of the directory
                 AbsoluteOffset = Offset+(i*VBR.SectorsPerCluster*VBR.BytesPerSector);
-                printf("Found file!!, Absolute Offset : %d\n" , Offset);
+                // printf("Found file!!, Absolute Offset : %d\n" , Offset);
                 RemoveEntryBySFNOffset(Storage , DirectoryAddress , Offset);
                 MemoryManagement::Free(Directory);
                 return true;
