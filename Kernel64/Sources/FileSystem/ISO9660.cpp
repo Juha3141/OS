@@ -66,7 +66,7 @@ int ISO9660::Driver::CloseFile(struct FileInfo *FileInfo) {
 }
 
 bool ISO9660::Driver::RemoveFile(struct FileInfo *FileInfo) {
-    printf("Remove File\n");
+    printf("Remove File yet not implemented :(\n");
     return 1;
 }
 
