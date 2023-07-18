@@ -23,7 +23,7 @@
 
 #include <Shell.hpp>
 
-unsigned long KernelStackBase = 0;
+unsigned long KernelStackBase;
 unsigned long KernelStackSize = 2*1024*1024;
 
 // problem : Kernel stack is too small & overrides kernel
@@ -34,11 +34,11 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
 
 extern "C" void Main(void) {
     __asm__ ("cli");
+    KernelStackBase = 0x00;
     SystemStructure::Initialize(); // good
     TextScreen80x25::Initialize(); // good
     MemoryManagement::Initialize();
     DescriptorTables::Initialize();
-
     Keyboard::Initialize(); // ps/2 (temporary integrated keyboard driver.. I guess.)
     Mouse::Initialize();
     if(ACPI::Initialize() == false) {
@@ -58,55 +58,61 @@ extern "C" void Main(void) {
             printf("Using Standard Addresses\n");
         }
     }
-
+// good
     TaskManagement::Initialize();
     LocalAPIC::Timer::Initialize();
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
     IOAPIC::InitializeRedirectionTable();
+// good
+    // To-do : Make proper stack system
+    printf("Core Count : %d\n" , KernelStackSize*CoreInformation::GetInstance()->CoreCount);
+    KernelStackBase = (unsigned long)MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
+    memset(((void *)KernelStackBase) , 0 , (KernelStackSize*CoreInformation::GetInstance()->CoreCount));
+    KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
+
     LocalAPIC::ActivateAPCores();
     __asm__ ("sti");
-
-    // To-do : Make proper stack system
-    KernelStackBase = (unsigned long)MemoryManagement::Allocate(KernelStackSize*CoreInformation::GetInstance()->CoreCount);
-    KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
     
+    printf("Kernel stack base initialized\n");
     FileSystem::Initialize();
-    MountSystem::Initialize();
     printf("File System Initialized\n");
+    MountSystem::Initialize();
+    printf("Mount System Initialized\n");
     StorageSystem::Initialize();
     printf("Storage System Initialized\n");
+    
     ISO9660::Register();
     FAT16::Register();
     printf("File System Registered\n");
     
     RAMDiskDriver::Register();
     IDEDriver::Register();
+    printf("Storage Driver Registered\n");
     PCI::Detect();
+    printf("PCI Driver Registered\n");
 
     unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
     unsigned char *RAMDiskBuffer2 = (unsigned char *)MemoryManagement::Allocate(16384*1024);
     struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
     memset(RAMDiskBuffer , 0 , 16*1024*1024);
     memset(RAMDiskBuffer2 , 0 , 16*1024*1024);
+    printf("RAMDisk created - 1\n");
     struct Storage *MainStorage = RAMDiskDriver::CreateRAMDisk(16*1024*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
+    printf("RAMDisk created - 2\n");
     CreatePartition_FAT16(MainStorage , "LEL" , 128 , 32768-128);
     
     struct Storage *MainStoragePartition = MainStorage->LogicalStorages->GetObject(0);
     FileSystem::SetHeadStorage(MainStoragePartition);
     printf("MainStorage : 0x%X\n" , MainStoragePartition);
     
-    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd1");
-    MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd1" , Storage);
-    
     struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
     Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer2);
     Storage =  RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer2);
-    MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "rd2");
 
-    MountSystem::UniversalMountManager::GetInstance()->MountStorage("@/rd2" , Storage);
     MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "System");
     Shell::ShellSystem ShellSystem;
+    
     ShellSystem.Start();
 
     while(1) {
@@ -164,7 +170,7 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     StorageSystem::AddLogicalDrive(Storage->Driver , Storage , &(Partition) , 1); // Setup basic information
     
     CurrentPartition = Storage->LogicalStorages->GetObject(Storage->LogicalStorages->Count-1);
-
+    printf("CurrentPartition : 0x%X\n" , CurrentPartition);
     FAT16::WriteVBR(&(VBR) , CurrentPartition , "POTATOOS" , "NO NAME   " , "FAT16     ");
     memset(BootSector , 0 , 512);
     memcpy(BootSector , &(VBR) , sizeof(struct FAT16::VBR));
@@ -173,7 +179,7 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     BootSector[511] = 0xAA;
     CurrentPartition->Driver->WriteSector(CurrentPartition , 0 , 1 , BootSector);
     MemoryManagement::Free(BootSector);
-    
+
     memset(&(VolumeLabelEntry) , 0 , sizeof(struct FAT16::SFNEntry));
     FAT16::CreateVolumeLabelName(VolumeLabelSFNName , VolumeLabel);
     memcpy(VolumeLabelEntry.FileName , VolumeLabelSFNName , 11);
@@ -184,6 +190,7 @@ void CreatePartition_FAT16(struct Storage *Storage , const char *VolumeLabel , u
     FAT16::WriteSFNEntry(CurrentPartition , FAT16::GetRootDirectoryLocation(&(VBR)) , &(VolumeLabelEntry));
     
     CurrentPartition->FileSystem = new FAT16::Driver;
+    strcpy(CurrentPartition->FileSystemString , "FAT16");
 }
 
 extern "C" void APStartup(void) {
