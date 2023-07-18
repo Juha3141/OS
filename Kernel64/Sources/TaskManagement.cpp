@@ -176,6 +176,7 @@ void TaskManagement::SchedulingManager::Initialize(void) {
     MainTask = (struct Task *)MemoryManagement::Allocate(sizeof(struct Task));
     MainTask->ID = this->CurrentMaxAllocatedID++;
     MainTask->Flags = TASK_FLAGS_PRIVILAGE_KERNEL;
+    MainTask->SubdirectoryLocation = (char *)MemoryManagement::Allocate(24);
 
     SetTaskRegisters(MainTask , 0x00 , 8*1024*1024);
     strcpy(MainTask->Name , "kernel");
