@@ -67,16 +67,29 @@ bool MPFloatingTable::SaveCoresInformation(void) {
     for(i = 0; i < TableHeader->EntryCount; i++) {
         switch(*((unsigned char*)TableAddress)) {
             case 0:
+                TableAddress += sizeof(struct Entries::Processor);
                 CoreCount++;
+                break;
+            case 1:
+                TableAddress += sizeof(struct Entries::BUS);
+                break;
+            case 2:
+                TableAddress += sizeof(struct Entries::IOAPIC);
+                break;
+            case 3:
+                TableAddress += sizeof(struct Entries::IOInterruptAssignment);
+                break;
+            case 4:
+                TableAddress += sizeof(struct Entries::LocalInterrupt);
+                break;
             default:
                 TableAddress += 8;
                 break;
-        }
+        };
     }
-    printf("Core count : %d\n" , CoreCount);
+    CoreInformation->CoreCount = CoreCount;
     CoreInformation->LocalAPICID = (unsigned int *)MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
     CoreInformation->LocalAPICProcessorID = (unsigned int *)MemoryManagement::Allocate(CoreCount*sizeof(unsigned int));
-    CoreInformation->CoreCount = CoreCount;
     TableAddress = MPFloatingPointer->PhysicalAddressPointer+sizeof(struct MPFloatingTableHeader);
     for(i = 0; i < TableHeader->EntryCount; i++) {
         switch(*((unsigned char*)TableAddress)) {
@@ -87,17 +100,17 @@ bool MPFloatingTable::SaveCoresInformation(void) {
                 j++;
                 TableAddress += sizeof(struct Entries::Processor);
                 /*
-                printf("Entry : Processor\n");
+                printf(" ==== Entry : Processor ==== \n");
                 printf("CPU Flags           : %d\n" , ProcessorEntry->CPUFlags);
-                printf("CPU Signature       : %d\n" , ProcessorEntry->CPUSignature);
+                // printf("CPU Signature       : %d\n" , ProcessorEntry->CPUSignature);
                 printf("Local APIC ID       : %d\n" , ProcessorEntry->LocalAPICID);
-                printf("Local APIC ID Ver.  : %d\n" , ProcessorEntry->LocalAPICVersion);
+                // printf("Local APIC ID Ver.  : %d\n" , ProcessorEntry->LocalAPICVersion);
                 */
                 break;
             case 1:
                 /*
                 BUSEntry = (struct Entries::BUS *)TableAddress;
-                printf("Entry : Bus\n");
+                printf(" ==== Entry : Bus ==== \n");
                 printf("BUS ID   : %d\n" , BUSEntry->BusID);
                 memcpy(BusName , BUSEntry->BusTypeString , 6);
                 BusName[6] = 0;
@@ -107,6 +120,7 @@ bool MPFloatingTable::SaveCoresInformation(void) {
                 break;
             case 2:
                 IOAPICEntry = (struct Entries::IOAPIC *)TableAddress;
+                // printf(" ==== Entry : IOAPIC ==== \n");
                 printf("IOAPIC ID               : 0x%X\n" , IOAPICEntry->IOAPICID);
                 TableAddress += sizeof(struct Entries::IOAPIC);
                 printf("IOAPIC Register Address : 0x%X\n" , IOAPICEntry->IOAPICRegisterAddress);
@@ -135,7 +149,6 @@ bool MPFloatingTable::SaveCoresInformation(void) {
 
     __asm__ ("mov %0 , eax":"=r"(EAX)); // EAX : Lower 32 bits
     __asm__ ("mov %0 , edx":"=r"(EDX)); // EDX : Higher 32 bits
-    
     CoreInformation->LocalAPICAddress = (EDX << 31)|EAX;
     // Clear flag bits to only get the address, which has size of 12 bits.
     CoreInformation->LocalAPICAddress ^= (CoreInformation->LocalAPICAddress & 0b111111111111);
