@@ -4,11 +4,12 @@
 #include <stdarg.h>
 
 #define BOOTLOADER_ADDRESS 0x7C00
+#define BOOTLOADERINFO_ADDRESS (BOOTLOADER_ADDRESS+512-(sizeof(BOOTLOADERINFO)))
 #define KERNEL64_ADDRESS 0x100000
 #define APLOADER_ADDRESS 0x8000
 #define TEMPORARY_SAFE_ADDRESS 0xC000
 #define PML4_ADDRESS 0x10000
-#define BYTES_PER_SECTOR 2048
+#define BYTES_PER_SECTOR 512
 #define TEMPAREA_ADDRESS 0x500
 
 #define PML4_ENTRYCOUNT 512
@@ -41,25 +42,26 @@ typedef struct {
 	unsigned char Reserved;
 	unsigned short SectorCountToRead;
 	unsigned int MemoryAddress;
-	unsigned long SectorStartAddress;
+	unsigned int SectorStartAddress;
+	unsigned int SectorStartAddressHigh;
 }DISKADDRESSPACKET;
 
 typedef struct {
-	// Unnecessary things for protect-mode kernel
-    unsigned short JumpCode;
-	unsigned short PrimaryVolumeDescriptorAddress;
-	unsigned short PathTableAddress;
-	unsigned short DirectorySectorAddress;
-    unsigned char DirectoryRecordSize;
-	unsigned char KernelLoaderFileName[13];
+	unsigned int KernelLoaderStartAddress;
+	unsigned int APLoaderStartAddress;
+	unsigned int RootDirectoryBuffer;
+	unsigned int RootDirectoryLocation;
+	unsigned int RootDirectorySize;
 	unsigned int KernelLoaderLocation;
 	unsigned int KernelLoaderSectorSize;
-	unsigned int StaticKernelLoaderStartAddress;
-    unsigned int StaticAPLoaderStartAddress;
-	// Most importtant thing
-	unsigned char DriveNumber;
 
-    DISKADDRESSPACKET DAP;
+	DISKADDRESSPACKET DAP;
+
+	unsigned char DriveNumber;
+	unsigned char KernelLoaderName[12];
+	
+	unsigned char Reserved[20];
+	unsigned short Signature;
 }BOOTLOADERINFO;
 
 typedef struct {

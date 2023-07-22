@@ -2,6 +2,7 @@
 #include <BIOS.h>
 #include <Main.h>
 #include <ISO9660.h>
+#include <FAT16.h>
 
 #define KERNEL32
 #include "../../Kernel64/Headers/Drivers/BootRAMDisk.hpp"
@@ -19,42 +20,56 @@ void CreatePML4Entry(unsigned int Address);
 unsigned int ManualProbe(unsigned int Address);
 
 void Main(void) {
-	unsigned int DirectoryRecordLocation = 0x500+(2048*2);
-	unsigned int TemporaryBufferLocation = 0x500;
+	int i;
+
+	const char Kernel64Name[12] = "KERNEL  KRN";
+
+	unsigned int RootDirectoryLocation = 0x500;
 
 	unsigned int KernelSectorLocation;
 	unsigned int KernelSectorSize;
 	unsigned int KernelSize;
 
-	unsigned int VolumeSpaceSize;
+	unsigned int TotalSectorCount;
 	
 	unsigned int *RAMDiskSignature = (unsigned int *)BOOTRAMDISK_ADDRESS;
 	unsigned int Address = KERNEL64_ADDRESS;
 	
-	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADER_ADDRESS;
-	struct PVD *PVD = (struct PVD *)0x500;
-	struct DirectoryRecord *DirectoryRecordSector;
+	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADERINFO_ADDRESS;
+	struct SFNEntry *SFNEntry = (struct SFNEntry *)RootDirectoryLocation;
+	struct SFNEntry KernelSFNEntry;
+
+	struct VBR VBR;
+
 	ClearScreen(0x07);
 	BIOSINT_PrintString("Hello world in Kernel32\r\n");
+	// Backup E820 Entry
 	memcpy((unsigned char *)0x3FF400 , (unsigned char *)0xA000 , sizeof(struct QuerySystemAddressMap)*128);
-	while(1) {
-		DirectoryRecordSector = (struct DirectoryRecord *)DirectoryRecordLocation;
-		if(DirectoryRecordSector->DirectoryLength == 0) {
+	
+	// Find kernel file entry from SFN entry
+	for(i = 0; i < 32; i++) {
+		// BIOSINT_printf("SFNEntry->FileName : %s\r\n" , SFNEntry->FileName);
+		if(strncmp(SFNEntry->FileName , Kernel64Name  , 11) == 0) {
+			BIOSINT_printf("Found file!\r\n");
+			memcpy(&(KernelSFNEntry) , SFNEntry , sizeof(struct SFNEntry));
 			break;
 		}
-		if(strncmp((unsigned char *)(DirectoryRecordLocation+sizeof(struct DirectoryRecord)) , "KERNEL.KRN" , DirectoryRecordSector->FileIdentifierLength) == 0) {
-			BIOSINT_printf("Found Kernel , Location : %d , DataLength : %d\r\n" , DirectoryRecordSector->LocationL , DirectoryRecordSector->DataLengthL);
-			KernelSectorLocation = DirectoryRecordSector->LocationL;
-			KernelSize = DirectoryRecordSector->DataLengthL;
-			KernelSectorSize = (KernelSize/BYTES_PER_SECTOR)+((KernelSize%BYTES_PER_SECTOR == 0) ? 0 : 1);
-		}
-		BIOSINT_printf("Locating Kernel, DataLength : %d , DirectoryRecordSector : 0x%X\r\n" , DirectoryRecordSector->DirectoryLength , DirectoryRecordSector);
-		DirectoryRecordLocation += DirectoryRecordSector->DirectoryLength;
+
+		SFNEntry = (struct SFNEntry *)(((unsigned int)SFNEntry)+sizeof(struct SFNEntry));
 	}
+	if(i == 32) {
+		BIOSINT_printf("Kernel not found.\r\n");
+		while(1) {
+			;
+		}
+	}
+	// Found file
 	// objective : 1. Load Kernel to proper location
 	// 			   2. Load AP Loader to proper location
 	//             3. Copy disk to RAM disk location
 	memcpy((unsigned int *)TEMPORARY_SAFE_ADDRESS , (unsigned int *)APLOADER_ADDRESS , BYTES_PER_SECTOR*1);
+	
+	// Checking whether the area for kernel is cleared
 	*((unsigned int *)0x400000) = 0xCAFEBABE;
 	BIOSINT_printf("Clearing Kernel Area ... ");
 	// Location of Kernel64 stack : 0x400000~0x500000
@@ -67,27 +82,25 @@ void Main(void) {
 			}
 		}
 	}
+	// If not cleared, panic
 	if(*((unsigned int *)0x400000) == 0xCAFEBABE) {
 		BIOSINT_printf("Error\r\n");
 		while(1) {
 			;
 		}
 	}
+
 	BIOSINT_printf("Done\r\n");
 	// There's some weird phenomenon that the data still exists after rebooting the machine...
 	// So I made a makeshift heap initializer.
+	BIOSINT_printf("BootLoaderInfo      : 0x%X\r\n" , BootLoaderInfo);
+	BIOSINT_printf("BootLoaderInfo->DAP : 0x%X\r\n" , &(BootLoaderInfo->DAP));
+	BIOSINT_printf("DriveNumber         : 0x%X\r\n" , BootLoaderInfo->DriveNumber);
+	
+	GetVBR(&(VBR));
 	BIOSINT_printf("Loading Kernel ... ");
-	LoadSectorToMemory(KERNEL64_ADDRESS , KernelSectorLocation , KernelSectorSize);
-	BIOSINT_printf("Done\r\n");
-	BootLoaderInfo->DAP.MemoryAddress = 0x500;
-	BootLoaderInfo->DAP.SectorCountToRead = 1;
-	BootLoaderInfo->DAP.SectorStartAddress = 0x10; // Location of PVD
-	DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
-	VolumeSpaceSize = PVD->VolumeSpaceSizeL;
-	BIOSINT_printf("Loading RAM Disk ... ");
-	LoadSectorToMemory(BOOTRAMDISK_ADDRESS , 0 , VolumeSpaceSize);
-	RAMDiskSignature[0] = 0xACE101FF;
-	RAMDiskSignature[1] = 0xC001DABF;
+	KernelSectorSize = (KernelSFNEntry.FileSize/BYTES_PER_SECTOR)+(KernelSFNEntry.FileSize%BYTES_PER_SECTOR != 0);
+	LoadSectorToMemory(KERNEL64_ADDRESS , ClusterToSector((KernelSFNEntry.StartingClusterHigh << 16)|KernelSFNEntry.StartingClusterLow , &(VBR)) , KernelSectorSize);
 	BIOSINT_printf("Done\r\n");
 	BIOSINT_printf("Relocating Kernel Loader ... ");
 	memcpy((unsigned int *)APLOADER_ADDRESS , (unsigned int *)TEMPORARY_SAFE_ADDRESS , BYTES_PER_SECTOR*1);
@@ -137,9 +150,9 @@ void CreatePML4Entry(unsigned int Address) {
 
 void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber , unsigned int SectorSize) {
 	int i;
-	const short OneLoadSize = 14;
+	const short OneLoadSize = 20;
 	const unsigned int LoadAddress = 0x500;
-	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADER_ADDRESS;
+	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADERINFO_ADDRESS;
 	if(SectorSize < OneLoadSize) {
 		BootLoaderInfo->DAP.MemoryAddress = LoadAddress;
 		BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
@@ -155,7 +168,7 @@ void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber ,
 		DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
 		SectorNumber += OneLoadSize;
 		memcpy((unsigned int *)MemoryAddress , (unsigned int *)LoadAddress , OneLoadSize*BYTES_PER_SECTOR);
-		MemoryAddress += OneLoadSize*2048;
+		MemoryAddress += OneLoadSize*BYTES_PER_SECTOR;
 	}
 	if(SectorSize%OneLoadSize != 0) {
 		BootLoaderInfo->DAP.MemoryAddress = LoadAddress;

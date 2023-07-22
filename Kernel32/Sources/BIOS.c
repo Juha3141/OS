@@ -1,5 +1,6 @@
 #include <BIOS.h>
 #include <Essential.h>
+#include <Main.h>
 
 int LocalX;
 int LocalY;
@@ -32,4 +33,14 @@ void BIOSINT_MoveCursor(int X , int Y) {
 void BIOSINT_GetCursor(int *X , int *Y) {
     *X = LocalX;
     *Y = LocalY;
+}
+
+void BIOSINT_ReadSector(unsigned int SectorNumber , unsigned int SectorCountToRead , unsigned char *Buffer) {
+	const unsigned int LoadAddress = 0x500;
+	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADERINFO_ADDRESS;
+    BootLoaderInfo->DAP.MemoryAddress = (unsigned int)Buffer;
+	BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
+    BootLoaderInfo->DAP.SectorStartAddressHigh = 0;
+	BootLoaderInfo->DAP.SectorCountToRead = SectorCountToRead;
+	DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
 }
