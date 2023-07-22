@@ -6,5 +6,6 @@ void BIOSINT_MoveCursor(int X , int Y);
 void BIOSINT_GetCursor(int *X , int *Y);
 void BIOSINT_PrintString(const char *String);
 void BIOSINT_printf(const char *Format , ...);
+void BIOSINT_ReadSector(unsigned int SectorNumber , unsigned int SectorCountToRead , unsigned char *Buffer);
 
 #endif
