@@ -7,7 +7,7 @@ bool FAT16::Register(void) {
 
 bool FAT16::Driver::Check(struct Storage *Storage) {
     unsigned char *Buffer;
-    struct VBR *BootSector;
+    struct VBR *BootSector; 
     Buffer = (unsigned char *)MemoryManagement::Allocate(Storage->PhysicalInfo.Geometry.BytesPerSector);
     if(Storage->Driver->ReadSector(Storage , 0 , 1 , Buffer) != Storage->PhysicalInfo.Geometry.BytesPerSector) {
         printf("Failed reading\n");
@@ -604,10 +604,10 @@ void FAT16::WriteVBR(struct VBR *VBR , struct Storage *Storage , const char *OEM
     // determine cluster size
     VBR->SectorsPerCluster = 0;
     printf("TotalSectorCount : %d\n" , TotalSectorCount);
-    if(TotalSectorCount < 32768) { // 7MB~16MB : 2KB
+    if(TotalSectorCount <= 32768) { // 7MB~16MB : 2KB
         VBR->SectorsPerCluster = 4;
     }
-    if((TotalSectorCount >= 32768) && (TotalSectorCount < 65536)) { // 17MB~32MB : 512B
+    if((TotalSectorCount > 32768) && (TotalSectorCount < 65536)) { // 17MB~32MB : 512B
         VBR->SectorsPerCluster = 1;
     }
     if((TotalSectorCount >= 65536) && (TotalSectorCount < 131072)) { // 33MB~64MB : 1KB
@@ -631,7 +631,7 @@ void FAT16::WriteVBR(struct VBR *VBR , struct Storage *Storage , const char *OEM
     if((TotalSectorCount >= 4194304) && (TotalSectorCount < 8388608)) { // 2049~4096MB : 64KB
         VBR->SectorsPerCluster = 128;
     }
-    VBR->ReservedSectorCount = 1; // temporarily set to 1
+    VBR->ReservedSectorCount = VBR->SectorsPerCluster; // To
     // determine root directory entry count
     // used some of code from :
     // https://github.com/Godzil/dosfstools/blob/master/src/mkdosfs.c, line 603
@@ -668,9 +668,7 @@ void FAT16::WriteVBR(struct VBR *VBR , struct Storage *Storage , const char *OEM
     }
     // VBR->FATSize16 = ((TotalSectorCount/VBR->SectorsPerCluster)*sizeof(unsigned short)/Storage->PhysicalInfo.Geometry.BytesPerSector)-1;
     RootDirectorySectorCount = ((VBR->RootDirectoryEntryCount*32)+(VBR->BytesPerSector-1))/VBR->BytesPerSector;
-    unsigned int T1 = TotalSectorCount-(VBR->ReservedSectorCount+RootDirectorySectorCount);
-    unsigned int T2 = (256*VBR->SectorsPerCluster)+VBR->NumberOfFAT;
-    VBR->FATSize16 = (T1+(T2-1))/T2;
+    VBR->FATSize16 = 128;
     printf("FATSize16                : %d\n" , VBR->FATSize16);
     printf("Root Directory Location : %d\n" , VBR->ReservedSectorCount+(VBR->FATSize16*VBR->NumberOfFAT));
     printf("Root Directory Size     : %d\n" , ((((VBR->RootDirectoryEntryCount*32)+(VBR->BytesPerSector))/VBR->BytesPerSector)-1));
