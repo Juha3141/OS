@@ -2,7 +2,7 @@ BOOTLOADERFILE = BootLoader.asm
 KERNEL16FILE = Kernel16.asm
 APLOADERFILE = APLoader.asm
 TEMPORARYFOLDER = ../Temporary
-ISOFOLDER = ../iso
+IMGFOLDER = ../img
 
 CROSSLD = i686-linux-gnu-ld
 

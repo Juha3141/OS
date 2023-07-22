@@ -2,7 +2,7 @@ SOURCESFOLDER = Sources
 HEADERSFOLDER = Headers
 TEMPORARYFOLDER = ../Temporary
 ESSENTIALLIBRARYFOLDER = EssentialLibrary
-ISOFOLDER = ../iso
+IMGFOLDER = ../img
 MAINKERNELTEMPORARYFOLDER = $(TEMPORARYFOLDER)/Kernel64
 
 CC = x86_64-elf-g++
@@ -24,7 +24,7 @@ Shell.obj
 
 ASMSOURCE = Entry.asm
 ASMSOURCE2 = AssemblyInterruptHandler.asm
-TARGET = $(ISOFOLDER)/Kernel.krn
+TARGET = $(IMGFOLDER)/Kernel.krn
 
 prepare:
 	mkdir $(MAINKERNELTEMPORARYFOLDER)

@@ -12,11 +12,11 @@ LDOPTIONS = -m elf_i386
 MAINASMSOURCE = Kernel32.asm
 ENTRYSOURCE	 = Entry.asm
 CO-ASMSOURCE = Assembly.asm
-MAINSOURCES = Main.obj string.obj vsprintf.obj BIOS.obj
+MAINSOURCES = Main.obj string.obj vsprintf.obj BIOS.obj FAT16.obj
 LINKERSCRIPT = Linker.ld
 ELF = $(TEMPORARYFOLDER)/Kernel32.elf
 PREP = $(TEMPORARYFOLDER)/Kernel32.bin
-ISOFOLDER = ../iso
+IMGFOLDER = ../img
 TARGET = KernelLoader.ldr
 
 prepare:
@@ -25,7 +25,7 @@ prepare:
 all: prepare asm $(MAINSOURCES)
 	cd $(KERNEL32TEMPORARYFOLDER); $(LD) $(LDOPTIONS) -T ../../Kernel32/$(LINKERSCRIPT) -o ../$(ELF) Entry.obj $(MAINSOURCES) Assembly.obj
 	$(OBJCOPY) -O binary $(ELF) $(PREP)
-	./KernelLoaderMaker $(TEMPORARYFOLDER)/Loaders/Kernel16.bin $(PREP) $(TEMPORARYFOLDER)/Loaders/APLoader.bin $(ISOFOLDER)/$(TARGET) 2048 0
+	./KernelLoaderMaker $(TEMPORARYFOLDER)/Loaders/Kernel16.bin $(PREP) $(TEMPORARYFOLDER)/Loaders/APLoader.bin $(IMGFOLDER)/$(TARGET) 2048 0
 asm:
 	nasm $(SOURCESFOLDER)/$(ENTRYSOURCE) -f elf32 -o $(KERNEL32TEMPORARYFOLDER)/Entry.obj
 	nasm $(SOURCESFOLDER)/$(CO-ASMSOURCE) -f elf32 -o $(KERNEL32TEMPORARYFOLDER)/Assembly.obj
