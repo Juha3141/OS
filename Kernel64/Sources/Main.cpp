@@ -93,23 +93,15 @@ extern "C" void Main(void) {
     printf("PCI Driver Registered\n");
 
     unsigned char *RAMDiskBuffer = (unsigned char *)MemoryManagement::Allocate(16384*1024);
-    unsigned char *RAMDiskBuffer2 = (unsigned char *)MemoryManagement::Allocate(16384*1024);
-    struct Storage *Storage = RAMDiskDriver::CreateRAMDisk((BOOTRAMDISK_ENDADDRESS-BOOTRAMDISK_ADDRESS)/BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_BYTES_PER_SECTOR , BOOTRAMDISK_ADDRESS);
     memset(RAMDiskBuffer , 0 , 16*1024*1024);
-    memset(RAMDiskBuffer2 , 0 , 16*1024*1024);
     printf("RAMDisk created - 1\n");
     struct Storage *MainStorage = RAMDiskDriver::CreateRAMDisk(16*1024*1024/512 , 512 , (unsigned long)RAMDiskBuffer);
     printf("RAMDisk created - 2\n");
-    CreatePartition_FAT16(MainStorage , "LEL" , 128 , 32768-128);
+    CreatePartition_FAT16(MainStorage , "LEL" , 128 , 32768);
     
     struct Storage *MainStoragePartition = MainStorage->LogicalStorages->GetObject(0);
     FileSystem::SetHeadStorage(MainStoragePartition);
-    printf("MainStorage : 0x%X\n" , MainStoragePartition);
     
-    struct FileInfo *File = Storage->FileSystem->OpenFile(Storage , "RDIMG.IMG" , FILESYSTEM_OPEN_READ);
-    Storage->FileSystem->ReadFile(File , File->FileSize , RAMDiskBuffer2);
-    Storage =  RAMDiskDriver::CreateRAMDisk(16384*1024/512 , 512 , (unsigned long)RAMDiskBuffer2);
-
     MainStoragePartition->FileSystem->CreateDir(MainStoragePartition , "System");
     Shell::ShellSystem ShellSystem;
     
