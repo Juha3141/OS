@@ -1,18 +1,24 @@
-BOOTLOADERFILE = BootLoader.asm
-KERNEL16FILE = Kernel16.asm
-APLOADERFILE = APLoader.asm
-TEMPORARYFOLDER = ../Temporary
+BINARYFOLDER = ../Binary
+LOADERBINARYFOLDER = $(BINARYFOLDER)/Loader
 IMGFOLDER = ../img
 
-CROSSLD = i686-linux-gnu-ld
-
-all: prepare
-	nasm $(BOOTLOADERFILE) -f bin -o $(TEMPORARYFOLDER)/BootLoader.bin
-	nasm $(KERNEL16FILE) -f bin -o $(TEMPORARYFOLDER)/Loaders/Kernel16.bin
-	nasm $(APLOADERFILE) -f bin -o $(TEMPORARYFOLDER)/Loaders/APLoader.bin
-
-prepare:
-	mkdir $(TEMPORARYFOLDER)/Loaders
+LOADER = KernelLoader.ldr
+TARGET = OS.img
 
 clean:
-	rm -rf $(TEMPORARYFOLDER)/$(TARGET)
+	make -C x16 clean
+	make -C x32 clean
+
+all: Buildx16 Buildx32
+	cp ../Kernel/Kernel.krn $(IMGFOLDER) 
+	./KernelLoaderMaker $(LOADERBINARYFOLDER)/x16/Kernel16.bin $(LOADERBINARYFOLDER)/x32/Kernel32.bin $(LOADERBINARYFOLDER)/x16/APLoader.bin $(IMGFOLDER)/$(LOADER) 2048 0
+	qemu-img create ../$(TARGET) -f raw 32M
+	mkfs.fat ../$(TARGET)
+	dd if=$(LOADERBINARYFOLDER)/x16/BootLoader.bin of=../$(TARGET) bs=512 count=1 conv=notrunc
+	mcopy -i ../$(TARGET) $(IMGFOLDER)/*.* ::
+
+Buildx16:
+	make -C x16 all
+
+Buildx32:
+	make -C x32 all
