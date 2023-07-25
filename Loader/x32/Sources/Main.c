@@ -96,6 +96,7 @@ void Main(void) {
 	BIOSINT_printf("DriveNumber         : 0x%X\r\n" , BootLoaderInfo->DriveNumber);
 	
 	GetVBR(&(VBR));
+	BIOSINT_printf("Kernel Location : %d sector\r\n" , ClusterToSector((KernelSFNEntry.StartingClusterHigh << 16)|KernelSFNEntry.StartingClusterLow , &(VBR)));
 	BIOSINT_printf("Loading Kernel ... ");
 	KernelSectorSize = (KernelSFNEntry.FileSize/BYTES_PER_SECTOR)+(KernelSFNEntry.FileSize%BYTES_PER_SECTOR != 0);
 	LoadSectorToMemory(KERNEL64_ADDRESS , ClusterToSector((KernelSFNEntry.StartingClusterHigh << 16)|KernelSFNEntry.StartingClusterLow , &(VBR)) , KernelSectorSize);
@@ -154,6 +155,7 @@ void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber ,
 	if(SectorSize < OneLoadSize) {
 		BootLoaderInfo->DAP.MemoryAddress = LoadAddress;
 		BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
+		BootLoaderInfo->DAP.SectorStartAddress += BootLoaderInfo->PartitionStartAddress;
 		BootLoaderInfo->DAP.SectorCountToRead = SectorSize;
 		DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
 		memcpy((unsigned int *)MemoryAddress , (unsigned int *)LoadAddress , SectorSize*BYTES_PER_SECTOR);
@@ -162,6 +164,7 @@ void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber ,
 	for(i = 0; i < (int)(SectorSize/OneLoadSize); i++) {
 		BootLoaderInfo->DAP.MemoryAddress = LoadAddress;
 		BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
+		BootLoaderInfo->DAP.SectorStartAddress += BootLoaderInfo->PartitionStartAddress;
 		BootLoaderInfo->DAP.SectorCountToRead = OneLoadSize;
 		DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
 		SectorNumber += OneLoadSize;
@@ -171,6 +174,7 @@ void LoadSectorToMemory(unsigned int MemoryAddress , unsigned int SectorNumber ,
 	if(SectorSize%OneLoadSize != 0) {
 		BootLoaderInfo->DAP.MemoryAddress = LoadAddress;
 		BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
+		BootLoaderInfo->DAP.SectorStartAddress += BootLoaderInfo->PartitionStartAddress;
 		BootLoaderInfo->DAP.SectorCountToRead = SectorSize%OneLoadSize;
 		DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);
 		memcpy((unsigned int *)MemoryAddress , (unsigned int *)LoadAddress , (SectorSize%OneLoadSize)*BYTES_PER_SECTOR);

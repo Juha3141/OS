@@ -39,7 +39,7 @@ void BIOSINT_ReadSector(unsigned int SectorNumber , unsigned int SectorCountToRe
 	const unsigned int LoadAddress = 0x500;
 	BOOTLOADERINFO *BootLoaderInfo = (BOOTLOADERINFO *)BOOTLOADERINFO_ADDRESS;
     BootLoaderInfo->DAP.MemoryAddress = (unsigned int)Buffer;
-	BootLoaderInfo->DAP.SectorStartAddress = SectorNumber;
+	BootLoaderInfo->DAP.SectorStartAddress = SectorNumber+BootLoaderInfo->PartitionStartAddress;
     BootLoaderInfo->DAP.SectorStartAddressHigh = 0;
 	BootLoaderInfo->DAP.SectorCountToRead = SectorCountToRead;
 	DoBIOSInterrupt(0x13 , 0x4200 , 0x00 , 0x00 , (BootLoaderInfo->DriveNumber & 0xFF) , &(BootLoaderInfo->DAP) , 0x00);

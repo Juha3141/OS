@@ -47,11 +47,8 @@ typedef struct {
 }DISKADDRESSPACKET;
 
 typedef struct {
-	unsigned int KernelLoaderStartAddress;
-	unsigned int APLoaderStartAddress;
-	unsigned int RootDirectoryBuffer;
 	unsigned int RootDirectoryLocation;
-	unsigned int RootDirectorySize;
+	unsigned short RootDirectorySize;
 	unsigned int KernelLoaderLocation;
 	unsigned int KernelLoaderSectorSize;
 
@@ -59,8 +56,9 @@ typedef struct {
 
 	unsigned char DriveNumber;
 	unsigned char KernelLoaderName[12];
+	unsigned int PartitionStartAddress;
 	
-	unsigned char Reserved[20];
+	unsigned char Reserved[5];
 	unsigned short Signature;
 }BOOTLOADERINFO;
 

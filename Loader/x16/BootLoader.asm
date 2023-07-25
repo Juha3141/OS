@@ -19,13 +19,13 @@ SectorsPerCluster:          db 4
 ReservedSectorCount:        dw 4
 NumberOfFAT:                db 2
 RootDirectoryEntryCount:    dw 512
-TotalSector16:              dw 0
+TotalSector16:              dw 65534
 MediaType:                  db 0xF8
-FATSize16:                  dw 128
+FATSize16:                  dw 64
 SectorsPerTrack:            dw 63 ; Default CHS
 NumberOfHeads:              dw 16
 HiddenSectors:              dd 0x00
-TotalSectors32:             dd 131072
+TotalSectors32:             dd 0x00
 INT0x13DriveNumber:         db 0x80
 Reserved:                   db 0x00
 BootSignature:              db 0x27
@@ -34,8 +34,13 @@ VolumeLabel:                db "NO NAME    "
 FileSystemType:             db "FAT16   "
 
 Start:
+    mov ax , 0x00
+    mov ds , ax
+    mov ecx , dword[0x7C00-4] ; Location of PartitionStartAddress
+
     mov ax , 0x07C0
     mov ds , ax
+    mov dword[PartitionStartAddress] , ecx
 
     mov sp , 0x9FF8
     mov bp , 0x9FF8
@@ -61,21 +66,20 @@ Start:
     movzx ecx , word[BytesPerSector]
     idiv ecx
 
-    mov dword[RootDirectorySize] , eax
+    mov word[RootDirectorySize] , ax
 
     ReadRootDirectory:
         mov ah , 0x42   ; Extended Read Sector From Drive : 
                         ; SI : DAP Address
-
-
         mov si , DAP
         
-        mov ecx , dword[RootDirectorySize]
+        movzx ecx , word[RootDirectorySize]
         mov byte[si+2] , cl
         mov ecx , dword[RootDirectoryLocation]
 
-        mov ebx , dword[RootDirectoryBuffer]
-        mov dword[si+4] , ebx   ; Physical memory that the data is going to be copied
+        mov dword[si+4] , 0x500   ; Physical memory that the data is going to be copied
+        add ecx , dword[PartitionStartAddress] 
+
         mov dword[si+8] , ecx   ; Root directory address
         mov dword[si+12] , 0x00 ; Empty(Originally start of the sector field was 8 byte long, but
                                 ; in real mode, we can't do that, so we just leave it empty)
@@ -87,7 +91,7 @@ Start:
     mov ds , ax
 
     xor ecx , ecx
-    mov di , word[RootDirectoryBuffer+0x7C00]
+    mov di , 0x500 ; RootDirectory buffer
     mov cx , word[RootDirectoryEntryCount+0x7C00]
     
     ; Find Kernel Loader from the root directory
@@ -130,7 +134,7 @@ Start:
         movzx eax , byte[SectorsPerCluster]
         imul ebx , eax
         add ebx , dword[RootDirectoryLocation]
-        add ebx , dword[RootDirectorySize]
+        add bx , word[RootDirectorySize]
         ; Save converted sector number to variable
         mov dword[KernelLoaderLocation] , ebx
 
@@ -148,15 +152,14 @@ Start:
         mov si , DAP
         
         mov byte[si+2] , 1
-        
-        mov ebx , dword[StaticAPLoaderStartAddress]
         ; AP Loader is at the rear of the loader file
 
         mov ecx , dword[KernelLoaderLocation]
         add ecx , dword[KernelLoaderSectorSize]
         sub ecx , 4
 
-        mov dword[si+4] , ebx   ; Physical memory that the data is going to be copied
+        mov dword[si+4] , 0x8000   ; Physical memory that the data is going to be copied
+        add ecx , dword[PartitionStartAddress]
         mov dword[si+8] , ecx
         
         mov dword[si+12] , 0x00
@@ -171,12 +174,12 @@ Start:
         mov ebx , dword[KernelLoaderSectorSize]
         mov byte[si+2] , bl
         
-        mov ebx , dword[StaticKernelLoaderStartAddress]
         ; AP Loader is at the rear of the loader file
         
         mov ecx , dword[KernelLoaderLocation]
 
-        mov dword[si+4] , ebx   ; Physical memory that the data is going to be copied
+        mov dword[si+4] , 0x8400 ; Physical memory that the data is going to be copied
+        add ecx , dword[PartitionStartAddress]
         mov dword[si+8] , ecx
         
         mov dword[si+12] , 0x00
@@ -217,11 +220,8 @@ memcmp:
         mov ax , 0x01
         ret
 
-StaticKernelLoaderStartAddress: dd 0x8400       ; Address of the Kernel Loader
-StaticAPLoaderStartAddress: dd 0x8000           ; Address of the AP Loader
-RootDirectoryBuffer: dd 0x500
 RootDirectoryLocation: dd 0x00
-RootDirectorySize: dd 0x00
+RootDirectorySize: dw 0x00
 KernelLoaderLocation: dd 0x00
 KernelLoaderSectorSize: dd 0x00
 
@@ -235,6 +235,7 @@ DAP:                ; DAP Area(Disk Address Packet)
 
 DriveNumber db 0x00
 KernelLoaderName: db "KERNEL~1LDR" , 0x00
+PartitionStartAddress: dd 0x00
 
 times (510-($-$$)) db 0x00
 dw 0xAA55
