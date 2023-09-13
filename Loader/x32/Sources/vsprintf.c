@@ -14,11 +14,9 @@ void vsprintf(char *Destination , const char *Format , va_list ap) {
 						break;
 					}
 					case 's': {
-						char Buffer[4096];
-						memset(Buffer , 0 , 4096);
-						strcpy(Buffer , va_arg(ap , char*));
-						strcpy(Destination+j , Buffer);
-						j += strlen(Buffer);
+						char *p = va_arg(ap , char *);
+						strcpy(Destination+j , p);
+						j += strlen(p);
 						i++;
 						break;
 					}

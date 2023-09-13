@@ -1,8 +1,8 @@
 OUTPUT_FORMAT(elf32-i386)
-ENTRY(PreMain)
+ENTRY(Entry)
 SECTIONS {
-  . = 0x8C00;
-  .text 0x8C00 : {
+  . = 0x100000;
+  .text 0x100000 : {
     *(.text .stub .text.* .gnu.linkonce.t.*)
   }
   .data : {

@@ -2,20 +2,26 @@
 
 SECTION .text
 
-global PreMain
+; Multiboot Header
+	align 0x04 
+	MagicNumber: dd 0x1BADB002
+	Flags: dd 0x00
+	Checksum: dd -(0x1BADB002+0x00)
+
+global Entry
 extern Main
 
-PreMain:
-    mov ax , 0x10
-    mov ds , ax
-    mov es , ax
-    mov fs , ax
-    mov gs , ax
-    mov ss , ax
+Entry:
+    cli
 
-    mov esp , 0xDFF8
-    mov ebp , 0xDFF8
-
+    mov ebp , KernelStack
+    mov esp , KernelStack
+    push ebx ; Multiboot information pointer
     call Main
-
+    
     jmp $
+
+SECTION .bss
+
+    resb 4096
+KernelStack:

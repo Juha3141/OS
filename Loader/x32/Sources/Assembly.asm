@@ -6,6 +6,11 @@ global JumpToKernel64
 SECTION .text
 
 JumpToKernel64:
+    push ebp
+    mov ebp , esp
+
+    mov ebx , dword[ebp+8]
+
     cli 
     xor edx , edx
                             ; Switch to Long Mode
@@ -14,7 +19,7 @@ JumpToKernel64:
     or eax , 0b1000100000   ; Also set OSFXSR to 1
     mov cr4 , eax
     
-    mov eax , 0x10000       ; CR3 register needs to contain the location of page entry
+    mov eax , ebx
     mov cr3 , eax           ; 2. Set the location of the PML4 Entry (0x10000, check 140th line in current code)
     
     mov ecx , 0xC0000080
@@ -31,198 +36,7 @@ JumpToKernel64:
     mov cr0 , eax
     lgdt [LongModeGDTR]     ; Load long mode GDT so that we can use Data and Code segments without an issue
     
-    jmp 0x08:0x100000       ; Finally jump to long mode kernel (Main Kernel)
-
-ProtectModeCR0: dd 0x00
-ProtectModeESP: dd 0x00
-ProtectModeEBP: dd 0x00
-ReturnAddress: dd 0x00
-
-Successed: db 0x00
-
-ArgumentAX: dw 0x00
-ArgumentBX: dw 0x00
-ArgumentCX: dw 0x00
-ArgumentDX: dw 0x00
-ArgumentSI: dw 0x00
-ArgumentDI: dw 0x00
-
-DoBIOSInterrupt:
-    push ebp
-    mov ebp , esp
-    pushad
-
-    mov eax , ebp
-    mov ebx , esp
-    mov dword[ProtectModeEBP] , eax
-    mov dword[ProtectModeESP] , ebx
-    mov eax , dword[ebp+4]
-    mov dword[ReturnAddress] , eax
-
-    mov eax , dword[ebp+8]
-    mov byte[InterruptNumber] , al
-    mov eax , dword[ebp+12]
-    mov word[ArgumentAX] , ax
-    mov eax , dword[ebp+16]
-    mov word[ArgumentBX] , ax
-    mov eax , dword[ebp+20]
-    mov word[ArgumentCX] , ax
-    mov eax , dword[ebp+24]
-    mov word[ArgumentDX] , ax
-    mov eax , dword[ebp+28]
-    mov word[ArgumentSI] , ax
-    mov eax , dword[ebp+32]
-    mov word[ArgumentDI] , ax
-
-    cli
-
-    lgdt [RealModeGDTR]
-    
-    jmp 0x08:x16ProtectMode
-
-[BITS 16]
-
-x16ProtectMode:
-    mov ax , 0x10
-    mov ds , ax
-    mov es , ax
-    mov fs , ax
-    mov gs , ax
-    mov ss , ax
-    
-    mov eax , cr0
-    mov [ProtectModeCR0] , eax
-    and eax , 0x7FFFFFFE
-    mov cr0 , eax
-    
-    jmp 0x00:RealMode
-
-RealMode:
-    mov ax , 0x00
-    mov ds , ax
-    mov es , ax
-    mov fs , ax
-    mov gs , ax
-    mov ss , ax
-
-    sti
-
-    mov ax , word[ArgumentAX]
-    mov bx , word[ArgumentBX]
-    mov cx , word[ArgumentCX]
-    mov dx , word[ArgumentDX]
-    mov si , word[ArgumentSI]
-    mov di , word[ArgumentDI]
-
-    db 0xCD
-    InterruptNumber: db 0x00
-
-    jc Failed
-
-    mov byte[Successed] , 0x01
-
-ReadyForProtectMode:
-
-	lgdt [ProtectModeGDTR]
-
-	cli
-
-	mov eax , cr0
-    or eax , 0x01
-	mov cr0 , eax
-
-    jmp 0x08:ProtectModeAgain
-
-[BITS 32]
-
-ProtectModeAgain:
-    mov ax , 0x10
-    mov ds , ax
-    mov es , ax
-    mov fs , ax
-    mov gs , ax
-    mov ss , ax
-
-    mov esp , dword[ProtectModeESP]
-    mov ebp , dword[ProtectModeEBP]
-    
-    popad
-    mov esp , ebp
-    pop ebp
-
-    ret 
-
-Failed:
-    mov byte[Successed] , 0x00
-    jmp ReadyForProtectMode
-
-RealModeIDTR:
-    dw 0x3FF
-    dd 0x00
-
-RealModeGDTR:
-    dw RealModeGDT_END-RealModeGDT
-    dd RealModeGDT
-
-RealModeGDT:
-    NullSegment:
-        dw 0x00
-        dw 0x00
-        db 0x00
-        db 0x00
-        db 0x00
-        db 0x00
-    x16CodeSegment:
-        dw 0xFFFF
-        dw 0x00
-        db 0x00
-        db 0b10011010
-        db 0b00001111
-        db 0x00
-    x16DataSegment:
-        dw 0xFFFF
-        dw 0x00
-        db 0x00
-        db 0b10010010
-        db 0b00001111
-        db 0x00
-
-RealModeGDT_END:
-
-ProtectModeIDTR:
-    dw 0x00
-    dd 0x00
-
-ProtectModeGDTR:
-	dw ProtectModeGDT_END-ProtectModeGDT
-	dd ProtectModeGDT
-
-ProtectModeGDT:
-	x32NullSegment:
-        dw 0x00
-        dw 0x00
-        db 0x00
-        db 0x00
-        db 0x00
-        db 0x00
-	
-	x32CodeSegment:
-		dw 0xFFFF
-		dw 0x0000
-		db 0x00
-		db 0b10011010
-		db 0b11001111
-		db 0x00
-	
-	x32DataSegment:
-		dw 0xFFFF
-		dw 0x0000
-		db 0x00
-		db 0b10010010
-		db 0b11001111
-		db 0x00
-	
-ProtectModeGDT_END:
+    jmp 0x08:0x103000       ; Finally jump to long mode kernel (Main Kernel)
 
 LongModeGDT:
     ; In long mode
@@ -267,3 +81,8 @@ LongModeGDT_END:
 LongModeGDTR:
     dw LongModeGDT_END-LongModeGDT
     dd LongModeGDT
+
+[BITS 64]
+
+longmode:
+    jmp $
