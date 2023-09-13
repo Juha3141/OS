@@ -20,6 +20,8 @@ LongModeEntry:
     
     mov rbp , 0x4FFFF8
     mov rsp , 0x4FFFF8
+
+    jmp .BSP ; skip for now
     
     cmp byte[0x8000+2] , 0x01
     je .BSP
@@ -54,28 +56,6 @@ LongModeEntry:
     jmp .AP
 
 .BSP:
-    mov al , 0x11
-    out 0x20 , al
-    mov al , 0x20
-    out 0x21 , al
-    mov al , 0x04
-    out 0x21 , al
-    mov al , 0x01
-    out 0x21 , al
-
-    mov al , 0x11
-    out 0xA0 , al
-    mov al , 0x28
-    out 0xA1 , al
-    mov al , 0x02
-    out 0xA1 , al
-    mov al , 0x01
-    out 0xA1 , al
-
-    mov al , 0xFF
-    out 0x21 , al
-    out 0xA1 , al
-
     call Main
 
     jmp $
