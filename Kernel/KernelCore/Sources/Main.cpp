@@ -39,8 +39,8 @@ extern "C" void Main(void) {
     TextScreen80x25::Initialize(); // good
     MemoryManagement::Initialize();
     DescriptorTables::Initialize();
-    Keyboard::Initialize();// ps/2 (temporary integrated keyboard driver.. I guess.)
-    Mouse::Initialize();
+
+    // test code
     if(ACPI::Initialize() == false) {
         printf("Failed gathering information from ACPI\n");
     }
@@ -59,9 +59,6 @@ extern "C" void Main(void) {
         }
     }
 // good
-    TaskManagement::Initialize();
-
-    // Architecture specific functions
     LocalAPIC::Timer::Initialize();
     LocalAPIC::GlobalEnableLocalAPIC();
     LocalAPIC::EnableLocalAPIC();
@@ -74,7 +71,14 @@ extern "C" void Main(void) {
     KernelStackBase += KernelStackSize*CoreInformation::GetInstance()->CoreCount;
 
     LocalAPIC::ActivateAPCores();
+    TaskManagement::Initialize();
+    
+    Keyboard::Initialize(); // ps/2 (temporary integrated keyboard driver.. I guess.)
+    Mouse::Initialize();
+
     __asm__ ("sti");
+     
+    // File System Part
     
     printf("Kernel stack base initialized\n");
     FileSystem::Initialize();
@@ -84,13 +88,18 @@ extern "C" void Main(void) {
     StorageSystem::Initialize();
     printf("Storage System Initialized\n");
     
+    // File System Driver part
+     
     ISO9660::Register();
     FAT16::Register();
     printf("File System Registered\n");
+
+    // Device Driver part
     
     RAMDiskDriver::Register();
     IDEDriver::Register();
     printf("Storage Driver Registered\n");
+    // Middleman driver
     PCI::Detect();
     printf("PCI Driver Registered\n");
 
