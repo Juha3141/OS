@@ -1,8 +1,9 @@
 LIBRARYFOLDER = Library
 KERNELCOREFOLDER = KernelCore
 BINARYFOLDER = ../Binary
-LINKERSCRIPT = ../Linker.ld
+LINKERSCRIPT = Linker.ld
 
+INTEGRATEDDRIVER = IntegratedDriver
 ARCHITECTURE = x86_64
 
 ELF = Kernel.elf
@@ -14,6 +15,7 @@ FIRSTPRIORITYOBJ = $(BINARYFOLDER)/KernelCore/Entry.obj
 clean:
 	make -C $(LIBRARYFOLDER) clean
 	make -C $(KERNELCOREFOLDER) clean
+	make -C $(INTEGRATEDDRIVER) clean
 	make -C $(ARCHITECTURE) clean
 
 	rm -rf $(TARGET)
@@ -22,11 +24,14 @@ all: BuildLibrary BuildKernelCore BuildArchitecture
 	x86_64-elf-ld -nostdlib -T $(LINKERSCRIPT) -o $(ELF) $(FIRSTPRIORITYOBJ) $(filter-out $(FIRSTPRIORITYOBJ),$(wildcard $(BINARYFOLDER)/KernelCore/*.obj)) $(wildcard $(BINARYFOLDER)/$(ARCHITECTURE)/*.obj) -L $(BINARYFOLDER)/$(LIBRARYFOLDER) $(LIBRARIES)
 	x86_64-elf-objcopy -O binary $(ELF) $(TARGET)
 
+	cp $(TARGET) ../Loader/iso
+
 BuildLibrary:
 	make -C $(LIBRARYFOLDER) all
 
 BuildKernelCore:
 	make -C $(KERNELCOREFOLDER) all
+	make -C $(INTEGRATEDDRIVER) all
 
 BuildArchitecture:
 	make -C $(ARCHITECTURE) all
