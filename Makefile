@@ -7,7 +7,7 @@ BASH = bash
 
 QEMU = qemu-system-x86_64
 
-TARGET = OS.img
+TARGET = OS.iso
 
 all: BuildKernel BuildLoaders
 
@@ -23,11 +23,18 @@ clean:
 
 run: virtualbox
 
-qemurun:
+qemu:
+	$(QEMU) -cdrom $(TARGET) -m 8192 -rtc base=localtime -M pc -boot c
+
+debug: 
+	$(QEMU) -cdrom $(TARGET) -m 8192 -rtc base=localtime -M pc -boot c -s -S -serial stdio
+
+qemu_hd_old:
 	$(QEMU) -hda $(TARGET) -m 8192 -rtc base=localtime -M pc -boot c
 
-debugrun: 
+debug_hd_old: 
 	$(QEMU) -hda $(TARGET) -m 8192 -rtc base=localtime -M pc -boot c -s -S -serial stdio
 
 virtualbox:
+	# qemu-img convert -O qcow2 $(TARGET) $(patsubst %.img,%.qcow2,$(TARGET))
 	vboxmanage startvm "OS" -E VBOX_GUI_DBG_AUTO_SHOW=true -E VBOX_GUI_DBG_ENABLED=truesw
