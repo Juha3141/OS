@@ -1,4 +1,5 @@
 # OS
+(The development of this project has been closed indefinitely.)
 ### 1. Goal of this project
 The goal of this project is to make a modularized, universal operating system, which can emulate various operating system, without any virtual machine. This project is the experience of figuring whether it is possible to make the universal operating system, thus, two goal that this project should accomplish is:
 1. Modularizing (mostly) everything except for kernel core
